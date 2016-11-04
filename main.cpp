@@ -1,7 +1,8 @@
 #include <GL/glew.h>
 #include <SDL2/SDL.h>
 
-int main(void) {
+int main(void)
+{
   GLuint i = 0;
 
   SDL_Init(SDL_INIT_EVERYTHING);
@@ -11,7 +12,8 @@ int main(void) {
   glClearColor(0, 1, 0, 1);
   glClear(GL_COLOR_BUFFER_BIT);
   SDL_GL_SwapWindow(window);
-  while (1) {
+  while (1)
+  {
   }
 
   return i;
