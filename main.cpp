@@ -16,7 +16,7 @@ int main(void)
   SDL_Event event;
   while (true)
   {
-    while (SDL_PollEvent(&event) != 0)
+    while (SDL_PollEvent(&event))
       if (event.type == SDL_QUIT)
         goto quit;
     SDL_Delay(10);
