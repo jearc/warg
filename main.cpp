@@ -24,6 +24,7 @@ int main(void)
   }
 
 quit:
+  SDL_DestroyWindow(window);
   SDL_Quit();
   return 0;
 }
