@@ -19,6 +19,13 @@ int main(void)
     while (SDL_PollEvent(&event))
       if (event.type == SDL_QUIT)
         goto quit;
+      else if (event.type == SDL_KEYDOWN)
+        switch (event.key.keysym.sym)
+        {
+          case SDLK_ESCAPE:
+            goto quit;
+            break;
+        }
     SDL_Delay(10);
     SDL_GL_SwapWindow(window);
   }
