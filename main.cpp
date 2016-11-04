@@ -3,7 +3,6 @@
 
 int main(void)
 {
-  GLuint i = 0;
   int flags = SDL_WINDOW_OPENGL | SDL_RENDERER_PRESENTVSYNC;
   SDL_Init(SDL_INIT_EVERYTHING);
   auto window = SDL_CreateWindow("title", 0, 0, 320, 240, flags);
@@ -17,5 +16,5 @@ int main(void)
     SDL_GL_SwapWindow(window);
   }
 
-  return i;
+  return 0;
 }
