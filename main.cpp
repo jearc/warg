@@ -6,7 +6,7 @@ int main(void)
   int flags = SDL_WINDOW_OPENGL | SDL_RENDERER_PRESENTVSYNC;
 
   SDL_Init(SDL_INIT_EVERYTHING);
-  auto window = SDL_CreateWindow("title", 0, 0, 320, 240, flags);
+  auto window = SDL_CreateWindow("Warg", 0, 0, 320, 240, flags);
   auto context = SDL_GL_CreateContext(window);
 
   glewInit();
