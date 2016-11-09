@@ -1,4 +1,5 @@
 build/
 .vscode/
+Assets/Textures/
 .directory
 .dir-locals.el
