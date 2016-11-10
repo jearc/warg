@@ -1,10 +1,10 @@
+#include "Globals.h"
+#include "Render.h"
+#include "State.h"
+#include "Timer.h"
 #include <GL/glew.h>
 #include <SDL2/SDL.h>
 #include <iostream>
-#include "Render.h"
-#include "State.h"
-#include "Globals.h"
-#include "Timer.h"
 #include <stdlib.h>
 
 static double get_time()
@@ -18,13 +18,15 @@ static double get_time()
 }
 
 static void performance_output(const State *state, float64 current_time,
-                               Uint64 frame_count) {
+                               Uint64 frame_count)
+{
   static float64 last_output = 0;
   static Uint64 frames_at_last_tick = 0;
   const float64 delay = 0.1;
-  if (last_output + delay < current_time) {
-
-    system("cls");
+  if (last_output + delay < current_time)
+  {
+    //need a way to clear the console for both windows and linux here
+    //system("cls");
     std::cout << PERF_TIMER.string_report();
 
     Uint64 frames_this_sec =
@@ -38,16 +40,19 @@ static void performance_output(const State *state, float64 current_time,
   }
 }
 
-int main(int argc, char *argv[]) {
+int main(int argc, char *argv[])
+{
   SDL_ClearError();
   generator.seed(1234);
   SDL_Init(SDL_INIT_EVERYTHING);
   uint32 display_count = uint32(SDL_GetNumVideoDisplays());
-  for (uint32 i = 0; i < display_count; ++i) {
+  for (uint32 i = 0; i < display_count; ++i)
+  {
     std::cout << "Display " << i << ":\n";
     SDL_DisplayMode mode;
     uint32 mode_count = uint32(SDL_GetNumDisplayModes(i));
-    for (uint32 j = 0; j < mode_count; ++j) {
+    for (uint32 j = 0; j < mode_count; ++j)
+    {
       SDL_GetDisplayMode(i, j, &mode);
       std::cout << "Supported resolution: " << mode.w << "x" << mode.h << " "
                 << mode.refresh_rate << "hz  "
@@ -55,7 +60,7 @@ int main(int argc, char *argv[]) {
     }
   }
   ivec2 window_size = {1280, 720};
-  int32 flags = SDL_WINDOW_OPENGL; // | SDL_RENDERER_PRESENTVSYNC;
+  int32 flags = SDL_WINDOW_OPENGL;
   // SDL_GL_SetAttribute(SDL_GL_CONTEXT_FLAGS, SDL_GL_CONTEXT_DEBUG_FLAG);
   SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
   SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 3);
@@ -63,24 +68,35 @@ int main(int argc, char *argv[]) {
       SDL_CreateWindow("title", 100, 130, window_size.x, window_size.y, flags);
 
   SDL_GLContext context = SDL_GL_CreateContext(window);
+
   int32 major, minor;
   SDL_GL_GetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, &major);
   SDL_GL_GetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, &minor);
   std::cout << "OpenGL Version: " << major << "." << minor << "\n";
-  if (major <= 3) {
-    if (major < 3 || minor < 3) {
+  if (major <= 3)
+  {
+    if (major < 3 || minor < 3)
+    {
       std::cout << "Unsupported OpenGL Version.\n";
       ASSERT(0);
     }
   }
-
+  //recommend keeping vsync off until renderer implements extrapolation
+  //int32 swap = SDL_GL_SetSwapInterval(-1);//1 vsync, 0 no vsync, -1 late-swap
+  //if (swap == -1)
+  //{
+  //  swap = SDL_GL_SetSwapInterval(1);
+  //}
+  SDL_GL_SetSwapInterval(0);
   GLenum err = glewInit();
-  if (err != GLEW_OK) {
+  if (err != GLEW_OK)
+  {
     std::cout << "Glew error: " << glewGetErrorString(err);
     ASSERT(0);
   }
   checkSDLError(__LINE__);
-  while (glGetError()) {
+  while (glGetError())
+  {
   }
 
   ivec2 mouse_position;
@@ -90,7 +106,8 @@ int main(int argc, char *argv[]) {
   float64 last_time = 0.0;
   float64 elapsed_time = 0.0;
   State state(window, window_size);
-  while (state.running) {
+  while (state.running)
+  {
     float64 time = get_time();
     elapsed_time = time - state.current_time;
 
@@ -98,7 +115,8 @@ int main(int argc, char *argv[]) {
       elapsed_time = 0.3;
     last_time = state.current_time;
 
-    while (state.current_time + dt < last_time + elapsed_time) {
+    while (state.current_time + dt < last_time + elapsed_time)
+    {
       state.current_time += dt;
 
       state.handle_input();

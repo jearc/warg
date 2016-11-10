@@ -78,7 +78,7 @@ void main()
   m.shininess = 1.0 + m.shininess * 44.0f;
 
 
-  vec3 debug;
+  vec3 debug = vec3(-1);
   vec3 result = vec3(0);
   for (int i = 0; i < number_of_lights; ++i)
   {
@@ -124,7 +124,7 @@ void main()
   // debug = frag_world_position/100;
   // debug = vec3(frag_uv,0);
   // debug = m.albedo;
-  if (debug != vec3(0))
+  if (debug != vec3(-1))
   {
     result = debug;
   }

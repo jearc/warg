@@ -175,7 +175,6 @@ struct Render
   ~Render();
   void render(float64 t, float64 time);
   std::vector<Render_Instance> render_instances;
-
   bool use_txaa = false;
   void resize_window(ivec2 window_size);
   float32 get_render_scale() { return render_scale; }
@@ -187,8 +186,8 @@ struct Render
   void set_render_entities(std::vector<Render_Entity> entities);
 
 private:
-  float32 render_scale =
-      1.4f; // multiplies window_size to get the render target draw size
+  mat4 get_next_TXAA_sample();
+  float32 render_scale = 1.4f;//supersampling
   ivec2 window_size; // actual window size
   ivec2 size;        // render target size
   float32 vfov = 60;
@@ -200,7 +199,7 @@ private:
   GLuint target_fbo = 0;
   GLuint color_target = 0;
   GLuint depth_target = 0;
-  GLuint previous_color_target = 0;
+  GLuint prev_color_target = 0;
   GLuint instance_MVP_buffer = 0;
   GLuint instance_Model_buffer = 0;
 };
