@@ -3,3 +3,4 @@ build/
 Assets/Textures/
 .directory
 .dir-locals.el
+CMakeCache.txt

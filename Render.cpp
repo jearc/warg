@@ -171,6 +171,7 @@ void Mesh::assign_instance_buffers(GLuint instance_MVP_Buffer,
 
   if (!instance_buffers_set)
   {
+    instance_buffers_set = true;
     GLint current_vao;
     glGetIntegerv(GL_VERTEX_ARRAY_BINDING, &current_vao);
     ASSERT(current_vao == vao);
@@ -205,8 +206,7 @@ void Mesh::assign_instance_buffers(GLuint instance_MVP_Buffer,
       glVertexAttribDivisor(loc4, 1);
       check_gl_error();
     }
-    // shader attribute locations
-    // 4 locations for mat4
+
     loc = glGetAttribLocation(shader.program->program, "instanced_model");
     if (loc != -1)
     {
@@ -378,7 +378,6 @@ Material::Material(aiMaterial *ai_material, std::string working_directory,
   m.albedo = copy(name);
   ai_material->GetTexture(aiTextureType_SPECULAR, 0, &name);
   m.specular = copy(name);
-
   ai_material->GetTexture(aiTextureType_EMISSIVE, 0, &name);
   m.emissive = copy(name);
   ai_material->GetTexture(aiTextureType_NORMALS, 0, &name);
@@ -493,8 +492,8 @@ Render::Render(SDL_Window *window, ivec2 window_size)
                GL_UNSIGNED_BYTE, 0);
 
   check_gl_error();
-  glGenTextures(1, &previous_color_target);
-  glBindTexture(GL_TEXTURE_2D, previous_color_target);
+  glGenTextures(1, &prev_color_target);
+  glBindTexture(GL_TEXTURE_2D, prev_color_target);
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
   glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
@@ -513,8 +512,6 @@ Render::Render(SDL_Window *window, ivec2 window_size)
 
   glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
-  check_gl_error();
-
   // instancing MVP Matrix buffer init
   const GLuint mat4_size = sizeof(GLfloat) * 4 * 4;
   const GLuint instance_buffer_size = MAX_INSTANCE_COUNT * mat4_size;
@@ -523,7 +520,6 @@ Render::Render(SDL_Window *window, ivec2 window_size)
   glBindBuffer(GL_ARRAY_BUFFER, instance_MVP_buffer);
   glBufferData(GL_ARRAY_BUFFER, instance_buffer_size, (void *)0,
                GL_DYNAMIC_DRAW);
-  check_gl_error();
 
   // instancing Model Matrix buffer init
   glGenBuffers(1, &instance_Model_buffer);
@@ -534,21 +530,13 @@ Render::Render(SDL_Window *window, ivec2 window_size)
   glBindBuffer(GL_ARRAY_BUFFER, 0);
   check_gl_error();
 }
+
 void Render::render(float64 t, float64 time)
 {
-
-  //// todo: more offsets
-  // if (jitter_switch)
-  //  txaa_jitter = glm::translate(vec3(0.5f / size.x, 0.5f / size.y, 0));
-  // else
-  //  txaa_jitter = glm::translate(vec3(-0.5f / size.x, -0.5f / size.y, 0));
-  // jitter_switch = !jitter_switch;
-
   check_gl_error();
-  // glViewport(0, 0, size.x, size.y);
-  glViewport(0, 0, window_size.x, window_size.y);
-  // glBindFramebuffer(GL_FRAMEBUFFER, target_fbo);/*
-  // glFramebufferTexture(GL_FRAMEBUFFER, DIFFUSE_TARGET, color_target, 0);
+  glViewport(0, 0, size.x, size.y);
+  glBindFramebuffer(GL_FRAMEBUFFER, target_fbo);
+  glFramebufferTexture(GL_FRAMEBUFFER, DIFFUSE_TARGET, color_target, 0);
   vec3 night = vec3(0.05f);
   vec3 day = vec3(94. / 255., 155. / 255., 1.);
   float32 t1 = 5 * sin(float32(time) / 3);
@@ -562,14 +550,8 @@ void Render::render(float64 t, float64 time)
   glFrontFace(GL_CW);
   glCullFace(GL_BACK);
   glEnable(GL_DEPTH_TEST);
-
   glDepthFunc(GL_LESS);
-  glEnable(GL_BLEND);
-  // glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
-  // camera = glm::lookAt(float32(sin(time))*vec3(150, 150, 150), vec3(0),
-  // vec3(0, 0, 1));
-  // set_vfov(60);
   for (auto &entity : render_instances)
   {
     glBindVertexArray(entity.mesh->vao);
@@ -578,13 +560,8 @@ void Render::render(float64 t, float64 time)
     shader->use();
     entity.material->bind();
     entity.mesh->bind_to_shader(*shader);
-    // mat4 mvp = entity.MVP_Matrices[0];
-    mat4 model = entity.Model_Matrices[0];
-    shader->set_uniform("model", model);
-    shader->set_uniform("view", camera);
-    shader->set_uniform("projection",
-                        use_txaa ? txaa_jitter * projection : projection);
     shader->set_uniform("time", float32(time));
+    shader->set_uniform("txaa_jitter", txaa_jitter);
     shader->set_uniform("camera_position", camera_position);
     if (entity.mesh->name == "plane")
     { // uv scale just for the ground - bad obv
@@ -625,76 +602,65 @@ void Render::render(float64 t, float64 time)
     shader->set_uniform("number_of_lights", entity.lights.count);
 
     //// verify sizes of data, mat4 floats
-    // ASSERT(entity.Model_Matrices.size() > 0);
-    // ASSERT(entity.MVP_Matrices.size() == entity.Model_Matrices.size());
-    // ASSERT(sizeof(decltype(entity.Model_Matrices[0])) ==
-    //       sizeof(decltype(entity.MVP_Matrices[0])));
-    // ASSERT(sizeof(decltype(entity.MVP_Matrices[0][0][0])) ==
-    //       sizeof(GLfloat)); // buffer init code assumes these
-    // ASSERT(sizeof(decltype(entity.MVP_Matrices[0])) == sizeof(mat4));
+    ASSERT(entity.Model_Matrices.size() > 0);
+    ASSERT(entity.MVP_Matrices.size() == entity.Model_Matrices.size());
+    ASSERT(sizeof(decltype(entity.Model_Matrices[0])) ==
+           sizeof(decltype(entity.MVP_Matrices[0])));
+    ASSERT(sizeof(decltype(entity.MVP_Matrices[0][0][0])) ==
+           sizeof(GLfloat)); // buffer init code assumes these
+    ASSERT(sizeof(decltype(entity.MVP_Matrices[0])) == sizeof(mat4));
 
-    // uint32 num_instances = entity.MVP_Matrices.size();
-    // uint32 buffer_size = num_instances * sizeof(mat4);
+    uint32 num_instances = entity.MVP_Matrices.size();
+    uint32 buffer_size = num_instances * sizeof(mat4);
 
-    /*
-        entity.mesh->assign_instance_buffers(instance_MVP_buffer,
-                                             instance_Model_buffer,*shader);*/
+    entity.mesh->assign_instance_buffers(instance_MVP_buffer,
+                                         instance_Model_buffer, *shader);
 
-    /*
-        glBindBuffer(GL_ARRAY_BUFFER, instance_MVP_buffer);
-        glBufferSubData(GL_ARRAY_BUFFER, 0, buffer_size,
-                        &entity.MVP_Matrices[0][0][0]);
-        glBindBuffer(GL_ARRAY_BUFFER, instance_Model_buffer);
-        glBufferSubData(GL_ARRAY_BUFFER, 0, buffer_size,
-                        &entity.Model_Matrices[0][0][0]);*/
+    glBindBuffer(GL_ARRAY_BUFFER, instance_MVP_buffer);
+    glBufferSubData(GL_ARRAY_BUFFER, 0, buffer_size,
+                    &entity.MVP_Matrices[0][0][0]);
+    glBindBuffer(GL_ARRAY_BUFFER, instance_Model_buffer);
+    glBufferSubData(GL_ARRAY_BUFFER, 0, buffer_size,
+                    &entity.Model_Matrices[0][0][0]);
 
-    // draw
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, entity.mesh->indices_buffer);
-    glDrawElements(GL_TRIANGLES, entity.mesh->indices_buffer_size,
-                   GL_UNSIGNED_INT, (void *)0);
-    /*
     glDrawElementsInstanced(GL_TRIANGLES, entity.mesh->indices_buffer_size,
-                            GL_UNSIGNED_INT, (void *)0, num_instances);*/
+                            GL_UNSIGNED_INT, (void *)0, num_instances);
 
     entity.material->unbind_textures();
   }
-
   check_gl_error();
-  SDL_GL_SwapWindow(window);
-  return;
-
-  glBindVertexArray(0);
-  glBindFramebuffer(GL_FRAMEBUFFER, 0);
-
   static Shader temporalAA("passthrough.vert", "TemporalAA.frag");
   static Shader passthrough("passthrough.vert", "passthrough.frag");
   static Mesh quad("plane");
   glBindVertexArray(quad.vao);
 
-  mat4 ortho = glm::ortho(0.0f, (float32)window_size.x, 0.0f,
-                          (float32)window_size.y, 0.1f, 100.0f);
-  ortho = ortho * glm::translate(vec3(
-                      vec2(0.5f * window_size.x, 0.5f * window_size.y), -1)) *
-          glm::scale(vec3(window_size, 1));
+  mat4 o =
+      ortho(0.0f, (float32)window_size.x, 0.0f, (float32)window_size.y, 0.1f,
+            100.0f) *
+      translate(vec3(vec2(0.5f * window_size.x, 0.5f * window_size.y), -1)) *
+      scale(vec3(window_size, 1));
 
   if (use_txaa)
   {
     // TODO: implement motion vector vertex attribute
-    // and reduce blending weight in TAA shader
-    // based on differences in velocity
-    // and add more sample locations for jitter matrix
 
     // render to main framebuffer
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
     glViewport(0, 0, window_size.x, window_size.y);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
     temporalAA.use();
     quad.bind_to_shader(temporalAA);
+    GLuint u = glGetUniformLocation(temporalAA.program->program, "current");
+    glUniform1i(u, 0);
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, color_target);
+    GLuint u2 = glGetUniformLocation(temporalAA.program->program, "previous");
+    glUniform1i(u2, 1);
     glActiveTexture(GL_TEXTURE0 + 1);
-    glBindTexture(GL_TEXTURE_2D, previous_color_target);
-    temporalAA.set_uniform("transform", ortho);
+    glBindTexture(GL_TEXTURE_2D, prev_color_target);
+    temporalAA.set_uniform("transform", o);
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, quad.indices_buffer);
     glDrawElements(GL_TRIANGLES, quad.indices_buffer_size, GL_UNSIGNED_INT,
                    (void *)0);
@@ -706,36 +672,45 @@ void Render::render(float64 t, float64 time)
 
     // copy this frame to previous framebuffer
     // so it will be usable next frame, when its the old frame
+
+    // assign previous_color as the target to overwrite
     glViewport(0, 0, size.x, size.y);
     glBindFramebuffer(GL_FRAMEBUFFER, target_fbo);
+    glFramebufferTexture(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0,
+                         prev_color_target, 0);
     passthrough.use();
-    temporalAA.set_uniform("transform", ortho);
+    quad.bind_to_shader(passthrough);
+    // sample the current color_target as source
+    GLuint u3 = glGetUniformLocation(passthrough.program->program, "albedo");
+    glUniform1i(u3, Texture_Location::albedo);
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, color_target);
-
-    glFramebufferTexture(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0,
-                         previous_color_target, 0);
+    passthrough.set_uniform("transform", o);
     glDrawElements(GL_TRIANGLES, quad.indices_buffer_size, GL_UNSIGNED_INT,
                    (void *)0);
+    // place color_target back in target_fbo
     glFramebufferTexture(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, color_target, 0);
-
     glBindTexture(GL_TEXTURE_2D, 0);
+    txaa_jitter = get_next_TXAA_sample();
   }
   else
   {
     // render to main framebuffer
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
     glViewport(0, 0, window_size.x, window_size.y);
     glClearColor(1, 0, 0, 1);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     passthrough.use();
     quad.bind_to_shader(passthrough);
+    GLuint u = glGetUniformLocation(passthrough.program->program, "albedo");
+    glUniform1i(u, Texture_Location::albedo);
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, color_target);
-    passthrough.set_uniform("transform", ortho);
+    passthrough.set_uniform("transform", o);
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, quad.indices_buffer);
     glDrawElements(GL_TRIANGLES, quad.indices_buffer_size, GL_UNSIGNED_INT,
                    (void *)0);
-    glActiveTexture(GL_TEXTURE0);
+
     glBindTexture(GL_TEXTURE_2D, 0);
     SDL_GL_SwapWindow(window);
   }
@@ -744,6 +719,7 @@ void Render::render(float64 t, float64 time)
 void Render::resize_window(ivec2 window_size)
 {
   this->window_size = window_size;
+  set_vfov(vfov);
   ASSERT(0); // not yet implemented
 }
 
@@ -770,6 +746,10 @@ void Render::set_vfov(float32 vfov)
 
 void Render::set_render_entities(std::vector<Render_Entity> render_entities)
 {
+  // todo: save previous update's entities
+  // give each entity a unique ID, sort by ID, compare
+  // extrapolate positions for current frame with
+  // lerp(current, current + (current-prev), t) in renderer
   render_instances.clear();
   render_instances.reserve(render_entities.size());
 
@@ -814,4 +794,18 @@ void Render::set_render_entities(std::vector<Render_Entity> render_entities)
       new_instance->Model_Matrices.push_back(entity->transformation);
     }
   }
+}
+
+mat4 Render::get_next_TXAA_sample()
+{
+  mat4 result;
+  vec2 translation;
+  if (jitter_switch)
+    translation = vec2(0.5, 0.5);
+  else
+    translation = vec2(-0.5, -0.5);
+
+  result = glm::translate(vec3(translation / vec2(size), 0));
+  jitter_switch = !jitter_switch;
+  return result;
 }

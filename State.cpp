@@ -77,6 +77,40 @@ void State::handle_input()
     SDL_PumpEvents();
     return keys[key];
   };
+  SDL_Event _e;
+  while (SDL_PollEvent(&_e))
+  {
+    if (_e.type == SDL_QUIT)
+    {
+      running = false;
+      return;
+    }
+    else if (_e.type == SDL_KEYDOWN)
+    {
+      if (_e.key.keysym.sym == SDLK_ESCAPE)
+      {
+        running = false;
+        return;
+      }
+    }
+    else if (_e.type == SDL_WINDOWEVENT)
+    {
+      if (_e.window.event == SDL_WINDOWEVENT_RESIZED)
+      {
+        // resize
+      }
+      else if (_e.window.event == SDL_WINDOWEVENT_FOCUS_GAINED ||
+               _e.window.event == SDL_WINDOWEVENT_ENTER)
+      { // dumping mouse delta prevents camera teleport on focus gain
+
+        //required, else clicking the title bar itself to gain focus
+        //makes SDL ignore the mouse entirely for some reason...
+        SDL_SetRelativeMouseMode(SDL_bool(false));
+        SDL_SetRelativeMouseMode(SDL_bool(true));
+        reset_mouse_delta();
+      }
+    }
+  }
 
   checkSDLError(__LINE__);
   // first person style camera control:
@@ -117,30 +151,6 @@ void State::handle_input()
   {
     camera_position +=
         MOVE_SPEED * vec3(rotate(half_pi<float>(), vec3(0, 0, 1)) * heading);
-  }
-  SDL_Event _e;
-  while (SDL_PollEvent(&_e))
-  {
-    if (_e.type == SDL_QUIT)
-    {
-      running = false;
-      return;
-    }
-    else if (_e.type == SDL_KEYDOWN)
-    {
-      if (_e.key.keysym.sym == SDLK_ESCAPE)
-      {
-        running = false;
-        return;
-      }
-    }
-    else if (_e.type == SDL_WINDOWEVENT)
-    {
-      if (_e.window.event == SDL_WINDOWEVENT_RESIZED)
-      {
-        // resize
-      }
-    }
   }
 }
 
