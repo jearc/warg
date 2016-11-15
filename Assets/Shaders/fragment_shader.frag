@@ -20,12 +20,12 @@ struct Light
   vec3 attenuation;
   vec3 ambient;
   float cone_angle;
-  uint type;
+  int type;
 };
 #define MAX_LIGHTS 10
 
 uniform Light lights[MAX_LIGHTS];
-uniform uint number_of_lights;
+uniform int number_of_lights;
 
 in vec3 frag_world_position;
 in mat3 frag_TBN;
@@ -60,7 +60,7 @@ struct Material
 void main()
 {
   Material m;
-    
+
   m.specular = to_linear(texture2D(specular, frag_uv).rgb);
   // float albedo_scale = 1.0 - m.specular.r;
   m.albedo = to_linear(texture2D(albedo, frag_uv).rgb) / PI;
@@ -74,7 +74,7 @@ void main()
   }
   m.normal = frag_TBN * normalize((tex_normal * 2) - 1.0f);
 
-  
+
   m.shininess = 1.0 + m.shininess * 44.0f;
 
 
@@ -116,7 +116,6 @@ void main()
     float specular =
         energy_conservation * pow(max(dot(half_v, m.normal), 0.0), m.shininess);
     result += ldotn * specular * m.albedo * lights[i].color * at * alpha;
- 
   }
   result += m.emissive;
   result += vec3(0.25) * additional_ambient * m.albedo;

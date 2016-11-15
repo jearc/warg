@@ -25,8 +25,11 @@ static void performance_output(const State *state, float64 current_time,
   const float64 delay = 0.1;
   if (last_output + delay < current_time)
   {
-    //need a way to clear the console for both windows and linux here
-    //system("cls");
+#ifdef __linux__
+    system("clear");
+#elif _WIN32
+    system("cls");
+#endif
     std::cout << PERF_TIMER.string_report();
 
     Uint64 frames_this_sec =
@@ -81,14 +84,16 @@ int main(int argc, char *argv[])
       ASSERT(0);
     }
   }
-  //recommend keeping vsync off until renderer implements extrapolation
-  //int32 swap = SDL_GL_SetSwapInterval(-1);//1 vsync, 0 no vsync, -1 late-swap
-  //if (swap == -1)
+  // recommend keeping vsync off until renderer implements extrapolation
+  // int32 swap = SDL_GL_SetSwapInterval(-1);//1 vsync, 0 no vsync, -1 late-swap
+  // if (swap == -1)
   //{
   //  swap = SDL_GL_SetSwapInterval(1);
   //}
   SDL_GL_SetSwapInterval(0);
+  glewExperimental = GL_TRUE;
   GLenum err = glewInit();
+  glClearColor(0, 0, 0, 1);
   if (err != GLEW_OK)
   {
     std::cout << "Glew error: " << glewGetErrorString(err);

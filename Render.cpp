@@ -1,10 +1,9 @@
-#pragma once
-#include <GL\glew.h>
-#include <SDL2\SDL.h>
-#include <assimp\Importer.hpp>
-#include <assimp\postprocess.h>
-#include <assimp\scene.h>
-#include <assimp\types.h>
+#include <GL/glew.h>
+#include <SDL2/SDL.h>
+#include <assimp/Importer.hpp>
+#include <assimp/postprocess.h>
+#include <assimp/scene.h>
+#include <assimp/types.h>
 
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
@@ -14,11 +13,11 @@
 #include "Render.h"
 #include "Shader.h"
 #include "Timer.h"
-#include <glm\glm.hpp>
-#include <glm\gtc\matrix_transform.hpp>
-#include <glm\gtc\quaternion.hpp>
-#include <glm\gtx\euler_angles.hpp>
-#include <glm\gtx\transform.hpp>
+#include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtc/quaternion.hpp>
+#include <glm/gtx/euler_angles.hpp>
+#include <glm/gtx/transform.hpp>
 #include <iostream>
 #include <memory>
 #include <unordered_map>
@@ -597,9 +596,9 @@ void Render::render(float64 t, float64 time)
       shader->set_uniform((s("lights[") + ts(i) + s("].cone_angle")).c_str(),
                           entity.lights.lights[i].cone_angle);
       shader->set_uniform((s("lights[") + ts(i) + s("].type")).c_str(),
-                          (uint32)entity.lights.lights[i].type);
+                          (int32)entity.lights.lights[i].type);
     }
-    shader->set_uniform("number_of_lights", entity.lights.count);
+    shader->set_uniform("number_of_lights", (int32)entity.lights.count);
 
     //// verify sizes of data, mat4 floats
     ASSERT(entity.Model_Matrices.size() > 0);

@@ -3,18 +3,18 @@
 #include "Mesh_Loader.h"
 #include "Shader.h"
 #include "stb_image.h"
-#include <GL\glew.h>
-#include <SDL2\SDL.h>
+#include <GL/glew.h>
+#include <SDL2/SDL.h>
 #include <array>
-#include <assimp\Importer.hpp>
-#include <assimp\postprocess.h>
-#include <assimp\scene.h>
-#include <assimp\types.h>
-#include <glm\glm.hpp>
-#include <glm\gtc\matrix_transform.hpp>
-#include <glm\gtc\quaternion.hpp>
-#include <glm\gtx\euler_angles.hpp>
-#include <glm\gtx\transform.hpp>
+#include <assimp/Importer.hpp>
+#include <assimp/postprocess.h>
+#include <assimp/scene.h>
+#include <assimp/types.h>
+#include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtc/quaternion.hpp>
+#include <glm/gtx/euler_angles.hpp>
+#include <glm/gtx/transform.hpp>
 #include <memory>
 #include <string>
 #include <vector>
@@ -187,9 +187,9 @@ struct Render
 
 private:
   mat4 get_next_TXAA_sample();
-  float32 render_scale = 1.4f;//supersampling
-  ivec2 window_size; // actual window size
-  ivec2 size;        // render target size
+  float32 render_scale = 1.4f; // supersampling
+  ivec2 window_size;           // actual window size
+  ivec2 size;                  // render target size
   float32 vfov = 60;
   mat4 camera;
   mat4 projection;

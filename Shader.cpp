@@ -1,9 +1,8 @@
-#pragma once
 #include "Shader.h"
 #include "Globals.h"
-#include <GL\glew.h>
-#include <SDL2\SDL.h>
-#include <assimp\types.h>
+#include <GL/glew.h>
+#include <SDL2/SDL.h>
+#include <assimp/types.h>
 #include <iostream>
 #include <memory>
 #include <unordered_map>
@@ -141,6 +140,13 @@ void Shader::set_uniform(const char *name, const glm::mat4 &m)
   GLint location = glGetUniformLocation(program->program, name);
   check_err(location, name);
   glUniformMatrix4fv(location, 1, GL_FALSE, &m[0][0]);
+}
+void Shader::set_uniform(const char *name, int32 i)
+{
+  use();
+  GLint location = glGetUniformLocation(program->program, name);
+  check_err(location, name);
+  glUniform1i(location, i);
 }
 void Shader::use() const { glUseProgram(program->program); }
 

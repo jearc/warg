@@ -1,4 +1,3 @@
-#pragma once
 #include "State.h"
 #include "Globals.h"
 #include "Render.h"
@@ -103,8 +102,8 @@ void State::handle_input()
                _e.window.event == SDL_WINDOWEVENT_ENTER)
       { // dumping mouse delta prevents camera teleport on focus gain
 
-        //required, else clicking the title bar itself to gain focus
-        //makes SDL ignore the mouse entirely for some reason...
+        // required, else clicking the title bar itself to gain focus
+        // makes SDL ignore the mouse entirely for some reason...
         SDL_SetRelativeMouseMode(SDL_bool(false));
         SDL_SetRelativeMouseMode(SDL_bool(true));
         reset_mouse_delta();
