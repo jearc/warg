@@ -1,4 +1,3 @@
-#pragma once
 #include "Shader.h"
 #include "Globals.h"
 #include <GL\glew.h>
