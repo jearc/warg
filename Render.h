@@ -187,9 +187,9 @@ struct Render
 
 private:
   mat4 get_next_TXAA_sample();
-  float32 render_scale = 1.4f;//supersampling
-  ivec2 window_size; // actual window size
-  ivec2 size;        // render target size
+  float32 render_scale = 1.4f; // supersampling
+  ivec2 window_size;           // actual window size
+  ivec2 size;                  // render target size
   float32 vfov = 60;
   mat4 camera;
   mat4 projection;
