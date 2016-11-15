@@ -1,0 +1,9 @@
+illidan stormrage
+fbx and iclone formats
+
+the iclone has spring effects for the hair and wings
+the main wing bones are extended bones for easy animation.
+
+ripped by aniadawson@deviantart
+cleanup/fixed/converted by kipster
+iclone illusion@proboards.com

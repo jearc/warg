@@ -111,6 +111,13 @@ void Shader::set_uniform(const char *name, uint32 i)
   check_err(location, name);
   glUniform1ui(location, i);
 }
+void Shader::set_uniform(const char *name, int32 i)
+{
+  use();
+  GLint location = glGetUniformLocation(program->program, name);
+  check_err(location, name);
+  glUniform1i(location, i);
+}
 
 void Shader::set_uniform(const char *name, glm::vec2 v)
 {

@@ -13,6 +13,8 @@ const float32 MOUSE_X_SENS = .0041f;
 const float32 MOUSE_Y_SENS = .0041f;
 const std::string BASE_TEXTURE_PATH = "Assets/Textures/";
 const std::string BASE_SHADER_PATH = "Assets/Shaders/";
+const std::string BASE_MODEL_PATH = "Assets/Models/";
+const std::string ERROR_TEXTURE_PATH = BASE_TEXTURE_PATH + "err.png";
 Timer PERF_TIMER;
 
 bool all_equal(int32 a, int32 b, int32 c) { return (a == b) && (a == c); }

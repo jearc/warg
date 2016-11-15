@@ -31,18 +31,14 @@ glm::mat4 copy(aiMatrix4x4 m)
   // glm is column-major
   const mat4 I(1);
   glm::mat4 result;
-  mat4 test;
   for (uint32 i = 0; i < 4; ++i)
   {
     for (uint32 j = 0; j < 4; ++j)
     {
-      test[i][j] = m[i][j];
       result[i][j] = m[j][i];
     }
   }
-  mat4 T = transpose(test);
-  ASSERT(T == result);
-  return transpose(result);
+  return result;
 }
 
 Scene_Graph_Node::Material_Assigned_Meshes::Material_Assigned_Meshes() {}
@@ -167,7 +163,9 @@ const aiScene *Scene_Graph::load_aiscene(std::string path,
                // aiProcess_ImproveCacheLocality|
                //  aiProcess_OptimizeMeshes|
                0;
-  const aiScene *aiscene = importer->ReadFile(path.c_str(), flags);
+
+  std::string final_path = BASE_MODEL_PATH + path;
+  const aiScene *aiscene = importer->ReadFile(final_path.c_str(), flags);
   if (!aiscene || aiscene->mFlags == AI_SCENE_FLAGS_INCOMPLETE ||
       !aiscene->mRootNode)
   {

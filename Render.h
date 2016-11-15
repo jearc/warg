@@ -18,6 +18,8 @@
 #include <memory>
 #include <string>
 #include <vector>
+#include <unordered_map>
+
 using namespace glm;
 
 //
@@ -40,15 +42,15 @@ struct Texture
     GLuint texture = 0;
   };
   Texture();
-  Texture(const std::string &path);
-
+  Texture(std::string path);
 private:
   friend struct Render;
   friend struct Material;
-  void load(const std::string &path);
-  void bind(const char *name, GLuint location, Shader &shader) const;
+  void load();
+  void bind(const char *name, GLuint location, Shader &shader);
+  static std::unordered_map<std::string, std::weak_ptr<Texture_Handle>> cache;
   std::shared_ptr<Texture_Handle> texture;
-  std::string filename;
+  std::string file_path;
 };
 
 // todo: why did i have to regress? Mesh used to manage itself like Texture

@@ -34,6 +34,9 @@ State::State(SDL_Window *window, ivec2 window_size)
   test_entity_plane =
       scene.add_single_mesh("plane", "test_entity_plane", material);
 
+
+  illidan = scene.add_aiscene("Chest/Chest1.FBX");
+
   SDL_SetRelativeMouseMode(SDL_bool(true));
   reset_mouse_delta();
   check_gl_error();

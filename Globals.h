@@ -7,12 +7,14 @@
 using namespace glm;
 struct aiString;
 
-#define SHOW_ERROR_TEXTURE 0
+
 #define MAX_INSTANCE_COUNT 100
 #define UNIFORM_LIGHT_LOCATION 20
 #define MAX_LIGHTS 10
-#define DEBUG
-#define ENABLE_ASSERTS
+#define SHOW_ERROR_TEXTURE 0
+#define PERIODIC_TEXTURE_RELOADING 1
+#define DEBUG 1
+#define ENABLE_ASSERTS 1
 
 extern std::mt19937 generator;
 extern const float32 dt;
@@ -22,6 +24,8 @@ extern const float32 MOUSE_Y_SENS;
 extern uint32 LAST_RENDER_ENTITY_COUNT;
 extern const std::string BASE_TEXTURE_PATH;
 extern const std::string BASE_SHADER_PATH;
+extern const std::string BASE_MODEL_PATH;
+extern const std::string ERROR_TEXTURE_PATH;
 extern Timer PERF_TIMER;
 
 // todo: make some variadic template for this crap:

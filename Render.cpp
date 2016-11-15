@@ -42,50 +42,66 @@ enum Texture_Location
   emissive,
   roughness
 };
-
+std::unordered_map<std::string, std::weak_ptr<Texture::Texture_Handle>> Texture::cache;
 Texture::Texture()
 {
-  static std::shared_ptr<Texture> err =
-      std::make_shared<Texture>(std::string("err.png"));
-  filename = "err.png";
-  load(BASE_TEXTURE_PATH + filename);
+  file_path = ERROR_TEXTURE_PATH;
 }
-Texture::Texture_Handle::~Texture_Handle() { glDeleteTextures(1, &texture); }
-Texture::Texture(const std::string &path)
+Texture::Texture_Handle::~Texture_Handle() { 
+  glDeleteTextures(1, &texture);
+  texture = 0;
+}
+Texture::Texture(std::string path)
 {
   // the reason for this is that sometimes
   // the assimp asset you load will have screwy paths
   // depending on the program that exported it
-  filename = fix_filename(path);
-  if (filename.size() == 0)
-  {
-    filename = "err.png";
-
-    if (!SHOW_ERROR_TEXTURE)
-    {
-      return;
-    }
+  path = fix_filename(path);
+  size_t i = path.find_last_of("/");
+  if (i == path.npos)
+  {//no specified directory, so use base path
+    file_path = BASE_TEXTURE_PATH + path;
   }
-  load(BASE_TEXTURE_PATH + filename);
-}
-void Texture::load(const std::string &path)
-{
-  static std::unordered_map<std::string, std::weak_ptr<Texture_Handle>> cache;
+  else
+  {//assimp imported model or user specified a directory
+    file_path = path;
+  }
 
-  auto ptr = cache[path].lock();
+  if (file_path.size() == 0)
+    file_path = ERROR_TEXTURE_PATH;
+}
+void Texture::load()
+{
+#if !SHOW_ERROR_TEXTURE
+  if (file_path == ERROR_TEXTURE_PATH || file_path == BASE_TEXTURE_PATH)
+  {
+    texture = nullptr;
+    return;
+  }
+#endif
+  auto ptr = Texture::cache[file_path].lock();
   if (ptr)
   {
     texture = ptr;
-    // std::cout << "Texture load cache hit: " << path << "\n";
     return;
   }
   texture = std::make_shared<Texture_Handle>();
-  cache[path] = texture;
+  cache[file_path] = texture;
   int32 width, height, n;
-  auto *data = stbi_load(path.c_str(), &width, &height, &n, 4);
-
-  ASSERT(data);
-  std::cout << "Texture load cache miss. Texture from disk: " << path << "\n";
+  auto *data = stbi_load(file_path.c_str(), &width, &height, &n, 4);
+  if (!data)
+  {
+    std::cout << "STBI failed to find or load texture: " << file_path << "\n";
+    if (file_path == ERROR_TEXTURE_PATH)
+    {
+      std::cout << "Unable to find error texture at: " << file_path << "Unrecoverable code path.\n";
+      throw;
+    }
+    file_path = ERROR_TEXTURE_PATH;
+    load();
+    return;
+  }
+  std::cout << "Texture load cache miss. Texture from disk: " << file_path << "\n";
 
   // TODO: optimize the texture storage types to save GPU memory
   // currently  everything is stored with RGBA
@@ -105,8 +121,11 @@ void Texture::load(const std::string &path)
   glBindTexture(GL_TEXTURE_2D, 0);
 }
 
-void Texture::bind(const char *name, GLuint binding, Shader &shader) const
+void Texture::bind(const char *name, GLuint binding, Shader &shader)
 {
+#if PERIODIC_TEXTURE_RELOADING
+  load();
+#endif
   if (texture)
   {
     GLuint u = glGetUniformLocation(shader.program->program, name);
@@ -171,9 +190,9 @@ void Mesh::assign_instance_buffers(GLuint instance_MVP_Buffer,
   if (!instance_buffers_set)
   {
     instance_buffers_set = true;
-    GLint current_vao;
-    glGetIntegerv(GL_VERTEX_ARRAY_BINDING, &current_vao);
-    ASSERT(current_vao == vao);
+    // GLint current_vao;
+    // glGetIntegerv(GL_VERTEX_ARRAY_BINDING, &current_vao);
+    // ASSERT(current_vao == vao);
 
     check_gl_error();
     const GLuint mat4_size = sizeof(GLfloat) * 4 * 4;
@@ -370,21 +389,27 @@ Material::Material(aiMaterial *ai_material, std::string working_directory,
   aiTextureType_DISPLACEMENT;
   aiTextureType_AMBIENT;
   aiTextureType_LIGHTMAP;
-
+   
   Material_Descriptor m;
   aiString name;
   ai_material->GetTexture(aiTextureType_DIFFUSE, 0, &name);
   m.albedo = copy(name);
+  name.Clear();
   ai_material->GetTexture(aiTextureType_SPECULAR, 0, &name);
   m.specular = copy(name);
+  name.Clear();
   ai_material->GetTexture(aiTextureType_EMISSIVE, 0, &name);
   m.emissive = copy(name);
+  name.Clear();
   ai_material->GetTexture(aiTextureType_NORMALS, 0, &name);
   m.normal = copy(name);
+  name.Clear();
   ai_material->GetTexture(aiTextureType_LIGHTMAP, 0, &name);
   m.ambient_occlusion = copy(name);
+  name.Clear();
   ai_material->GetTexture(aiTextureType_SHININESS, 0, &name);
   m.roughness = copy(name);
+  name.Clear();
 
   if (albedo_n)
     m.albedo = working_directory + m.albedo;
