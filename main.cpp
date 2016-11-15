@@ -25,8 +25,11 @@ static void performance_output(const State *state, float64 current_time,
   const float64 delay = 0.1;
   if (last_output + delay < current_time)
   {
-    //need a way to clear the console for both windows and linux here
-    //system("cls");
+#ifdef __linux__
+    system("clear");
+#elif _WIN32
+    system("cls");
+#endif
     std::cout << PERF_TIMER.string_report();
 
     Uint64 frames_this_sec =
