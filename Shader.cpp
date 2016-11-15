@@ -141,6 +141,13 @@ void Shader::set_uniform(const char *name, const glm::mat4 &m)
   check_err(location, name);
   glUniformMatrix4fv(location, 1, GL_FALSE, &m[0][0]);
 }
+void Shader::set_uniform(const char *name, int32 i)
+{
+  use();
+  GLint location = glGetUniformLocation(program->program, name);
+  check_err(location, name);
+  glUniform1i(location, i);
+}
 void Shader::use() const { glUseProgram(program->program); }
 
 static double get_time()
