@@ -1,4 +1,4 @@
-#version 430
+#version 330
 uniform sampler2D current;
 uniform sampler2D previous;
 
