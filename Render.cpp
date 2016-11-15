@@ -1,9 +1,9 @@
-#include <GL\glew.h>
-#include <SDL2\SDL.h>
-#include <assimp\Importer.hpp>
-#include <assimp\postprocess.h>
-#include <assimp\scene.h>
-#include <assimp\types.h>
+#include <GL/glew.h>
+#include <SDL2/SDL.h>
+#include <assimp/Importer.hpp>
+#include <assimp/postprocess.h>
+#include <assimp/scene.h>
+#include <assimp/types.h>
 
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
@@ -13,11 +13,11 @@
 #include "Render.h"
 #include "Shader.h"
 #include "Timer.h"
-#include <glm\glm.hpp>
-#include <glm\gtc\matrix_transform.hpp>
-#include <glm\gtc\quaternion.hpp>
-#include <glm\gtx\euler_angles.hpp>
-#include <glm\gtx\transform.hpp>
+#include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtc/quaternion.hpp>
+#include <glm/gtx/euler_angles.hpp>
+#include <glm/gtx/transform.hpp>
 #include <iostream>
 #include <memory>
 #include <unordered_map>

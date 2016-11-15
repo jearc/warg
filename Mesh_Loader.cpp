@@ -1,15 +1,12 @@
-#include <vector>
-#include <glm\glm.hpp>
-#include "Globals.h"
 #include "Mesh_Loader.h"
-#include <assimp\types.h>
-#include <assimp\Importer.hpp>
-#include <assimp\scene.h>
-#include <assimp\postprocess.h>
-#include <GL\glew.h>
-
-void add_quad(vec3 a, vec3 b, vec3 c, vec3 d,
-	Mesh_Data& mesh)
+#include "Globals.h"
+#include <GL/glew.h>
+#include <assimp/Importer.hpp>
+#include <assimp/postprocess.h>
+#include <assimp/scene.h>
+#include <assimp/types.h>
+#include <glm/glm.hpp>
+#include <vector>
 {
 	std::vector<vec3> pos =
 	{

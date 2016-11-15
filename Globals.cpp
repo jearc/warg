@@ -1,10 +1,10 @@
 #include "Globals.h"
 #include <GL/glew.h>
-#include <SDL2\SDL.h>
-#include <assimp\Importer.hpp>
-#include <assimp\postprocess.h>
-#include <assimp\scene.h>
-#include <assimp\types.h>
+#include <SDL2/SDL.h>
+#include <assimp/Importer.hpp>
+#include <assimp/postprocess.h>
+#include <assimp/scene.h>
+#include <assimp/types.h>
 using namespace glm;
 std::mt19937 generator;
 const float32 dt = 1.0f / 150.0f;

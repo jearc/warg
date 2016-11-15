@@ -1,12 +1,12 @@
 #pragma once
 #include "Globals.h"
 #include "Render.h"
-#include <assimp\Importer.hpp>
-#include <assimp\postprocess.h>
-#include <assimp\scene.h>
-#include <assimp\types.h>
+#include <assimp/Importer.hpp>
+#include <assimp/postprocess.h>
+#include <assimp/scene.h>
+#include <assimp/types.h>
 #include <atomic>
-#include <glm\glm.hpp>
+#include <glm/glm.hpp>
 #include <unordered_map>
 struct Material;
 struct Material_Descriptor;

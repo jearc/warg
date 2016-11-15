@@ -1,7 +1,7 @@
 #pragma once
 #include "Timer.h"
 #include <fstream>
-#include <glm\glm.hpp>
+#include <glm/glm.hpp>
 #include <iostream>
 #include <random>
 using namespace glm;

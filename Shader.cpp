@@ -1,8 +1,8 @@
 #include "Shader.h"
 #include "Globals.h"
-#include <GL\glew.h>
-#include <SDL2\SDL.h>
-#include <assimp\types.h>
+#include <GL/glew.h>
+#include <SDL2/SDL.h>
+#include <assimp/types.h>
 #include <iostream>
 #include <memory>
 #include <unordered_map>

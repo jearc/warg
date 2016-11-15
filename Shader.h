@@ -1,6 +1,6 @@
 #pragma once
-#include <GL\glew.h>
-#include <glm\glm.hpp>
+#include <GL/glew.h>
+#include <glm/glm.hpp>
 #include <memory>
 #include <string>
 using namespace glm;
