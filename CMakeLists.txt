@@ -24,7 +24,7 @@ find_package (GLEW REQUIRED)
 include_directories (${GLEW_INCLUDE_DIRS})
 include_directories (${OpenGL_INCLUDE_DIRS})
 include_directories (${SDL2_INCLUDE_DIR})
-include_directories (${ASSIMP_INCLUDE_DIR})
+include_directories (${ASSIMP_INCLUDE_DIRS})
 # include_directories (${GLM_DIR})
 
 target_link_libraries (warg ${CMAKE_THREAD_LIBS_INIT})
