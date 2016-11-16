@@ -101,7 +101,7 @@ struct Scene_Graph
   void add_graph_node(const aiNode *node, Node_Ptr parent,
                       const mat4 *import_basis, const aiScene *aiscene,
                       Base_Indices base_indices);
-  const aiScene *load_aiscene(std::string path,
+  const aiScene *load_aiscene(std::string final_path,
                               Assimp::Importer *importer) const;
 
   // import_basis intended to only be used as an initial

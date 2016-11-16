@@ -30,7 +30,7 @@ public:
   Node_Ptr test_entity_light_cone = Node_Ptr(-1);
   Node_Ptr test_entity_light_large = Node_Ptr(-1);
   Node_Ptr test_entity_plane = Node_Ptr(-1);
-  Node_Ptr illidan = Node_Ptr(-1);
+  Node_Ptr chest = Node_Ptr(-1);
 
 private:
   void prepare_renderer(double t);

@@ -3,7 +3,8 @@
 #include "State.h"
 #include "Timer.h"
 #include <GL/glew.h>
-#include <SDL2/SDL.h>
+#include <SDL.h>
+#undef main
 #include <iostream>
 #include <stdlib.h>
 

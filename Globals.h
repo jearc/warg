@@ -12,7 +12,7 @@ struct aiString;
 #define UNIFORM_LIGHT_LOCATION 20
 #define MAX_LIGHTS 10
 #define SHOW_ERROR_TEXTURE 0
-#define PERIODIC_TEXTURE_RELOADING 1
+#define DYNAMIC_TEXTURE_RELOADING 1
 #define DEBUG 1
 #define ENABLE_ASSERTS 1
 
@@ -53,6 +53,8 @@ template <typename T> void ASSERT(T t)
   }
 #endif
 }
+
+
 #define check_gl_error() _check_gl_error(__FILE__, __LINE__)
 void _check_gl_error(const char *file, uint32 line);
 

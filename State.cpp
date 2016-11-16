@@ -34,8 +34,10 @@ State::State(SDL_Window *window, ivec2 window_size)
   test_entity_plane =
       scene.add_single_mesh("plane", "test_entity_plane", material);
 
-
-  illidan = scene.add_aiscene("Chest/Chest1.FBX");
+  //mat4 scale = glm::scale(vec3(1000.1f));
+  //mat4 rx = glm::rotate(90.f, vec3(1, 0, 0));
+  //mat4 basis = rx * scale;
+  //chest = scene.add_aiscene("Chest/untitled1.fbx",&basis);
 
   SDL_SetRelativeMouseMode(SDL_bool(true));
   reset_mouse_delta();

@@ -1,5 +1,5 @@
 #include <GL/glew.h>
-#include <SDL2/SDL.h>
+#include <SDL.h>
 #include <assimp/Importer.hpp>
 #include <assimp/postprocess.h>
 #include <assimp/scene.h>
@@ -22,6 +22,10 @@
 #include <memory>
 #include <unordered_map>
 #include <vector>
+
+#include <sys/stat.h>
+#include <sys/types.h>
+#include <time.h>
 using namespace glm;
 
 // our attachment points for deferred rendering
@@ -42,12 +46,11 @@ enum Texture_Location
   emissive,
   roughness
 };
-std::unordered_map<std::string, std::weak_ptr<Texture::Texture_Handle>> Texture::cache;
-Texture::Texture()
+std::unordered_map<std::string, std::weak_ptr<Texture::Texture_Handle>>
+    Texture::cache;
+Texture::Texture() { file_path = ERROR_TEXTURE_PATH; }
+Texture::Texture_Handle::~Texture_Handle()
 {
-  file_path = ERROR_TEXTURE_PATH;
-}
-Texture::Texture_Handle::~Texture_Handle() { 
   glDeleteTextures(1, &texture);
   texture = 0;
 }
@@ -57,24 +60,40 @@ Texture::Texture(std::string path)
   // the assimp asset you load will have screwy paths
   // depending on the program that exported it
   path = fix_filename(path);
+  if (path.size() == 0)
+    path = ERROR_TEXTURE_PATH;
+
   size_t i = path.find_last_of("/");
   if (i == path.npos)
-  {//no specified directory, so use base path
+  { // no specified directory, so use base path
     file_path = BASE_TEXTURE_PATH + path;
   }
   else
-  {//assimp imported model or user specified a directory
+  { // assimp imported model or user specified a directory
     file_path = path;
   }
 
-  if (file_path.size() == 0)
-    file_path = ERROR_TEXTURE_PATH;
+
+  
+  // force rename to png
+  size_t end = file_path.size();
+  ASSERT(end > 3);
+  if (file_path[end - 1] != 'g' || file_path[end - 2] != 'n' || file_path[end - 3] != 'p')
+  {
+    std::cout << "Warning, specified texture path: " << file_path << " has unsupported texture filetype. Renaming path to ";
+    file_path[end - 1] = 'g';
+    file_path[end - 2] = 'n';
+    file_path[end - 3] = 'p';
+    std::cout << file_path << "\n";
+  }
+
 }
+
 void Texture::load()
 {
 #if !SHOW_ERROR_TEXTURE
   if (file_path == ERROR_TEXTURE_PATH || file_path == BASE_TEXTURE_PATH)
-  {
+  { // a null texture bound and rendered will show as (0,0,0,0) in the shader
     texture = nullptr;
     return;
   }
@@ -91,17 +110,30 @@ void Texture::load()
   auto *data = stbi_load(file_path.c_str(), &width, &height, &n, 4);
   if (!data)
   {
-    std::cout << "STBI failed to find or load texture: " << file_path << "\n";
-    if (file_path == ERROR_TEXTURE_PATH)
-    {
-      std::cout << "Unable to find error texture at: " << file_path << "Unrecoverable code path.\n";
-      throw;
-    }
-    file_path = ERROR_TEXTURE_PATH;
-    load();
+#if DYNAMIC_TEXTURE_RELOADING
+    // retry next frame
+    // TODO: make a better place to dump warnings
+    std::cout << "Warning: missing texture: " << file_path << "\n";
+    texture = nullptr;
     return;
+#else
+    if (!data)
+    {
+      std::cout << "STBI failed to find or load texture: " << file_path << "\n";
+      if (file_path == ERROR_TEXTURE_PATH)
+      {
+        texture = nullptr;
+        return;
+      }
+      file_path = ERROR_TEXTURE_PATH;
+      load();
+      return;
+    }
+#endif
   }
-  std::cout << "Texture load cache miss. Texture from disk: " << file_path << "\n";
+
+  std::cout << "Texture load cache miss. Texture from disk: " << file_path
+            << "\n";
 
   // TODO: optimize the texture storage types to save GPU memory
   // currently  everything is stored with RGBA
@@ -123,15 +155,18 @@ void Texture::load()
 
 void Texture::bind(const char *name, GLuint binding, Shader &shader)
 {
-#if PERIODIC_TEXTURE_RELOADING
+#if DYNAMIC_TEXTURE_RELOADING
   load();
 #endif
-  if (texture)
+
+  GLuint u = glGetUniformLocation(shader.program->program, name);
+  glUniform1i(u, binding);
+  glActiveTexture(GL_TEXTURE0 + (GLuint)binding);
+  glBindTexture(GL_TEXTURE_2D, texture ? texture->texture : 0);
+  if (!texture)
   {
-    GLuint u = glGetUniformLocation(shader.program->program, name);
-    glUniform1i(u, binding);
-    glActiveTexture(GL_TEXTURE0 + (GLuint)binding);
-    glBindTexture(GL_TEXTURE_2D, texture->texture);
+   // std::cout << "Warning: Null texture pointer with name: " << name
+   //           << " and binding: " << binding << "\n";
   }
 }
 
@@ -389,7 +424,7 @@ Material::Material(aiMaterial *ai_material, std::string working_directory,
   aiTextureType_DISPLACEMENT;
   aiTextureType_AMBIENT;
   aiTextureType_LIGHTMAP;
-   
+
   Material_Descriptor m;
   aiString name;
   ai_material->GetTexture(aiTextureType_DIFFUSE, 0, &name);
@@ -557,6 +592,44 @@ Render::Render(SDL_Window *window, ivec2 window_size)
 
 void Render::render(float64 t, float64 time)
 {
+  //#if PERIODIC_TEXTURE_RELOADING
+  //  static float64 last_clear = -1.;
+  //  if (time > last_clear + 3)
+  //  {
+  //    Texture::cache.clear();
+  //    last_clear = time;
+  //  }
+  //#endif
+  {
+#if DYNAMIC_TEXTURE_RELOADING
+    // unfortunately this loads all textures twice at startup
+    static std::unordered_map<std::string, time_t> mod_times;
+    uint32 size = Texture::cache.size();
+    for (uint32 i = 0; i < size; ++i)
+    {
+      auto entry = Texture::cache.begin();
+      for (uint32 j = 0; j < i; ++j)
+      { // lol
+        entry++;
+      }
+      auto elem = *entry;
+      const std::string &path = elem.first;
+      struct stat attr;
+      stat(path.c_str(), &attr);
+      time_t t = attr.st_mtime;
+
+      auto mod_cache = mod_times[path];
+      if (mod_cache != t)
+      {
+        mod_times[path] = t;
+        Texture::cache.erase(path);
+        --size; // erase will shrink map size
+        --i;    // point to the entry now occupying this index
+      }
+    }
+#endif
+  }
+
   check_gl_error();
   glViewport(0, 0, size.x, size.y);
   glBindFramebuffer(GL_FRAMEBUFFER, target_fbo);
@@ -646,6 +719,7 @@ void Render::render(float64 t, float64 time)
     glBindBuffer(GL_ARRAY_BUFFER, instance_Model_buffer);
     glBufferSubData(GL_ARRAY_BUFFER, 0, buffer_size,
                     &entity.Model_Matrices[0][0][0]);
+
 
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, entity.mesh->indices_buffer);
     glDrawElementsInstanced(GL_TRIANGLES, entity.mesh->indices_buffer_size,

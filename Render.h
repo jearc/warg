@@ -4,7 +4,7 @@
 #include "Shader.h"
 #include "stb_image.h"
 #include <GL/glew.h>
-#include <SDL2/SDL.h>
+#include <SDL.h>
 #include <array>
 #include <assimp/Importer.hpp>
 #include <assimp/postprocess.h>
@@ -21,16 +21,6 @@
 #include <unordered_map>
 
 using namespace glm;
-
-//
-// enum Texture_Location
-//{
-//  albedo,
-//  specular_color,
-//  normal,
-//  emissive,
-//  roughness
-//};
 
 // Texture manages its memory itself
 // zero cost copying with disk cache, automatic cleanup when refcount goes to 0
@@ -149,8 +139,7 @@ struct Light_Array
 };
 
 // A render entity/render instance is a complete prepared representation of an
-// object to be
-// rendered by a draw call
+// object to be rendered by a draw call
 // this should eventually contain the necessary skeletal animation data
 struct Render_Entity
 {
@@ -162,6 +151,7 @@ struct Render_Entity
   Material *material;
   std::string name;
 };
+// Similar to Render_Entity, but rendered with instancing
 struct Render_Instance
 {
   Render_Instance() {}
@@ -183,10 +173,9 @@ struct Render
   float32 get_vfov() { return vfov; }
   void set_render_scale(float32 scale);
   void set_camera(vec3 camera_position, vec3 camera_gaze);
-  void set_vfov(float32 vfov); // vertical field of view
+  void set_vfov(float32 vfov); // vertical field of view in degrees
   SDL_Window *window;
   void set_render_entities(std::vector<Render_Entity> entities);
-
 private:
   mat4 get_next_TXAA_sample();
   float32 render_scale = 1.4f; // supersampling

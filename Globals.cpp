@@ -1,6 +1,6 @@
 #include "Globals.h"
 #include <GL/glew.h>
-#include <SDL2/SDL.h>
+#include <SDL.h>
 #include <assimp/Importer.hpp>
 #include <assimp/postprocess.h>
 #include <assimp/scene.h>
@@ -11,9 +11,14 @@ const float32 dt = 1.0f / 150.0f;
 const float32 MOVE_SPEED = 1.0f * dt;
 const float32 MOUSE_X_SENS = .0041f;
 const float32 MOUSE_Y_SENS = .0041f;
-const std::string BASE_TEXTURE_PATH = "Assets/Textures/";
-const std::string BASE_SHADER_PATH = "Assets/Shaders/";
-const std::string BASE_MODEL_PATH = "Assets/Models/";
+#ifdef __linux__
+#define ROOT_PATH std::string("../")
+#elif _WIN32
+#define ROOT_PATH std::string("../")
+#endif
+const std::string BASE_TEXTURE_PATH = ROOT_PATH+std::string("Assets/Textures/");
+const std::string BASE_SHADER_PATH = ROOT_PATH+std::string("Assets/Shaders/");
+const std::string BASE_MODEL_PATH = ROOT_PATH+std::string("Assets/Models/");
 const std::string ERROR_TEXTURE_PATH = BASE_TEXTURE_PATH + "err.png";
 Timer PERF_TIMER;
 

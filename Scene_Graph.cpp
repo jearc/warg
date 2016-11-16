@@ -151,7 +151,7 @@ void Scene_Graph::add_graph_node(const aiNode *node, Node_Ptr parent,
     add_graph_node(child, new_node_ptr, import_basis, aiscene, base_indices);
   }
 }
-const aiScene *Scene_Graph::load_aiscene(std::string path,
+const aiScene *Scene_Graph::load_aiscene(std::string final_path,
                                          Assimp::Importer *importer) const
 {
   ASSERT(importer);
@@ -164,7 +164,7 @@ const aiScene *Scene_Graph::load_aiscene(std::string path,
                //  aiProcess_OptimizeMeshes|
                0;
 
-  std::string final_path = BASE_MODEL_PATH + path;
+
   const aiScene *aiscene = importer->ReadFile(final_path.c_str(), flags);
   if (!aiscene || aiscene->mFlags == AI_SCENE_FLAGS_INCOMPLETE ||
       !aiscene->mRootNode)
@@ -181,6 +181,7 @@ Node_Ptr Scene_Graph::add_aiscene(std::string path, const mat4 *import_basis,
                                   Node_Ptr parent, std::string vertex_shader,
                                   std::string fragment_shader)
 {
+  path = BASE_MODEL_PATH + path;
   const aiScene *scene;
   auto cache_entry = &assimp_cache[path];
   if (!cache_entry->scene)
