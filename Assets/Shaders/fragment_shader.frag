@@ -47,7 +47,6 @@ float linearize_depth(float z)
   return linearDepth;
 }
 
-
 struct Material
 {
   vec3 albedo;
@@ -60,50 +59,38 @@ struct Material
 void main()
 {
   Material m;
-
   m.specular = to_linear(texture2D(specular, frag_uv).rgb);
-  // float albedo_scale = 1.0 - m.specular.r;
   m.albedo = to_linear(texture2D(albedo, frag_uv).rgb) / PI;
-  // m.albedo = m.albedo*albedo_scale;
   m.emissive = to_linear(texture2D(emissive, frag_uv).rgb);
-  m.shininess = (1.0 - to_linear(texture2D(roughness, frag_uv).r));
-  vec3 tex_normal = texture2D(normal, frag_uv).rgb;
-  if (tex_normal == vec3(0))
-  { // missing normal map, set to perp of triangle
-    tex_normal = vec3(0, 0, 1);
-  }
-  m.normal = frag_TBN * normalize((tex_normal * 2) - 1.0f);
-
-
-  m.shininess = 1.0 + m.shininess * 44.0f;
-
+  m.shininess = 1.0 + 44 * (1.0 - to_linear(texture2D(roughness, frag_uv).r));
+  vec3 n = texture2D(normal, frag_uv).rgb;
+  if (n == vec3(0))
+    n = vec3(0, 0, 1);
+  m.normal = frag_TBN * normalize((n * 2) - 1.0f);
 
   vec3 debug = vec3(-1);
   vec3 result = vec3(0);
   for (int i = 0; i < number_of_lights; ++i)
   {
-    vec3 light_p = lights[i].position;
-    vec3 to_light = light_p - frag_world_position;
-    float dist = length(to_light);
-    to_light = normalize(to_light);
-    vec3 to_eye = normalize(camera_position - frag_world_position);
-    vec3 half_v = normalize(to_light + to_eye);
-
+    vec3 l = lights[i].position - frag_world_position;
+    float d = length(l);
+    l = normalize(l);
+    vec3 v = normalize(camera_position - frag_world_position);
+    vec3 h = normalize(l + v);
     vec3 att = lights[i].attenuation;
-    float at = 1.0 / (att.x + (att.y * dist) + (att.z * dist * dist));
-    vec3 ambient = lights[i].ambient * m.albedo * att;
-    result += ambient;
+    float at = 1.0 / (att.x + (att.y * d) + (att.z * d * d));
     float alpha = 1.0f;
+
     if (lights[i].type == 0)
     { // directional
-      to_light = -lights[i].direction;
-      half_v = normalize(to_light + to_eye);
+      l = -lights[i].direction;
+      h = normalize(l + v);
     }
     else if (lights[i].type == 2)
     { // cone
-      vec3 light_gaze = normalize(lights[i].position - lights[i].direction);
+      vec3 dir = normalize(lights[i].position - lights[i].direction);
       float theta = lights[i].cone_angle;
-      float phi = 1.0 - dot(to_light, light_gaze);
+      float phi = 1.0 - dot(l, dir);
       alpha = 0.0f;
       if (phi < theta)
       {
@@ -111,22 +98,19 @@ void main()
         alpha = clamp((theta - phi) / edge_softness_distance, 0, 1);
       }
     }
-    float ldotn = clamp(dot(to_light, m.normal), 0, 1);
-    float energy_conservation = (8.0f * m.shininess) / (8.0f * PI);
-    float specular =
-        energy_conservation * pow(max(dot(half_v, m.normal), 0.0), m.shininess);
+    float ldotn = clamp(dot(l, m.normal), 0, 1);
+    float ec = (8.0f * m.shininess) / (8.0f * PI);
+    float specular = ec * pow(max(dot(h, m.normal), 0.0), m.shininess);
+    vec3 ambient = lights[i].ambient * m.albedo * att;
+
     result += ldotn * specular * m.albedo * lights[i].color * at * alpha;
+    result += ambient;
   }
   result += m.emissive;
   result += vec3(0.25) * additional_ambient * m.albedo;
 
-  // debug = frag_world_position/100;
-  // debug = vec3(frag_uv,0);
-  // debug = m.albedo;
   if (debug != vec3(-1))
-  {
     result = debug;
-  }
-  // result = vec3(0,1,0);
+
   gl_FragColor = vec4(to_srgb(result), 1);
 }

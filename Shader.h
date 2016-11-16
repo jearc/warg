@@ -11,12 +11,12 @@ struct Shader
   void load(const std::string &vertex, const std::string &fragment);
 
   void set_uniform(const char *name, uint32 i);
+  void set_uniform(const char *name, int32 i);
   void set_uniform(const char *name, float32 f);
   void set_uniform(const char *name, vec2 v);
   void set_uniform(const char *name, vec3 &v);
   void set_uniform(const char *name, vec4 &v);
   void set_uniform(const char *name, const mat4 &m);
-  void set_uniform(const char *name, int32 i);
 
   void use() const;
 

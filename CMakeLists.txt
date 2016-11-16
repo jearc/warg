@@ -2,17 +2,31 @@ cmake_minimum_required (VERSION 2.6)
 
 project (warg)
 set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++1y")
-
 set (CMAKE_BUILD_TYPE Debug)
+set (CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/Modules/")
 
-add_executable (warg "main.cpp" "State.cpp" "Shader.cpp" "Scene_Graph.cpp" "Render.cpp" "Mesh_Loader.cpp" "Globals.cpp")
+file(GLOB CPP_FILES "*.cpp")
+file(GLOB HEADER_FILES "*.h" "*.hpp")
+file(GLOB SHADER_FILES "Assets/Shaders/*.vert" "Assets/Shaders/*.frag")
 
-include (FindPkgConfig)
+add_executable( warg ${CPP_FILES} ${HEADER_FILES} ${SHADER_FILES})
 
-pkg_search_module (SDL2 REQUIRED sdl2)
+find_package (Threads)
+find_package (SDL2 REQUIRED)
 find_package (ASSIMP REQUIRED)
 find_package (OpenGL REQUIRED)
 find_package (GLEW REQUIRED)
+find_package (GLM REQUIRED)
 
-include_directories (${GLEW_INCLUDE_DIRS} ${OpenGL_INCLUDE_DIRS} ${SDL2_INCLUDE_DIRS} ${ASSIMP_INCLUDE_DIRS} )
-target_link_libraries (warg pthread ${GLEW_LIBRARIES} ${OPENGL_LIBRARIES} ${SDL2_LIBRARIES} ${ASSIMP_LIBRARIES} )
+include_directories (${GLEW_INCLUDE_DIRS})
+include_directories (${OpenGL_INCLUDE_DIRS})
+include_directories (${SDL2_INCLUDE_DIR})
+include_directories (${ASSIMP_INCLUDE_DIRS})
+include_directories (${GLM_DIR})
+
+target_link_libraries (warg ${GLEW_LIBRARIES})
+target_link_libraries (warg ${OPENGL_LIBRARIES})
+target_link_libraries (warg ${SDL2_LIBRARY})
+target_link_libraries (warg ${ASSIMP_LIBRARIES})
+target_link_libraries (warg ${CMAKE_THREAD_LIBS_INIT})
+

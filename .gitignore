@@ -1,6 +1,7 @@
 build/
 .vscode/
 Assets/Textures/
+Assets/Models/
 .directory
 .dir-locals.el
 CMakeCache.txt

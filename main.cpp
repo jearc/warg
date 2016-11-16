@@ -3,7 +3,8 @@
 #include "State.h"
 #include "Timer.h"
 #include <GL/glew.h>
-#include <SDL2/SDL.h>
+#include <SDL.h>
+#undef main
 #include <iostream>
 #include <stdlib.h>
 
@@ -132,7 +133,7 @@ int main(int argc, char *argv[])
 
     state.render(t);
     ++frame_count;
-    performance_output(&state, time, frame_count);
+   // performance_output(&state, time, frame_count);
     // SDL_Delay(500);
   }
   SDL_Quit();
