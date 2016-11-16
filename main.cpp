@@ -133,7 +133,7 @@ int main(int argc, char *argv[])
 
     state.render(t);
     ++frame_count;
-    performance_output(&state, time, frame_count);
+   // performance_output(&state, time, frame_count);
     // SDL_Delay(500);
   }
   SDL_Quit();

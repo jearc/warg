@@ -31,18 +31,14 @@ glm::mat4 copy(aiMatrix4x4 m)
   // glm is column-major
   const mat4 I(1);
   glm::mat4 result;
-  mat4 test;
   for (uint32 i = 0; i < 4; ++i)
   {
     for (uint32 j = 0; j < 4; ++j)
     {
-      test[i][j] = m[i][j];
       result[i][j] = m[j][i];
     }
   }
-  mat4 T = transpose(test);
-  ASSERT(T == result);
-  return transpose(result);
+  return result;
 }
 
 Scene_Graph_Node::Material_Assigned_Meshes::Material_Assigned_Meshes() {}
@@ -155,7 +151,7 @@ void Scene_Graph::add_graph_node(const aiNode *node, Node_Ptr parent,
     add_graph_node(child, new_node_ptr, import_basis, aiscene, base_indices);
   }
 }
-const aiScene *Scene_Graph::load_aiscene(std::string path,
+const aiScene *Scene_Graph::load_aiscene(std::string final_path,
                                          Assimp::Importer *importer) const
 {
   ASSERT(importer);
@@ -167,7 +163,9 @@ const aiScene *Scene_Graph::load_aiscene(std::string path,
                // aiProcess_ImproveCacheLocality|
                //  aiProcess_OptimizeMeshes|
                0;
-  const aiScene *aiscene = importer->ReadFile(path.c_str(), flags);
+
+
+  const aiScene *aiscene = importer->ReadFile(final_path.c_str(), flags);
   if (!aiscene || aiscene->mFlags == AI_SCENE_FLAGS_INCOMPLETE ||
       !aiscene->mRootNode)
   {
@@ -183,6 +181,7 @@ Node_Ptr Scene_Graph::add_aiscene(std::string path, const mat4 *import_basis,
                                   Node_Ptr parent, std::string vertex_shader,
                                   std::string fragment_shader)
 {
+  path = BASE_MODEL_PATH + path;
   const aiScene *scene;
   auto cache_entry = &assimp_cache[path];
   if (!cache_entry->scene)

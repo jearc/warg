@@ -101,7 +101,7 @@ struct Scene_Graph
   void add_graph_node(const aiNode *node, Node_Ptr parent,
                       const mat4 *import_basis, const aiScene *aiscene,
                       Base_Indices base_indices);
-  const aiScene *load_aiscene(std::string path,
+  const aiScene *load_aiscene(std::string final_path,
                               Assimp::Importer *importer) const;
 
   // import_basis intended to only be used as an initial
@@ -142,9 +142,9 @@ private:
   uint32 last_accumulator_size = 0;
   void visit_nodes(const Node_Ptr node_ptr, const mat4 &M,
                    std::vector<Render_Entity> &accumulator);
-  void visit_nodes_locked_accumulator(const Node_Ptr node_ptr, const mat4 &M,
-                                      std::vector<Render_Entity> *accumulator,
-                                      std::atomic_flag *lock);
+  void visit_nodes_locked_accumulator(
+      const Node_Ptr node_ptr, const mat4 &M,
+      std::vector<Render_Entity> *accumulator, std::atomic_flag *lock);
   void visit_root_node_base_index(uint32 node_index, uint32 count,
                                   std::vector<Render_Entity> *accumulator,
                                   std::atomic_flag *lock);

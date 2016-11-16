@@ -1,4 +1,4 @@
-#version 430
+#version 330
 uniform sampler2D albedo;
 uniform sampler2D specular;
 uniform sampler2D normal;
@@ -43,7 +43,6 @@ vec3 to_srgb(in vec3 linear) { return pow(linear, vec3(1 / gamma)); }
 
 void main()
 {
-  // gl_FragColor = vec4(vec3(linearize_depth(gl_FragCoord.z)),1);
   vec2 scale = vec2(5, 5);
   bool tile_light = (mod(scale.x * frag_uv.x, 1) < 0.5) ^
                     ^(mod(scale.y * frag_uv.y, 1) < 0.5);
