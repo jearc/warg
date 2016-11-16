@@ -5,7 +5,11 @@ set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++1y")
 
 set (CMAKE_BUILD_TYPE Debug)
 
-add_executable (warg "main.cpp" "State.cpp" "Shader.cpp" "Scene_Graph.cpp" "Render.cpp" "Mesh_Loader.cpp" "Globals.cpp")
+file (GLOB CPP_FILES "*.cpp")
+file (GLOB HEADER_FILES "*.h" ".hpp")
+file (GLOB SHADER_FILES "Assets/Shaders/*.vert" "Assets/Shaders/*.frag")
+
+add_executable (warg ${CPP_FILES} ${HEADER_FILES} ${SHADER_FILES})
 
 include (FindPkgConfig)
 
