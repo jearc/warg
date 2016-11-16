@@ -1,12 +1,12 @@
 #pragma once
 #include "Globals.h"
 #include "Render.h"
-#include <assimp\Importer.hpp>
-#include <assimp\postprocess.h>
-#include <assimp\scene.h>
-#include <assimp\types.h>
+#include <assimp/Importer.hpp>
+#include <assimp/postprocess.h>
+#include <assimp/scene.h>
+#include <assimp/types.h>
 #include <atomic>
-#include <glm\glm.hpp>
+#include <glm/glm.hpp>
 #include <unordered_map>
 struct Material;
 struct Material_Descriptor;
@@ -142,9 +142,9 @@ private:
   uint32 last_accumulator_size = 0;
   void visit_nodes(const Node_Ptr node_ptr, const mat4 &M,
                    std::vector<Render_Entity> &accumulator);
-  void Scene_Graph::visit_nodes_locked_accumulator(
-      const Node_Ptr node_ptr, const mat4 &M,
-      std::vector<Render_Entity> *accumulator, std::atomic_flag *lock);
+  void visit_nodes_locked_accumulator(const Node_Ptr node_ptr, const mat4 &M,
+                                      std::vector<Render_Entity> *accumulator,
+                                      std::atomic_flag *lock);
   void visit_root_node_base_index(uint32 node_index, uint32 count,
                                   std::vector<Render_Entity> *accumulator,
                                   std::atomic_flag *lock);

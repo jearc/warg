@@ -1,13 +1,12 @@
-#pragma once
 #include <vector>
-#include <glm\glm.hpp>
+#include <glm/glm.hpp>
 #include "Globals.h"
 #include "Mesh_Loader.h"
-#include <assimp\types.h>
-#include <assimp\Importer.hpp>
-#include <assimp\scene.h>
-#include <assimp\postprocess.h>
-#include <GL\glew.h>
+#include <assimp/types.h>
+#include <assimp/Importer.hpp>
+#include <assimp/scene.h>
+#include <assimp/postprocess.h>
+#include <GL/glew.h>
 
 void add_quad(vec3 a, vec3 b, vec3 c, vec3 d,
 	Mesh_Data& mesh)
@@ -24,7 +23,7 @@ void add_quad(vec3 a, vec3 b, vec3 c, vec3 d,
 	{
 		{0,0}, {0,1}, {1,1},
 		{0,0}, {1,1}, {1,0}
-	};   
+	};
   vec2 atob_uv = vec2(0, 1) - vec2(0, 0);
   vec2 atoc_uv = vec2(1, 1) - vec2(0, 0);
   float32 t = 1.0f / (atob_uv.x * atoc_uv.y - atoc_uv.x - atob_uv.y);
@@ -81,35 +80,35 @@ Mesh_Data load_mesh_cube()
 	c = { 0.5,0.5,0.5 };
 	d = { 0.5,-0.5,0.5 };
 	add_quad(a, b, c, d, cube);
-	
+
 	//bottom
 	a = { -0.5,-0.5,-0.5 };
 	b = { 0.5,-0.5,-0.5 };
 	c = { 0.5,0.5,-0.5 };
 	d = { -0.5,0.5,-0.5 };
 	add_quad(a, b, c, d, cube);
- 
+
 	//left
 	a = { -0.5,0.5,-0.5 };
 	b = { -0.5,0.5,0.5 };
 	c = { -0.5,-0.5,0.5 };
 	d = { -0.5,-0.5,-0.5 };
 	add_quad(a, b, c, d, cube);
-	
+
 	//right
 	a = { 0.5, -0.5, -0.5 };
 	b = { 0.5, -0.5, 0.5 };
 	c = { 0.5, 0.5, 0.5 };
 	d = { 0.5,0.5,-0.5 };
 	add_quad(a, b, c, d, cube);
-	
+
 	//front
 	a = { -0.5, -0.5, -0.5 };
 	b = { -0.5, -0.5, 0.5 };
 	c = { 0.5, -0.5, 0.5 };
 	d = { 0.5,-0.5,-0.5 };
 	add_quad(a, b, c, d, cube);
-	
+
 	//back
 	a = { 0.5, 0.5, -0.5 };
 	b = { 0.5, 0.5, 0.5 };
@@ -131,7 +130,7 @@ Mesh_Data load_mesh_plane()
 	};
   mesh.texture_coordinates =
 	{
-		{0,0}, {0,1}, {1,1}, 
+		{0,0}, {0,1}, {1,1},
     {0,0}, {1,1}, {1,0}
 	};
   mesh.indices =
@@ -159,7 +158,7 @@ Mesh_Data load_mesh_plane()
 
 
 Mesh_Data load_mesh(const char* path)
-{  
+{
 	if (!strcmp(path, "cube"))
 		return load_mesh_cube();
 	else if (!strcmp(path, "plane"))
@@ -168,20 +167,20 @@ Mesh_Data load_mesh(const char* path)
   ASSERT(0);
 	return Mesh_Data();
 }
-  
+
 void copy_mesh_data(std::vector<vec3>& dst, aiVector3D* src, uint32 length)
 {
   ASSERT(dst.size() == 0);
   dst.reserve(length);
   for (uint32 i = 0; i < length; ++i)
-    dst.emplace_back(src[i].x,src[i].y,src[i].z);
+	  dst.push_back(vec3(src[i].x,src[i].y,src[i].z));
 }
 void copy_mesh_data(std::vector<vec2>& dst, aiVector3D* src, uint32 length)
 {
   ASSERT(dst.size() == 0);
   dst.reserve(length);
   for (uint32 i = 0; i < length; ++i)
-    dst.emplace_back(src[i].x, src[i].y);
+	  dst.push_back(vec2(src[i].x, src[i].y));
 }
 
 Mesh_Data load_mesh(const aiMesh* aimesh)
@@ -206,7 +205,7 @@ Mesh_Data load_mesh(const aiMesh* aimesh)
 
   const uint32 uv_channel = 0;//only one uv channel supported
   copy_mesh_data(data.texture_coordinates, aimesh->mTextureCoords[uv_channel], num_vertices);
-  
+
   for (uint32 i = 0; i < aimesh->mNumFaces; i++)
   {
     aiFace face = aimesh->mFaces[i];

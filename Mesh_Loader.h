@@ -1,10 +1,10 @@
 #pragma once
 #include "Globals.h"
-#include <assimp\Importer.hpp>
-#include <assimp\postprocess.h>
-#include <assimp\scene.h>
-#include <assimp\types.h>
-#include <glm\glm.hpp>
+#include <assimp/Importer.hpp>
+#include <assimp/postprocess.h>
+#include <assimp/scene.h>
+#include <assimp/types.h>
+#include <glm/glm.hpp>
 #include <vector>
 struct Mesh_Data
 {

@@ -1,10 +1,10 @@
 #include "Scene_Graph.h"
 #include "Render.h"
 #include <array>
-#include <assimp\Importer.hpp>
-#include <assimp\postprocess.h>
-#include <assimp\scene.h>
-#include <assimp\types.h>
+#include <assimp/Importer.hpp>
+#include <assimp/postprocess.h>
+#include <assimp/scene.h>
+#include <assimp/types.h>
 #include <atomic>
 #include <thread>
 
