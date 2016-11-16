@@ -1,8 +1,10 @@
 cmake_minimum_required (VERSION 2.6)
 
-project (warg)
-set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++1y")
+include (FindPkgConfig)
 
+project (warg)
+
+set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++1y")
 set (CMAKE_BUILD_TYPE Debug)
 set (CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/Modules/")
 
@@ -11,8 +13,6 @@ file (GLOB HEADER_FILES "*.h" ".hpp")
 file (GLOB SHADER_FILES "Assets/Shaders/*.vert" "Assets/Shaders/*.frag")
 
 add_executable (warg ${CPP_FILES} ${HEADER_FILES} ${SHADER_FILES})
-
-include (FindPkgConfig)
 
 find_package (Threads REQUIRED)
 find_package (SDL2 REQUIRED)
