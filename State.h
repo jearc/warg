@@ -1,6 +1,16 @@
 #pragma once
+
 #include "Render.h"
 #include "Scene_Graph.h"
+#include <functional>
+#include <vector>
+
+struct Entity
+{
+  Node_Ptr node = Node_Ptr(-1);
+  Light *light = nullptr;
+  std::function<void(Scene_Graph &, Entity &, float64)> update;
+};
 
 class State
 {
@@ -25,7 +35,6 @@ public:
 
   // managed pointers to scene graph nodes
   // no way to delete yet
-  Node_Ptr test_entity_cube = Node_Ptr(-1);
   Node_Ptr test_entity_light = Node_Ptr(-1);
   Node_Ptr test_entity_light_cone = Node_Ptr(-1);
   Node_Ptr test_entity_light_large = Node_Ptr(-1);
@@ -40,4 +49,7 @@ private:
   vec3 camera_gaze_dir;
   float camera_x_radians = atan2(-camera_position.y, -camera_position.x);
   float camera_y_radians = 0.0f;
+
+  std::vector<Entity> entities;
+  Light *add_light();
 };
