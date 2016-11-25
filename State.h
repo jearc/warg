@@ -5,10 +5,17 @@
 #include <functional>
 #include <vector>
 
-struct Entity
+class Render_Data
 {
+public:
   Node_Ptr node = Node_Ptr(-1);
   Light *light = nullptr;
+};
+
+class Entity
+{
+public:
+  Render_Data render_data;
   std::function<void(Scene_Graph &, Entity &, float64)> update;
 };
 

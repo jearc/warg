@@ -18,12 +18,12 @@ State::State(SDL_Window *window, ivec2 window_size)
   material.frag_shader = "fragment_shader.frag";
 
   Entity test_light_large;
-  test_light_large.node =
+  test_light_large.render_data.node =
       scene.add_single_mesh("cube", "test_entity_light_large", material);
-  test_light_large.light = add_light();
+  test_light_large.render_data.light = add_light();
   test_light_large.update = [material](Scene_Graph &scene, Entity &e,
                                        float64 current_time) {
-    Scene_Graph_Node *n = scene.get_node(e.node);
+    Scene_Graph_Node *n = scene.get_node(e.render_data.node);
     ASSERT(n);
 
     float32 x, y, z;
@@ -35,21 +35,22 @@ State::State(SDL_Window *window, ivec2 window_size)
 
     const float32 intensity = 20.0f;
 
-    e.light->position = n->position;
-    e.light->color = 1.0f * intensity * vec3(1.0f, 0.93f, 0.92f);
-    e.light->attenuation = vec3(1.0f, .045f, .0075f);
-    e.light->ambient = 0.000f;
-    e.light->type = omnidirectional;
+    Light *light = e.render_data.light;
+    light->position = n->position;
+    light->color = 1.0f * intensity * vec3(1.0f, 0.93f, 0.92f);
+    light->attenuation = vec3(1.0f, .045f, .0075f);
+    light->ambient = 0.000f;
+    light->type = omnidirectional;
   };
   entities.push_back(test_light_large);
 
   Entity test_light_cone;
-  test_light_cone.node =
+  test_light_cone.render_data.node =
       scene.add_single_mesh("cube", "test_entity_light_cone", material);
-  test_light_cone.light = add_light();
+  test_light_cone.render_data.light = add_light();
   test_light_cone.update = [material](Scene_Graph &scene, Entity &e,
                                       float64 current_time) {
-    Scene_Graph_Node *n = scene.get_node(e.node);
+    Scene_Graph_Node *n = scene.get_node(e.render_data.node);
     ASSERT(n);
 
     float32 x, y, z;
@@ -61,21 +62,23 @@ State::State(SDL_Window *window, ivec2 window_size)
 
     const float32 intensity = 20.0f;
 
-    e.light->position = n->position;
-    e.light->color = 5.0f * intensity * vec3(0.6f, 0.6f, 0.9f);
-    e.light->direction = vec3(0.0f, 0.0f, 0.2f);
-    e.light->attenuation = vec3(1.0f, .14f, .07f);
-    e.light->ambient = 0.000f;
-    e.light->cone_angle = 0.20f;
-    e.light->type = spot;
+    Light *light = e.render_data.light;
+    light->position = n->position;
+    light->color = 5.0f * intensity * vec3(0.6f, 0.6f, 0.9f);
+    light->direction = vec3(0.0f, 0.0f, 0.2f);
+    light->attenuation = vec3(1.0f, .14f, .07f);
+    light->ambient = 0.000f;
+    light->cone_angle = 0.20f;
+    light->type = spot;
   };
   entities.push_back(test_light_cone);
 
   Entity test_cube;
-  test_cube.node = scene.add_single_mesh("cube", "test_entity_cube", material);
+  test_cube.render_data.node =
+      scene.add_single_mesh("cube", "test_entity_cube", material);
   test_cube.update = [material](Scene_Graph &scene, Entity &e,
                                 float64 current_time) {
-    Scene_Graph_Node *n = scene.get_node(e.node);
+    Scene_Graph_Node *n = scene.get_node(e.render_data.node);
     ASSERT(n);
 
     n->position = {0.0f, 0.0f, 0.9f};
@@ -86,12 +89,12 @@ State::State(SDL_Window *window, ivec2 window_size)
   entities.push_back(test_cube);
 
   Entity test_light;
-  test_light.node =
+  test_light.render_data.node =
       scene.add_single_mesh("cube", "test_entity_light", material);
-  test_light.light = add_light();
+  test_light.render_data.light = add_light();
   test_light.update = [material](Scene_Graph &scene, Entity &e,
                                  float64 current_time) {
-    Scene_Graph_Node *n = scene.get_node(e.node);
+    Scene_Graph_Node *n = scene.get_node(e.render_data.node);
     ASSERT(n);
 
     float32 x, y, z;
@@ -101,12 +104,13 @@ State::State(SDL_Window *window, ivec2 window_size)
     n->position = {x, y, z};
     n->scale = {0.15f, 0.15f, 0.15f};
 
+    Light *light = e.render_data.light;
     const float32 intensity = 20.0f;
-    e.light->position = n->position;
-    e.light->color = intensity * vec3(1.0, 0.2, 0.2);
-    e.light->attenuation = vec3(1, .7, 1.8);
-    e.light->ambient = 0.0f;
-    e.light->type = omnidirectional;
+    light->position = n->position;
+    light->color = intensity * vec3(1.0, 0.2, 0.2);
+    light->attenuation = vec3(1, .7, 1.8);
+    light->ambient = 0.0f;
+    light->type = omnidirectional;
   };
   entities.push_back(test_light);
 
@@ -116,11 +120,11 @@ State::State(SDL_Window *window, ivec2 window_size)
   material.roughness = "pebbles_roughness.png";
 
   Entity test_plane;
-  test_plane.node =
+  test_plane.render_data.node =
       scene.add_single_mesh("plane", "test_entity_plane", material);
   test_plane.update = [material](Scene_Graph &scene, Entity &e,
                                  float64 current_time) {
-    Scene_Graph_Node *n = scene.get_node(e.node);
+    Scene_Graph_Node *n = scene.get_node(e.render_data.node);
     ASSERT(n);
 
     n->scale = {10.0f, 10.0f, 1.0f};
