@@ -1,109 +1,70 @@
 #pragma once
 #include <SDL.h>
+#include <glm\glm.hpp>
 #include <string>
-class Timer
+#include <vector>
+using namespace glm;
+struct Timer
 {
-#define NUM_SAMPLES 1000
-public:
-  Timer()
-  {
-    for (int i = 0; i < NUM_SAMPLES; ++i)
-    {
-      times[i] = -1.0;
-    }
-    freq = SDL_GetPerformanceFrequency();
-  }
-  void start()
-  {
-    stopped = false;
-    begin = SDL_GetPerformanceCounter();
-  }
-  void stop()
-  {
-    end = SDL_GetPerformanceCounter();
-    stopped = true;
-    times[current_index] = get_last();
-    ++current_index;
-    if (current_index > NUM_SAMPLES - 1)
-      current_index = 0;
-  }
-  double get_last()
-  {
-    if (!stopped)
-    {
-      return -1;
-    }
-    return (double)(end - begin) / freq;
-  }
-  double moving_average()
-  {
-    double sum = 0;
-    int count = 0;
-    for (int i = 0; i < NUM_SAMPLES; ++i)
-    {
-      if (times[i] != -1.0)
-      {
-        sum += times[i];
-        count += 1;
-      }
-    }
-    return sum / count;
-  }
-  int count_samples()
-  {
-    int count = 0;
-    for (int i = 0; i < NUM_SAMPLES; ++i)
-    {
-      if (times[i] != -1.0)
-        ++count;
-    }
-    return count;
-  }
-  double longest()
-  {
-    double longest = 0.0;
-    for (int i = 0; i < NUM_SAMPLES; ++i)
-    {
-      double time = times[i];
-      if (time != -1.0 && time > longest)
-      {
-        longest = time;
-      }
-    }
-    return longest;
-  }
-  double shortest()
-  {
-    double shortest = times[0];
-    for (int i = 0; i < NUM_SAMPLES; ++i)
-    {
-      double time = times[i];
-      if (time != -1.0 && time < shortest)
-      {
-        shortest = time;
-      }
-    }
-    return shortest;
-  }
-  double jitter() { return longest() - shortest(); }
-  std::string string_report()
-  {
-    std::string s = "\n";
-    s += "Last          : " + std::to_string(get_last()) + "\n";
-    s += "Average       : " + std::to_string(moving_average()) + "\n";
-    s += "Max           : " + std::to_string(longest()) + "\n";
-    s += "Min           : " + std::to_string(shortest()) + "\n";
-    s += "Jitter        : " + std::to_string(jitter()) + "\n";
-    s += "Samples:      : " + std::to_string(count_samples()) + "\n";
-    return s;
-  }
+  // samples is the number of start() -> stop() times to keep track of
+  Timer(uint32 samples);
+
+  // begin a new sample
+  void start();
+
+  // begin a new sample at begin time t rather than now
+  void start(uint64 t);
+
+  // stop and record time of current sample, does not resume the timer
+  void stop();
+
+  // stop recording and trash the sample we were recording
+  void cancel();
+
+  // resets the timer
+  void clear_all();
+
+  // returns the time between the latest (start->stop)
+  float64 get_last();
+
+  // returns the average of all the samples taken
+  float64 moving_average();
+
+  // returns the current number of samples taken so far
+  uint32 sample_count();
+
+  // returns the maximum number of samples that are saved
+  uint32 max_sample_count();
+
+  // returns the longest (start->stop) time out of all samples taken
+  float64 longest();
+
+  // returns the shortest (start->stop) time out of all samples taken
+  float64 shortest();
+
+  // returns longest - shortest
+  float64 jitter() { return longest() - shortest(); }
+
+  // constructs a string providing all the above data
+  std::string string_report();
+
+  // get all of the active samples that have completed
+  std::vector<float64> get_times();
+
+  // get the timestamp of the last call to start()
+  uint64 get_begin();
+
+  // get the timestamp of the last call to stop() that was called while the
+  // timer was running
+  uint64 get_end();
 
 private:
-  Uint64 freq;
-  Uint64 begin;
-  Uint64 end;
+  uint64 freq;
+  uint64 begin;
+  uint64 end;
   bool stopped = true;
-
-  int current_index = 0;
-  double times[NUM_SAMPLES];
+  uint32 num_samples = 0;
+  uint32 last_index = -1;
+  uint32 current_index = 0;
+  std::vector<float64> times;
 };

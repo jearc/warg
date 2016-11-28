@@ -44,10 +44,12 @@ struct Base_Indices
 // does NOT add itself into the owning graph
 struct Scene_Graph_Node
 {
+  uint32 ID = 0;
   std::string name;
   vec3 position = {0, 0, 0};
   vec3 orientation = {0, 0, 0};
   vec3 scale = {1, 1, 1};
+  vec3 velocity = {0, 0, 0};
 
 private:
   friend struct Scene_Graph;
@@ -142,9 +144,9 @@ private:
   uint32 last_accumulator_size = 0;
   void visit_nodes(const Node_Ptr node_ptr, const mat4 &M,
                    std::vector<Render_Entity> &accumulator);
-  void visit_nodes_locked_accumulator(
-      const Node_Ptr node_ptr, const mat4 &M,
-      std::vector<Render_Entity> *accumulator, std::atomic_flag *lock);
+  void visit_nodes_locked_accumulator(const Node_Ptr node_ptr, const mat4 &M,
+                                      std::vector<Render_Entity> *accumulator,
+                                      std::atomic_flag *lock);
   void visit_root_node_base_index(uint32 node_index, uint32 count,
                                   std::vector<Render_Entity> *accumulator,
                                   std::atomic_flag *lock);

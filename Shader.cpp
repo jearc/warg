@@ -161,7 +161,7 @@ static double get_time()
 }
 void Shader::check_err(GLint loc, const char *name)
 {
-  float64 time = get_time();
+  float64 time = get_real_time();
   static float64 last_report_time = -99.;
 
   if (loc == -1)

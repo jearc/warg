@@ -17,22 +17,22 @@
 #include <glm/gtx/transform.hpp>
 #include <memory>
 #include <string>
-#include <vector>
 #include <unordered_map>
+#include <vector>
 
 using namespace glm;
 
-// Texture manages its memory itself
-// zero cost copying with disk cache, automatic cleanup when refcount goes to 0
 struct Texture
 {
   struct Texture_Handle
   {
     ~Texture_Handle();
     GLuint texture = 0;
+    time_t file_mod_t = 0;
   };
   Texture();
   Texture(std::string path);
+
 private:
   friend struct Render;
   friend struct Material;
@@ -150,6 +150,7 @@ struct Render_Entity
   Mesh *mesh;
   Material *material;
   std::string name;
+  uint32 ID;
 };
 // Similar to Render_Entity, but rendered with instancing
 struct Render_Instance
@@ -158,6 +159,7 @@ struct Render_Instance
   Light_Array lights;
   std::vector<mat4> MVP_Matrices;
   std::vector<mat4> Model_Matrices;
+  std::vector<uint32> IDs;
   Mesh *mesh;
   Material *material;
 };
@@ -165,26 +167,37 @@ struct Render
 {
   Render(SDL_Window *window, ivec2 window_size);
   ~Render();
-  void render(float64 t, float64 time);
+  void render(float64 state_time);
   std::vector<Render_Instance> render_instances;
   bool use_txaa = false;
   void resize_window(ivec2 window_size);
-  float32 get_render_scale() { return render_scale; }
+  float32 get_render_scale()const { return render_scale; }
   float32 get_vfov() { return vfov; }
   void set_render_scale(float32 scale);
   void set_camera(vec3 camera_position, vec3 camera_gaze);
   void set_vfov(float32 vfov); // vertical field of view in degrees
   SDL_Window *window;
   void set_render_entities(std::vector<Render_Entity> entities);
+  float64 target_frame_time = 1.0 / 60.0;
+  uint64 frame_count = 0;
+
 private:
+  float64 time_of_last_scale_change = 0.;
+  Timer frame_timer = Timer(60);
+  Timer swap_timer = Timer(60);
+  void init_render_targets();
+  void dynamic_framerate_target();
+  bool prev_color_target_missing = true;
+  std::vector<Render_Entity> previous_render_entities;
   mat4 get_next_TXAA_sample();
-  float32 render_scale = 1.4f; // supersampling
+  float32 render_scale = 2.0f; // supersampling
   ivec2 window_size;           // actual window size
   ivec2 size;                  // render target size
   float32 vfov = 60;
   mat4 camera;
   mat4 projection;
   vec3 camera_position = vec3(0);
+  vec3 prev_camera_position = vec3(0);
   bool jitter_switch = false;
   mat4 txaa_jitter = mat4(1);
   GLuint target_fbo = 0;
@@ -193,4 +206,8 @@ private:
   GLuint prev_color_target = 0;
   GLuint instance_MVP_buffer = 0;
   GLuint instance_Model_buffer = 0;
+  void check_and_clear_expired_textures();
+  Mesh quad = Mesh("plane");
+  Shader temporalAA = Shader("passthrough.vert", "TemporalAA.frag");
+  Shader passthrough = Shader("passthrough.vert", "passthrough.frag");
 };

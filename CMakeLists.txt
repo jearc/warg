@@ -1,17 +1,20 @@
 cmake_minimum_required (VERSION 2.6)
 
+include (FindPkgConfig)
+
 project (warg)
+
 set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++1y")
 set (CMAKE_BUILD_TYPE Debug)
 set (CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/Modules/")
 
-file(GLOB CPP_FILES "*.cpp")
-file(GLOB HEADER_FILES "*.h" "*.hpp")
-file(GLOB SHADER_FILES "Assets/Shaders/*.vert" "Assets/Shaders/*.frag")
+file (GLOB CPP_FILES "*.cpp")
+file (GLOB HEADER_FILES "*.h" ".hpp")
+file (GLOB SHADER_FILES "Assets/Shaders/*.vert" "Assets/Shaders/*.frag")
 
-add_executable( warg ${CPP_FILES} ${HEADER_FILES} ${SHADER_FILES})
+add_executable (warg ${CPP_FILES} ${HEADER_FILES} ${SHADER_FILES})
 
-find_package (Threads)
+find_package (Threads REQUIRED)
 find_package (SDL2 REQUIRED)
 find_package (ASSIMP REQUIRED)
 find_package (OpenGL REQUIRED)
@@ -24,9 +27,8 @@ include_directories (${SDL2_INCLUDE_DIR})
 include_directories (${ASSIMP_INCLUDE_DIRS})
 include_directories (${GLM_DIR})
 
+target_link_libraries (warg ${CMAKE_THREAD_LIBS_INIT})
 target_link_libraries (warg ${GLEW_LIBRARIES})
 target_link_libraries (warg ${OPENGL_LIBRARIES})
 target_link_libraries (warg ${SDL2_LIBRARY})
 target_link_libraries (warg ${ASSIMP_LIBRARIES})
-target_link_libraries (warg ${CMAKE_THREAD_LIBS_INIT})
-

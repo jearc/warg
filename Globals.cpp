@@ -7,7 +7,7 @@
 #include <assimp/types.h>
 using namespace glm;
 std::mt19937 generator;
-const float32 dt = 1.0f / 150.0f;
+const float32 dt = 1.0f / 100.0f;
 const float32 MOVE_SPEED = 1.0f * dt;
 const float32 MOUSE_X_SENS = .0041f;
 const float32 MOUSE_Y_SENS = .0041f;
@@ -16,11 +16,12 @@ const float32 MOUSE_Y_SENS = .0041f;
 #elif _WIN32
 #define ROOT_PATH std::string("../")
 #endif
-const std::string BASE_TEXTURE_PATH = ROOT_PATH+std::string("Assets/Textures/");
-const std::string BASE_SHADER_PATH = ROOT_PATH+std::string("Assets/Shaders/");
-const std::string BASE_MODEL_PATH = ROOT_PATH+std::string("Assets/Models/");
+const std::string BASE_TEXTURE_PATH =
+    ROOT_PATH + std::string("Assets/Textures/");
+const std::string BASE_SHADER_PATH = ROOT_PATH + std::string("Assets/Shaders/");
+const std::string BASE_MODEL_PATH = ROOT_PATH + std::string("Assets/Models/");
 const std::string ERROR_TEXTURE_PATH = BASE_TEXTURE_PATH + "err.png";
-Timer PERF_TIMER;
+Timer PERF_TIMER = Timer(1000);
 
 bool all_equal(int32 a, int32 b, int32 c) { return (a == b) && (a == c); }
 bool all_equal(int32 a, int32 b, int32 c, int32 d)
@@ -148,4 +149,52 @@ void checkSDLError(int32 line)
     SDL_ClearError();
   }
 #endif
+}
+uint32 new_ID()
+{
+  static uint32 last = 0;
+  return last += 1;
+}
+
+float64 get_real_time()
+{
+  static const Uint64 freq = SDL_GetPerformanceFrequency();
+  static const Uint64 begin_time = SDL_GetPerformanceCounter();
+
+  Uint64 current = SDL_GetPerformanceCounter();
+  Uint64 elapsed = current - begin_time;
+  return (float64)elapsed / (float64)freq;
+}
+static struct Message
+{
+  std::string message;
+  float64 time_of_expiry;
+};
+static std::unordered_map<std::string, Message> messages;
+void set_message(std::string identifier, std::string message,
+                 float64 msg_duration)
+{
+  const float64 time = get_real_time();
+  Message m;
+  m.message = message;
+  m.time_of_expiry = time + msg_duration;
+  messages[identifier] = m;
+}
+std::string get_messages()
+{
+  std::string result;
+  float64 time = get_real_time();
+  auto it = messages.begin();
+  while (it != messages.end())
+  {
+    if (it->second.time_of_expiry < time)
+    {
+      it = messages.erase(it);
+      continue;
+    }
+    result = result + it->first + std::string(" ") + it->second.message +
+             std::string("\n");
+    ++it;
+  }
+  return result;
 }

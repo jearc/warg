@@ -73,20 +73,19 @@ Texture::Texture(std::string path)
     file_path = path;
   }
 
-
-  
   // force rename to png
   size_t end = file_path.size();
   ASSERT(end > 3);
-  if (file_path[end - 1] != 'g' || file_path[end - 2] != 'n' || file_path[end - 3] != 'p')
+  if (file_path[end - 1] != 'g' || file_path[end - 2] != 'n' ||
+      file_path[end - 3] != 'p')
   {
-    std::cout << "Warning, specified texture path: " << file_path << " has unsupported texture filetype. Renaming path to ";
+    std::cout << "Warning, specified texture path: " << file_path
+              << " has unsupported texture filetype. Renaming path to ";
     file_path[end - 1] = 'g';
     file_path[end - 2] = 'n';
     file_path[end - 3] = 'p';
     std::cout << file_path << "\n";
   }
-
 }
 
 void Texture::load()
@@ -140,6 +139,9 @@ void Texture::load()
   // could pack maps together like: RGBA with diffuse as RGB and A as
   // ambient_occlusion
 
+  struct stat attr;
+  stat(file_path.c_str(), &attr);
+  texture.get()->file_mod_t = attr.st_mtime;
   glGenTextures(1, &texture->texture);
   glBindTexture(GL_TEXTURE_2D, texture->texture);
   glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA,
@@ -158,15 +160,15 @@ void Texture::bind(const char *name, GLuint binding, Shader &shader)
 #if DYNAMIC_TEXTURE_RELOADING
   load();
 #endif
-
   GLuint u = glGetUniformLocation(shader.program->program, name);
+
   glUniform1i(u, binding);
   glActiveTexture(GL_TEXTURE0 + (GLuint)binding);
   glBindTexture(GL_TEXTURE_2D, texture ? texture->texture : 0);
   if (!texture)
   {
-   // std::cout << "Warning: Null texture pointer with name: " << name
-   //           << " and binding: " << binding << "\n";
+    // std::cout << "Warning: Null texture pointer with name: " << name
+    //           << " and binding: " << binding << "\n";
   }
 }
 
@@ -225,11 +227,9 @@ void Mesh::assign_instance_buffers(GLuint instance_MVP_Buffer,
   if (!instance_buffers_set)
   {
     instance_buffers_set = true;
-    // GLint current_vao;
-    // glGetIntegerv(GL_VERTEX_ARRAY_BINDING, &current_vao);
-    // ASSERT(current_vao == vao);
-
-    check_gl_error();
+    GLint current_vao;
+    glGetIntegerv(GL_VERTEX_ARRAY_BINDING, &current_vao);
+    ASSERT(current_vao == vao);
     const GLuint mat4_size = sizeof(GLfloat) * 4 * 4;
     // shader attribute locations
     // 4 locations for mat4
@@ -257,7 +257,6 @@ void Mesh::assign_instance_buffers(GLuint instance_MVP_Buffer,
       glVertexAttribDivisor(loc2, 1);
       glVertexAttribDivisor(loc3, 1);
       glVertexAttribDivisor(loc4, 1);
-      check_gl_error();
     }
 
     loc = glGetAttribLocation(shader.program->program, "instanced_model");
@@ -284,7 +283,6 @@ void Mesh::assign_instance_buffers(GLuint instance_MVP_Buffer,
       glVertexAttribDivisor(loc_2, 1);
       glVertexAttribDivisor(loc_3, 1);
       glVertexAttribDivisor(loc_4, 1);
-      check_gl_error();
     }
   }
 }
@@ -527,49 +525,23 @@ Render_Entity::Render_Entity(Mesh *mesh, Material *material, Light_Array lights,
 
 Render::~Render()
 {
-  // TODO cleanup framebuffers
+  glDeleteFramebuffers(1, &target_fbo);
+  glDeleteTextures(1, &color_target);
+  glDeleteTextures(1, &prev_color_target);
+  glDeleteRenderbuffers(1, &depth_target);
+  glDeleteBuffers(1, &instance_MVP_buffer);
+  glDeleteBuffers(1, &instance_Model_buffer);
 }
 
 Render::Render(SDL_Window *window, ivec2 window_size)
 {
   this->window = window;
   this->window_size = window_size;
-  size = ivec2(render_scale * window_size.x, render_scale * window_size.y);
+  SDL_DisplayMode current;
+  SDL_GetCurrentDisplayMode(0, &current);
+  target_frame_time = 1.0f / (float32)current.refresh_rate;
   set_vfov(vfov);
-  check_gl_error();
-  glGenFramebuffers(1, &target_fbo);
-  glBindFramebuffer(GL_FRAMEBUFFER, target_fbo);
-
-  check_gl_error();
-  glGenTextures(1, &color_target);
-  glBindTexture(GL_TEXTURE_2D, color_target);
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-  glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-  glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-  glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, size.x, size.y, 0, GL_RGBA,
-               GL_UNSIGNED_BYTE, 0);
-
-  check_gl_error();
-  glGenTextures(1, &prev_color_target);
-  glBindTexture(GL_TEXTURE_2D, prev_color_target);
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-  glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-  glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-  glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, size.x, size.y, 0, GL_RGBA,
-               GL_UNSIGNED_BYTE, 0);
-
-  check_gl_error();
-  glFramebufferTexture(GL_FRAMEBUFFER, DIFFUSE_TARGET, color_target, 0);
-  glDrawBuffers(TARGET_COUNT, RENDER_TARGETS);
-  glGenRenderbuffers(1, &depth_target);
-  glBindRenderbuffer(GL_RENDERBUFFER, depth_target);
-  glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT, size.x, size.y);
-  glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT,
-                            GL_RENDERBUFFER, depth_target);
-
-  glBindFramebuffer(GL_FRAMEBUFFER, 0);
+  init_render_targets();
 
   // instancing MVP Matrix buffer init
   const GLuint mat4_size = sizeof(GLfloat) * 4 * 4;
@@ -587,116 +559,113 @@ Render::Render(SDL_Window *window, ivec2 window_size)
                GL_DYNAMIC_DRAW);
 
   glBindBuffer(GL_ARRAY_BUFFER, 0);
-  check_gl_error();
+  frame_timer.start();
 }
 
-void Render::render(float64 t, float64 time)
+void Render::check_and_clear_expired_textures()
 {
-  //#if PERIODIC_TEXTURE_RELOADING
-  //  static float64 last_clear = -1.;
-  //  if (time > last_clear + 3)
-  //  {
-  //    Texture::cache.clear();
-  //    last_clear = time;
-  //  }
-  //#endif
+  auto it = Texture::cache.begin();
+  while (it != Texture::cache.end())
   {
-#if DYNAMIC_TEXTURE_RELOADING
-    // unfortunately this loads all textures twice at startup
-    static std::unordered_map<std::string, time_t> mod_times;
-    uint32 size = Texture::cache.size();
-    for (uint32 i = 0; i < size; ++i)
-    {
-      auto entry = Texture::cache.begin();
-      for (uint32 j = 0; j < i; ++j)
-      { // lol
-        entry++;
-      }
-      auto elem = *entry;
-      const std::string &path = elem.first;
-      struct stat attr;
-      stat(path.c_str(), &attr);
-      time_t t = attr.st_mtime;
+    auto texture_handle = *it;
+    const std::string &path = texture_handle.first;
+    struct stat attr;
+    stat(path.c_str(), &attr);
+    time_t t = attr.st_mtime;
 
-      auto mod_cache = mod_times[path];
-      if (mod_cache != t)
+    auto ptr = texture_handle.second.lock();
+    if (ptr) // texture could exist but not yet be loaded
+    {
+      time_t t1 = ptr.get()->file_mod_t;
+      if (t1 != t)
       {
-        mod_times[path] = t;
-        Texture::cache.erase(path);
-        --size; // erase will shrink map size
-        --i;    // point to the entry now occupying this index
+        it = Texture::cache.erase(it);
+        continue;
       }
     }
-#endif
+    ++it;
   }
+}
 
-  check_gl_error();
+void set_uniform_lights(Shader &shader, Light_Array &lights)
+{
+  ASSERT(lights.lights.size() == MAX_LIGHTS);
+  uint32 location = -1;
+// todo: this is horrible. do something much better than this - precompute
+// all these godawful strings and just select them
+#define s std::string
+#define ts std::to_string
+
+  for (int i = 0; i < MAX_LIGHTS; ++i)
+  {
+    shader.set_uniform((s("lights[") + ts(i) + s("].position")).c_str(),
+                       lights.lights[i].position);
+    shader.set_uniform((s("lights[") + ts(i) + s("].direction")).c_str(),
+                       lights.lights[i].direction);
+    shader.set_uniform((s("lights[") + ts(i) + s("].color")).c_str(),
+                       lights.lights[i].color);
+    shader.set_uniform((s("lights[") + ts(i) + s("].attenuation")).c_str(),
+                       lights.lights[i].attenuation);
+    vec3 ambient = lights.lights[i].ambient * lights.lights[i].color;
+    shader.set_uniform((s("lights[") + ts(i) + s("].ambient")).c_str(),
+                       ambient);
+    shader.set_uniform((s("lights[") + ts(i) + s("].cone_angle")).c_str(),
+                       lights.lights[i].cone_angle);
+    shader.set_uniform((s("lights[") + ts(i) + s("].type")).c_str(),
+                       (int32)lights.lights[i].type);
+  }
+  shader.set_uniform("number_of_lights", (int32)lights.count);
+}
+
+void Render::render(float64 state_time)
+{
+
+#if DYNAMIC_FRAMERATE_TARGET
+  dynamic_framerate_target();
+#endif
+
+#if DYNAMIC_TEXTURE_RELOADING
+  check_and_clear_expired_textures();
+#endif
+
+  float32 time = (float32)get_real_time();
+  float64 t = (time - state_time) / dt;
   glViewport(0, 0, size.x, size.y);
   glBindFramebuffer(GL_FRAMEBUFFER, target_fbo);
   glFramebufferTexture(GL_FRAMEBUFFER, DIFFUSE_TARGET, color_target, 0);
   vec3 night = vec3(0.05f);
   vec3 day = vec3(94. / 255., 155. / 255., 1.);
-  float32 t1 = 5 * sin(float32(time) / 3);
+  float32 t1 = sin(time / 3);
   t1 = clamp(t1, -1.0f, 1.0f);
   t1 = (t1 / 2.0f) + 0.5f;
   vec3 color = lerp(night, day, t1);
 
-  glClearColor(color.r, color.g, color.b, 1.0);
+  glClearColor(day.r, day.g, day.b, 1.0);
   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
   glEnable(GL_CULL_FACE);
   glFrontFace(GL_CW);
   glCullFace(GL_BACK);
   glEnable(GL_DEPTH_TEST);
   glDepthFunc(GL_LESS);
-
   for (auto &entity : render_instances)
   {
     glBindVertexArray(entity.mesh->vao);
-    Shader *shader = &entity.material->shader;
-    ASSERT(shader);
-    shader->use();
+    Shader &shader = entity.material->shader;
+    shader.use();
     entity.material->bind();
-    entity.mesh->bind_to_shader(*shader);
-    shader->set_uniform("time", float32(time));
-    shader->set_uniform("txaa_jitter", txaa_jitter);
-    shader->set_uniform("camera_position", camera_position);
+    entity.mesh->bind_to_shader(shader);
+    shader.set_uniform("time", time);
+    shader.set_uniform("txaa_jitter", txaa_jitter);
+    shader.set_uniform("camera_position", camera_position);
     if (entity.mesh->name == "plane")
     { // uv scale just for the ground - bad obv
-      shader->set_uniform("uv_scale", vec2(8));
+      shader.set_uniform("uv_scale", vec2(8));
     }
     else
     {
-      shader->set_uniform("uv_scale", vec2(1));
+      shader.set_uniform("uv_scale", vec2(1));
     }
-
-    ASSERT(entity.lights.lights.size() == MAX_LIGHTS);
-    uint32 location = -1;
-// todo: this is horrible. do something much better than this - precompute
-// all these godawful strings and just select them
-#define s std::string
-#define ts std::to_string
-
-    for (int i = 0; i < MAX_LIGHTS; ++i)
-    {
-      shader->set_uniform((s("lights[") + ts(i) + s("].position")).c_str(),
-                          entity.lights.lights[i].position);
-      shader->set_uniform((s("lights[") + ts(i) + s("].direction")).c_str(),
-                          entity.lights.lights[i].direction);
-      shader->set_uniform((s("lights[") + ts(i) + s("].color")).c_str(),
-                          entity.lights.lights[i].color);
-      shader->set_uniform((s("lights[") + ts(i) + s("].attenuation")).c_str(),
-                          entity.lights.lights[i].attenuation);
-      vec3 ambient =
-          entity.lights.lights[i].ambient * entity.lights.lights[i].color;
-
-      shader->set_uniform((s("lights[") + ts(i) + s("].ambient")).c_str(),
-                          ambient);
-      shader->set_uniform((s("lights[") + ts(i) + s("].cone_angle")).c_str(),
-                          entity.lights.lights[i].cone_angle);
-      shader->set_uniform((s("lights[") + ts(i) + s("].type")).c_str(),
-                          (int32)entity.lights.lights[i].type);
-    }
-    shader->set_uniform("number_of_lights", (int32)entity.lights.count);
+    set_uniform_lights(shader, entity.lights);
 
     //// verify sizes of data, mat4 floats
     ASSERT(entity.Model_Matrices.size() > 0);
@@ -711,7 +680,7 @@ void Render::render(float64 t, float64 time)
     uint32 buffer_size = num_instances * sizeof(mat4);
 
     entity.mesh->assign_instance_buffers(instance_MVP_buffer,
-                                         instance_Model_buffer, *shader);
+                                         instance_Model_buffer, shader);
 
     glBindBuffer(GL_ARRAY_BUFFER, instance_MVP_buffer);
     glBufferSubData(GL_ARRAY_BUFFER, 0, buffer_size,
@@ -720,7 +689,6 @@ void Render::render(float64 t, float64 time)
     glBufferSubData(GL_ARRAY_BUFFER, 0, buffer_size,
                     &entity.Model_Matrices[0][0][0]);
 
-
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, entity.mesh->indices_buffer);
     glDrawElementsInstanced(GL_TRIANGLES, entity.mesh->indices_buffer_size,
                             GL_UNSIGNED_INT, (void *)0, num_instances);
@@ -728,9 +696,6 @@ void Render::render(float64 t, float64 time)
     entity.material->unbind_textures();
   }
   check_gl_error();
-  static Shader temporalAA("passthrough.vert", "TemporalAA.frag");
-  static Shader passthrough("passthrough.vert", "passthrough.frag");
-  static Mesh quad("plane");
   glBindVertexArray(quad.vao);
 
   mat4 o =
@@ -757,7 +722,8 @@ void Render::render(float64 t, float64 time)
     GLuint u2 = glGetUniformLocation(temporalAA.program->program, "previous");
     glUniform1i(u2, 1);
     glActiveTexture(GL_TEXTURE0 + 1);
-    glBindTexture(GL_TEXTURE_2D, prev_color_target);
+    glBindTexture(GL_TEXTURE_2D,
+                  prev_color_target_missing ? color_target : prev_color_target);
     temporalAA.set_uniform("transform", o);
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, quad.indices_buffer);
     glDrawElements(GL_TRIANGLES, quad.indices_buffer_size, GL_UNSIGNED_INT,
@@ -766,7 +732,13 @@ void Render::render(float64 t, float64 time)
     glBindTexture(GL_TEXTURE_2D, 0);
     glActiveTexture(GL_TEXTURE0 + 1);
     glBindTexture(GL_TEXTURE_2D, 0);
+    glFinish(); // intent is to time just the swap itself
+    frame_timer.stop();
+    swap_timer.start();
     SDL_GL_SwapWindow(window);
+    glFinish();
+    swap_timer.stop();
+    frame_timer.start();
 
     // copy this frame to previous framebuffer
     // so it will be usable next frame, when its the old frame
@@ -786,6 +758,8 @@ void Render::render(float64 t, float64 time)
     passthrough.set_uniform("transform", o);
     glDrawElements(GL_TRIANGLES, quad.indices_buffer_size, GL_UNSIGNED_INT,
                    (void *)0);
+
+    prev_color_target_missing = false;
     // place color_target back in target_fbo
     glFramebufferTexture(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, color_target, 0);
     glBindTexture(GL_TEXTURE_2D, 0);
@@ -810,8 +784,15 @@ void Render::render(float64 t, float64 time)
                    (void *)0);
 
     glBindTexture(GL_TEXTURE_2D, 0);
+    glFinish(); // intent is to time just the swap itself
+    frame_timer.stop();
+    swap_timer.start();
     SDL_GL_SwapWindow(window);
+    glFinish();
+    swap_timer.stop();
+    frame_timer.start();
   }
+  frame_count += 1;
 }
 
 void Render::resize_window(ivec2 window_size)
@@ -823,8 +804,15 @@ void Render::resize_window(ivec2 window_size)
 
 void Render::set_render_scale(float32 scale)
 {
+  if (scale < 0.1f)
+    scale = 0.1f;
+  if (scale > 2.0f)
+    scale = 2.0f;
+  if (render_scale == scale)
+    return;
   render_scale = scale;
-  ASSERT(0); // reset FBOs not yet implemented
+  init_render_targets();
+  time_of_last_scale_change = get_real_time();
 }
 
 void Render::set_camera(vec3 camera_position, vec3 camera_gaze_dir)
@@ -847,7 +835,7 @@ void Render::set_render_entities(std::vector<Render_Entity> render_entities)
   // todo: save previous update's entities
   // give each entity a unique ID, sort by ID, compare
   // extrapolate positions for current frame with
-  // lerp(current, current + (current-prev), t) in renderer
+  // lerp(current, current + (current-prev), t)
   render_instances.clear();
   render_instances.reserve(render_entities.size());
 
@@ -894,16 +882,143 @@ void Render::set_render_entities(std::vector<Render_Entity> render_entities)
   }
 }
 
+void Render::init_render_targets()
+{
+  glBindFramebuffer(GL_FRAMEBUFFER, 0);
+  glDeleteFramebuffers(1, &target_fbo);
+  glDeleteTextures(1, &color_target);
+  glDeleteTextures(1, &prev_color_target);
+  glDeleteRenderbuffers(1, &depth_target);
+
+  size = ivec2(render_scale * window_size.x, render_scale * window_size.y);
+  glGenFramebuffers(1, &target_fbo);
+  glBindFramebuffer(GL_FRAMEBUFFER, target_fbo);
+
+  glGenTextures(1, &color_target);
+  glBindTexture(GL_TEXTURE_2D, color_target);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+  glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+  glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+  glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, size.x, size.y, 0, GL_RGBA,
+               GL_UNSIGNED_BYTE, 0);
+
+  glGenTextures(1, &prev_color_target);
+  glBindTexture(GL_TEXTURE_2D, prev_color_target);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+  glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+  glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+  glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, size.x, size.y, 0, GL_RGBA,
+               GL_UNSIGNED_BYTE, 0);
+
+  glFramebufferTexture(GL_FRAMEBUFFER, DIFFUSE_TARGET, color_target, 0);
+  glDrawBuffers(TARGET_COUNT, RENDER_TARGETS);
+  glGenRenderbuffers(1, &depth_target);
+  glBindRenderbuffer(GL_RENDERBUFFER, depth_target);
+  glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT, size.x, size.y);
+  glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT,
+                            GL_RENDERBUFFER, depth_target);
+
+  prev_color_target_missing = true;
+
+  set_message("Created fbo: ", std::to_string(target_fbo), 1.0);
+  set_message("Created textures: ", std::to_string(color_target) + " " +
+                                        std::to_string(color_target) + " " +
+                                        std::to_string(depth_target),
+              1.0);
+  glBindFramebuffer(GL_FRAMEBUFFER, 0);
+}
+
+void Render::dynamic_framerate_target()
+{
+  // early out if we don't have enough samples to go by
+  const uint32 min_samples = 5;
+  // percent of frame+swap samples must be > target_time to downscale
+  const float32 reduce_threshold = 0.35f;
+  // render scale multiplication factors when changing resolution
+  const float32 reduction_factor = 0.85f;
+  const float32 increase_factor = 1.05f;
+  // gives a little extra time before swap+frame > 1/hz counts as a missed vsync
+  // not entirely sure why this is necessary, but at 0 swap+frame is almost
+  // always > 1/hz
+  // driver overhead and/or timer overhead inaccuracies
+  const float64 epsilon = 0.005;
+  // if swap alone took longer than this, we should increase the resolution
+  // because we probably had a lot of extra gpu time because this blocked for so
+  // long
+  // not sure if there's a better way to find idle gpu use
+  const float64 longest_swap_allowable = target_frame_time * .45;
+
+  if (frame_timer.sample_count() < min_samples ||
+      swap_timer.sample_count() < min_samples)
+  { // don't adjust until we have good avg frame time data
+    return;
+  }
+  // ALL time other than swap time
+  const float64 moving_avg = frame_timer.moving_average();
+  const float64 last_frame = frame_timer.get_last();
+
+  // ONLY swap time
+  const float64 last_swap = swap_timer.get_last();
+  const float64 swap_avg = swap_timer.moving_average();
+
+  auto frame_times = frame_timer.get_times();
+  auto swap_times = swap_timer.get_times();
+  ASSERT(frame_times.size() == swap_times.size());
+  uint32 num_high_frame_times = 0;
+  for (uint32 i = 0; i < frame_times.size(); ++i)
+  {
+    const float64 swap = swap_times[i];
+    const float64 frame = frame_times[i];
+    const bool high = swap + frame > target_frame_time + epsilon;
+    num_high_frame_times += int32(high);
+  }
+  float32 percent_high = float32(num_high_frame_times) / frame_times.size();
+
+  if (percent_high > reduce_threshold)
+  {
+    set_message("Number of missed frames over threshold.Reducing resolution.");
+    set_render_scale(render_scale * reduction_factor);
+
+    // we need to clear the timers because the render scale change
+    // means the old times arent really valid anymore - different res
+    // frame_timer is currently running so we
+    // must get the time it logged for the current
+    // frame start, and put it back when we restart
+    uint64 last_start = frame_timer.get_begin();
+    swap_timer.clear_all();
+    frame_timer.clear_all();
+    frame_timer.start(last_start);
+  }
+  else if (swap_avg > longest_swap_allowable)
+  {
+    if (render_scale != 2.0) // max scale 2.0
+    {
+      float64 change_rate = .55;
+      if (get_real_time() < time_of_last_scale_change + change_rate)
+      { // increase resolution slowly
+        return;
+      }
+      set_message("High avg swap wait - idle GPU. Increasing resolution.");
+      set_render_scale(render_scale * increase_factor);
+      uint64 last_start = frame_timer.get_begin();
+      swap_timer.clear_all();
+      frame_timer.clear_all();
+      frame_timer.start(last_start);
+    }
+  }
+}
+
 mat4 Render::get_next_TXAA_sample()
 {
-  mat4 result;
   vec2 translation;
   if (jitter_switch)
     translation = vec2(0.5, 0.5);
   else
     translation = vec2(-0.5, -0.5);
 
-  result = glm::translate(vec3(translation / vec2(size), 0));
+  mat4 result = glm::translate(vec3(translation / vec2(size), 0));
   jitter_switch = !jitter_switch;
   return result;
 }

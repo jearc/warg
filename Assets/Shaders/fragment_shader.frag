@@ -43,8 +43,7 @@ float linearize_depth(float z)
   float near = 0.1;
   float far = 1000;
   float depth = z * 2.0 - 1.0;
-  float linearDepth = (2.0 * near * far) / (far + near - depth * (far - near));
-  return linearDepth;
+  return (2.0 * near * far) / (far + near - depth * (far - near));
 }
 
 struct Material

@@ -164,7 +164,6 @@ const aiScene *Scene_Graph::load_aiscene(std::string final_path,
                //  aiProcess_OptimizeMeshes|
                0;
 
-
   const aiScene *aiscene = importer->ReadFile(final_path.c_str(), flags);
   if (!aiscene || aiscene->mFlags == AI_SCENE_FLAGS_INCOMPLETE ||
       !aiscene->mRootNode)
