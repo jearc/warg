@@ -7,9 +7,11 @@
 #undef main
 #include <iostream>
 #include <stdlib.h>
+#include <sstream>
 
 static void performance_output(const State &state)
 {
+  std::stringstream s;
   static float64 last_output = 0;
   static uint64 frames_at_last_tick = 0;
   const float64 report_delay = 1.0;
@@ -27,12 +29,13 @@ static void performance_output(const State &state)
     frames_at_last_tick = frame_count;
     last_output = current_time;
     Uint64 current_frame_rate = (1.0 / report_delay) * frames_since_last_tick;
-    std::cout << PERF_TIMER.string_report();
-    std::cout << "FPS: " << current_frame_rate << "\n";
-    std::cout << "Total FPS:" << (float64)frame_count / current_time;
-    std::cout << "\nRender Scale: " << state.renderer.get_render_scale();
-    std::cout << "\nDraw calls: " << state.renderer.render_instances.size();
-    std::cout << "\n\nMessages:\n\n" << get_messages() << std::endl;
+    s << PERF_TIMER.string_report();
+    s << "FPS: " << current_frame_rate << "\n";
+    s << "Total FPS:" << (float64)frame_count / current_time;
+    s << "\nRender Scale: " << state.renderer.get_render_scale();
+    s << "\nDraw calls: " << state.renderer.render_instances.size();
+    set_message("Performance output: ",s.str(),report_delay/2);
+    std::cout << get_messages() << std::endl;
   }
 }
 
@@ -42,19 +45,21 @@ int main(int argc, char *argv[])
   generator.seed(1234);
   SDL_Init(SDL_INIT_EVERYTHING);
   uint32 display_count = uint32(SDL_GetNumVideoDisplays());
+  std::stringstream s;
   for (uint32 i = 0; i < display_count; ++i)
   {
-    std::cout << "Display " << i << ":\n";
+    s << "Display " << i << ":\n";
     SDL_DisplayMode mode;
     uint32 mode_count = uint32(SDL_GetNumDisplayModes(i));
     for (uint32 j = 0; j < mode_count; ++j)
     {
       SDL_GetDisplayMode(i, j, &mode);
-      std::cout << "Supported resolution: " << mode.w << "x" << mode.h << " "
+      s << "Supported resolution: " << mode.w << "x" << mode.h << " "
                 << mode.refresh_rate << "hz  "
                 << SDL_GetPixelFormatName(mode.format) << "\n";
     }
   }
+  set_message(s.str());
 
   ivec2 window_size = {1280, 720};
   int32 flags = SDL_WINDOW_OPENGL;
@@ -69,12 +74,13 @@ int main(int argc, char *argv[])
   int32 major, minor;
   SDL_GL_GetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, &major);
   SDL_GL_GetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, &minor);
-  std::cout << "OpenGL Version: " << major << "." << minor << "\n";
+  set_message("OpenGL Version.", std::to_string(major) + " " + std::to_string(minor));
   if (major <= 3)
   {
     if (major < 3 || minor < 3)
     {
-      std::cout << "Unsupported OpenGL Version.\n";
+      set_message("Unsupported OpenGL Version.");
+      push_log_to_disk();
       throw;
     }
   }
@@ -120,6 +126,7 @@ int main(int argc, char *argv[])
     performance_output(state);
     // SDL_Delay();
   }
+  push_log_to_disk();
   SDL_Quit();
   return 0;
 }

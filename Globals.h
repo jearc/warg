@@ -50,6 +50,7 @@ template <typename T> void ASSERT(T t)
 #ifndef DISABLE_ASSERT
   if (!t)
   {
+    push_log_to_disk();
     throw;
   }
 #endif
@@ -67,11 +68,17 @@ float64 get_real_time();
 
 // adds a message to a container that is retrieved by get_messages()
 // subsequent calls to this function with identical identifiers will
-// overwrite the older message
+// overwrite the older message when retrieved with get_message_log()
+// but ALL messages will be logged to disk with push_log_to_disk()
+// a duration of 0 will not show up in the console, but will be logged
 void set_message(std::string identifier, std::string message = "",
-                 float64 msg_duration = 1.0);
+                 float64 msg_duration = 0.0);
 
 // returns messages set with set_message()
 // as string(identifier+" "+message)
 // for all messages with unique identifier
 std::string get_messages();
+
+//appends all messages to disk that have been set
+//since the last call to this function
+void push_log_to_disk();

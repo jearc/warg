@@ -26,6 +26,7 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <time.h>
+#include <sstream>
 using namespace glm;
 
 // our attachment points for deferred rendering
@@ -79,12 +80,11 @@ Texture::Texture(std::string path)
   if (file_path[end - 1] != 'g' || file_path[end - 2] != 'n' ||
       file_path[end - 3] != 'p')
   {
-    std::cout << "Warning, specified texture path: " << file_path
-              << " has unsupported texture filetype. Renaming path to ";
     file_path[end - 1] = 'g';
     file_path[end - 2] = 'n';
     file_path[end - 3] = 'p';
-    std::cout << file_path << "\n";
+
+    set_message("Warning, specified texture path invalid filetype. Renaming to: ",file_path+"\n",1.0);
   }
 }
 
@@ -111,14 +111,13 @@ void Texture::load()
   {
 #if DYNAMIC_TEXTURE_RELOADING
     // retry next frame
-    // TODO: make a better place to dump warnings
-    std::cout << "Warning: missing texture: " << file_path << "\n";
+    set_message("Warning: missing texture:" + file_path);
     texture = nullptr;
     return;
 #else
     if (!data)
     {
-      std::cout << "STBI failed to find or load texture: " << file_path << "\n";
+      set_message("STBI failed to find or load texture: " + file_path);
       if (file_path == ERROR_TEXTURE_PATH)
       {
         texture = nullptr;
@@ -130,10 +129,7 @@ void Texture::load()
     }
 #endif
   }
-
-  std::cout << "Texture load cache miss. Texture from disk: " << file_path
-            << "\n";
-
+  set_message("Texture load cache miss. Texture from disk: ", file_path, 1.0);
   // TODO: optimize the texture storage types to save GPU memory
   // currently  everything is stored with RGBA
   // could pack maps together like: RGBA with diffuse as RGB and A as
@@ -330,7 +326,8 @@ void Mesh::upload_data(const Mesh_Data &mesh_data)
 {
   if (sizeof(decltype(mesh_data.indices)::value_type) != sizeof(uint32))
   {
-    throw "render() assumes index type to be 32 bits";
+    set_message("Mesh::upload_data error: render() assumes index type to be 32 bits");
+    ASSERT(0);
   }
 
   check_gl_error();
@@ -922,11 +919,9 @@ void Render::init_render_targets()
 
   prev_color_target_missing = true;
 
-  set_message("Created fbo: ", std::to_string(target_fbo), 1.0);
-  set_message("Created textures: ", std::to_string(color_target) + " " +
-                                        std::to_string(color_target) + " " +
-                                        std::to_string(depth_target),
-              1.0);
+  set_message("Init render targets: ", std::to_string(target_fbo) + " " +
+    std::to_string(prev_color_target) + " " +
+    std::to_string(depth_target));
   glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }
 
@@ -978,7 +973,7 @@ void Render::dynamic_framerate_target()
 
   if (percent_high > reduce_threshold)
   {
-    set_message("Number of missed frames over threshold.Reducing resolution.");
+    set_message("Number of missed frames over threshold. Reducing resolution.: ",std::to_string(percent_high)+" "+std::to_string(target_frame_time));
     set_render_scale(render_scale * reduction_factor);
 
     // we need to clear the timers because the render scale change
@@ -1000,7 +995,7 @@ void Render::dynamic_framerate_target()
       { // increase resolution slowly
         return;
       }
-      set_message("High avg swap wait - idle GPU. Increasing resolution.");
+      set_message("High avg swap. Increasing resolution.",std::to_string(swap_avg)+" "+std::to_string(target_frame_time));
       set_render_scale(render_scale * increase_factor);
       uint64 last_start = frame_timer.get_begin();
       swap_timer.clear_all();

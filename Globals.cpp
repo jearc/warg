@@ -171,6 +171,7 @@ static struct Message
   float64 time_of_expiry;
 };
 static std::unordered_map<std::string, Message> messages;
+static std::string message_log = "";
 void set_message(std::string identifier, std::string message,
                  float64 msg_duration)
 {
@@ -179,6 +180,7 @@ void set_message(std::string identifier, std::string message,
   m.message = message;
   m.time_of_expiry = time + msg_duration;
   messages[identifier] = m;
+  message_log.append("time: " + std::to_string(time) + "--- " + identifier + " " + message + "\n\n");
 }
 std::string get_messages()
 {
@@ -197,4 +199,17 @@ std::string get_messages()
     ++it;
   }
   return result;
+}
+void push_log_to_disk()
+{
+  static bool first = true;
+  if (first)
+  {
+    std::fstream file("warg_log.txt", std::ios::trunc);
+    first = false;
+  }
+  std::fstream file("warg_log.txt", std::ios::in | std::ios::out);
+  file.seekg(std::ios::end);
+  file.write(message_log.c_str(), message_log.size());
+  message_log.clear();
 }
