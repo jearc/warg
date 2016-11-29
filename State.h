@@ -2,22 +2,6 @@
 
 #include "Render.h"
 #include "Scene_Graph.h"
-#include <functional>
-#include <vector>
-
-class Render_Data
-{
-public:
-  Node_Ptr node = Node_Ptr(-1);
-  Light *light = nullptr;
-};
-
-class Entity
-{
-public:
-  Render_Data render_data;
-  std::function<void(Scene_Graph &, Entity &, float64)> update;
-};
 
 class State
 {
@@ -40,14 +24,6 @@ public:
   // but not tested
   Scene_Graph scene; // holds and manages all 3D model data and pos/orient/scale
 
-  // managed pointers to scene graph nodes
-  // no way to delete yet
-  Node_Ptr test_entity_light = Node_Ptr(-1);
-  Node_Ptr test_entity_light_cone = Node_Ptr(-1);
-  Node_Ptr test_entity_light_large = Node_Ptr(-1);
-  Node_Ptr test_entity_plane = Node_Ptr(-1);
-  Node_Ptr chest = Node_Ptr(-1);
-
 private:
   void prepare_renderer(double t);
   SDL_Window *window;
@@ -57,6 +33,7 @@ private:
   float camera_x_radians = atan2(-camera_position.y, -camera_position.x);
   float camera_y_radians = 0.0f;
 
-  std::vector<Entity> entities;
-  Light *add_light();
+  vec3 player_pos = vec3(0, 0, 0.5);
+  vec3 player_dir = vec3(1, 0, 0);
+  Node_Ptr player_mesh = Node_Ptr(-1);
 };
