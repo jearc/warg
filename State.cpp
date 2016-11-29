@@ -69,7 +69,7 @@ void State::prepare_renderer(double t)
   */
 
   // camera must be set before entities, or they get a 1 frame lag
-  renderer.set_camera(camera_position, camera_gaze_dir);
+  renderer.set_camera(cam_pos, cam_dir);
 
   // Traverse graph nodes and submit to renderer for packing:
   auto render_entities = scene.visit_nodes_async_start();
@@ -99,6 +99,20 @@ void State::handle_input()
         return;
       }
     }
+    else if (_e.type == SDL_KEYUP)
+    {
+      if (_e.key.keysym.sym == SDLK_F1)
+      {
+        cam_free = !cam_free;
+      }
+    }
+    else if (_e.type == SDL_MOUSEWHEEL)
+    {
+      if (_e.wheel.y < 0)
+        cam_zoom += 0.1f;
+      else if (_e.wheel.y > 0)
+        cam_zoom -= 0.1f;
+    }
     else if (_e.type == SDL_WINDOWEVENT)
     {
       if (_e.window.event == SDL_WINDOWEVENT_RESIZED)
@@ -127,36 +141,59 @@ void State::handle_input()
   ivec2 mouse_delta;
   SDL_GetRelativeMouseState(&mouse_delta.x, &mouse_delta.y);
 
-  float32 radians_x = -mouse_delta.x * MOUSE_X_SENS;
-  float32 radians_y = mouse_delta.y * MOUSE_Y_SENS;
-
-  camera_x_radians += radians_x;
-  camera_y_radians += radians_y;
-
-  camera_y_radians = clamp(camera_y_radians, -half_pi<float32>() + 0.0001f,
-                           half_pi<float32>() - 0.0001f);
-
-  mat4 rx = rotate(camera_x_radians, vec3(0, 0, 1));
-  vec4 heading = rx * vec4(1, 0, 0, 0);
-  mat4 ry = rotate(camera_y_radians, vec3(-heading.y, heading.x, 0));
-
-  camera_gaze_dir = vec3(ry * rx * vec4(1, 0, 0, 0));
+  vec2 mouse_angle =
+      vec2(-mouse_delta.x * MOUSE_X_SENS, mouse_delta.y * MOUSE_Y_SENS);
 
   bool left_button_down = mouse_state & SDL_BUTTON(SDL_BUTTON_LEFT);
+  bool right_button_down = mouse_state & SDL_BUTTON(SDL_BUTTON_RIGHT);
 
-  if (is_pressed(SDL_SCANCODE_W))
-    camera_position += MOVE_SPEED * camera_gaze_dir;
-  if (is_pressed(SDL_SCANCODE_S))
-    camera_position -= MOVE_SPEED * camera_gaze_dir;
-  if (is_pressed(SDL_SCANCODE_D))
+  if (cam_free)
   {
-    camera_position +=
-        MOVE_SPEED * vec3(rotate(-half_pi<float>(), vec3(0, 0, 1)) * heading);
+    mat4 rx = rotate(mouse_angle.x, vec3(0, 0, 1));
+    cam_dir = vec3(rx * vec4(cam_dir, 0));
+    mat4 ry = rotate(mouse_angle.y, vec3(-cam_dir.y, cam_dir.x, 0));
+    cam_dir = vec3(ry * rx * vec4(cam_dir, 0));
+
+    if (is_pressed(SDL_SCANCODE_W))
+      cam_pos += MOVE_SPEED * cam_dir;
+    if (is_pressed(SDL_SCANCODE_S))
+      cam_pos -= MOVE_SPEED * cam_dir;
+    if (is_pressed(SDL_SCANCODE_D))
+      cam_pos += MOVE_SPEED * vec3(rotate(-half_pi<float>(), vec3(0, 0, 1)) *
+                                   vec4(cam_dir.x, cam_dir.y, 0, 0));
+    if (is_pressed(SDL_SCANCODE_A))
+      cam_pos += MOVE_SPEED * vec3(rotate(half_pi<float>(), vec3(0, 0, 1)) *
+                                   vec4(cam_dir.x, cam_dir.y, 0, 0));
   }
-  if (is_pressed(SDL_SCANCODE_A))
+  else
   {
-    camera_position +=
-        MOVE_SPEED * vec3(rotate(half_pi<float>(), vec3(0, 0, 1)) * heading);
+    if (left_button_down || right_button_down)
+    {
+
+      mat4 rx = rotate(mouse_angle.x, vec3(0, 0, 1));
+      mat4 ry = rotate(mouse_angle.y, vec3(0, 1, 0));
+
+      cam_rel = vec3(ry * rx * vec4(cam_rel.x, cam_rel.y, cam_rel.z, 0));
+
+      if (right_button_down)
+      {
+        player_dir = -cam_rel;
+      }
+    }
+
+    if (is_pressed(SDL_SCANCODE_W))
+      player_pos += MOVE_SPEED * vec3(player_dir.x, player_dir.y, 0.0f);
+    if (is_pressed(SDL_SCANCODE_S))
+      player_pos -= MOVE_SPEED * vec3(player_dir.x, player_dir.y, 0.0f);
+    if (is_pressed(SDL_SCANCODE_A))
+      player_pos += MOVE_SPEED * vec3(rotate(half_pi<float>(), vec3(0, 0, 1)) *
+                                      vec4(player_dir.x, player_dir.y, 0, 0));
+    if (is_pressed(SDL_SCANCODE_D))
+      player_pos += MOVE_SPEED * vec3(rotate(-half_pi<float>(), vec3(0, 0, 1)) *
+                                      vec4(player_dir.x, player_dir.y, 0, 0));
+
+    cam_pos = player_pos + cam_rel * cam_zoom;
+    cam_dir = -cam_rel;
   }
 }
 

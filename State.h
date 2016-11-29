@@ -28,10 +28,12 @@ private:
   void prepare_renderer(double t);
   SDL_Window *window;
   ivec2 mouse_position = ivec2(0, 0);
-  vec3 camera_position = vec3(-2.0, -2.0, 1.3);
-  vec3 camera_gaze_dir;
-  float camera_x_radians = atan2(-camera_position.y, -camera_position.x);
-  float camera_y_radians = 0.0f;
+
+  vec3 cam_rel = vec3(-1.0, 0.0, 1.0);
+  float32 cam_zoom = 4;
+  vec3 cam_pos;
+  vec3 cam_dir;
+  bool cam_free = false;
 
   vec3 player_pos = vec3(0, 0, 0.5);
   vec3 player_dir = vec3(1, 0, 0);
