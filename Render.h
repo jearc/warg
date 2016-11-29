@@ -19,6 +19,7 @@
 #include <string>
 #include <unordered_map>
 #include <vector>
+#include <unordered_map>
 
 using namespace glm;
 
@@ -32,7 +33,6 @@ struct Texture
   };
   Texture();
   Texture(std::string path);
-
 private:
   friend struct Render;
   friend struct Material;

@@ -686,6 +686,7 @@ void Render::render(float64 state_time)
     glBufferSubData(GL_ARRAY_BUFFER, 0, buffer_size,
                     &entity.Model_Matrices[0][0][0]);
 
+
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, entity.mesh->indices_buffer);
     glDrawElementsInstanced(GL_TRIANGLES, entity.mesh->indices_buffer_size,
                             GL_UNSIGNED_INT, (void *)0, num_instances);

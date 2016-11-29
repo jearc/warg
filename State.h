@@ -28,23 +28,18 @@ public:
 
   Scene_Graph scene;
 
-  // managed pointers to scene graph nodes
-  // no way to delete yet
-  Node_Ptr test_entity_light = Node_Ptr(-1);
-  Node_Ptr test_entity_light_cone = Node_Ptr(-1);
-  Node_Ptr test_entity_light_large = Node_Ptr(-1);
-  Node_Ptr test_entity_plane = Node_Ptr(-1);
-  Node_Ptr chest = Node_Ptr(-1);
-
 private:
   void prepare_renderer(double t);
   SDL_Window *window = nullptr;
   ivec2 mouse_position = ivec2(0, 0);
-  vec3 camera_position = vec3(-2.0, -2.0, 1.3);
-  vec3 camera_gaze_dir = vec3(0);
-  float camera_x_radians = atan2(-camera_position.y, -camera_position.x);
-  float camera_y_radians = 0.0f;
 
-  std::vector<Entity> entities;
-  Light *add_light();
+  vec3 cam_rel = vec3(-1.0, 0.0, 1.0);
+  float32 cam_zoom = 4;
+  vec3 cam_pos;
+  vec3 cam_dir;
+  bool cam_free = false;
+
+  vec3 player_pos = vec3(0, 0, 0.5);
+  vec3 player_dir = vec3(1, 0, 0);
+  Node_Ptr player_mesh = Node_Ptr(-1);
 };

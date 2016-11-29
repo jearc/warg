@@ -9,7 +9,29 @@ using namespace glm;
 State::State(SDL_Window *window, ivec2 window_size)
     : window(window), renderer(window, window_size)
 {
+
   Material_Descriptor material;
+  material.albedo = "pebbles_diffuse.png";
+  material.emissive = "";
+  material.normal = "pebbles_normal.png";
+  material.roughness = "pebbles_roughness.png";
+  material.vertex_shader = "vertex_shader.vert";
+  material.frag_shader = "fragment_shader.frag";
+
+  auto ground_mesh =
+      scene.add_single_mesh("plane", "test_entity_plane", material);
+  Scene_Graph_Node *n = scene.get_node(ground_mesh);
+  ASSERT(n);
+  n->position = {0.0f, 0.0f, 0.0f};
+  n->scale = {10.0f, 10.0f, 1.0f};
+
+  auto light = scene.lights[scene.light_count++];
+  light.position = vec3{0, 0, 10};
+  light.color = 40.0f * vec3(1.0f, 0.93f, 0.92f);
+  light.attenuation = vec3(1.0f, .045f, .0075f);
+  light.ambient = 0.000f;
+  light.type = omnidirectional;
+
   material.albedo = "crate_diffuse.png";
   material.emissive = "test_emissive.png";
   material.normal = "test_normal.png";
@@ -17,115 +39,7 @@ State::State(SDL_Window *window, ivec2 window_size)
   material.vertex_shader = "vertex_shader.vert";
   material.frag_shader = "fragment_shader.frag";
 
-  Entity test_light_large;
-  test_light_large.node =
-      scene.add_single_mesh("cube", "test_entity_light_large", material);
-  test_light_large.light = add_light();
-  test_light_large.update = [material](Scene_Graph &scene, Entity &e,
-                                       float64 current_time) {
-    Scene_Graph_Node *n = scene.get_node(e.node);
-    ASSERT(n);
-
-    float32 x, y, z;
-    x = 32.0f * cos(float32(current_time) / 3.0f);
-    y = 0.0f;
-    z = 32.0f * sin(float32(current_time) / 3.0f);
-    n->scale = vec3(.15f);
-    n->position = vec3(x, y, z);
-
-    const float32 intensity = 20.0f;
-
-    e.light->position = n->position;
-    e.light->color = 1.0f * intensity * vec3(1.0f, 0.93f, 0.92f);
-    e.light->attenuation = vec3(1.0f, .045f, .0075f);
-    e.light->ambient = 0.000f;
-    e.light->type = omnidirectional;
-  };
-  entities.push_back(test_light_large);
-
-  Entity test_light_cone;
-  test_light_cone.node =
-      scene.add_single_mesh("cube", "test_entity_light_cone", material);
-  test_light_cone.light = add_light();
-  test_light_cone.update = [material](Scene_Graph &scene, Entity &e,
-                                      float64 current_time) {
-    Scene_Graph_Node *n = scene.get_node(e.node);
-    ASSERT(n);
-
-    float32 x, y, z;
-    x = 5.0f * cos(float32(current_time));
-    y = 5.0f * sin(float32(current_time));
-    z = 0.7f;
-    n->position = {x, -y, z};
-    n->scale = {.15f, .15f, .15f};
-
-    const float32 intensity = 20.0f;
-
-    e.light->position = n->position;
-    e.light->color = 5.0f * intensity * vec3(0.6f, 0.6f, 0.9f);
-    e.light->direction = vec3(0.0f, 0.0f, 0.2f);
-    e.light->attenuation = vec3(1.0f, .14f, .07f);
-    e.light->ambient = 0.000f;
-    e.light->cone_angle = 0.20f;
-    e.light->type = spot;
-  };
-  entities.push_back(test_light_cone);
-
-  Entity test_cube;
-  test_cube.node = scene.add_single_mesh("cube", "test_entity_cube", material);
-  test_cube.update = [material](Scene_Graph &scene, Entity &e,
-                                float64 current_time) {
-    Scene_Graph_Node *n = scene.get_node(e.node);
-    ASSERT(n);
-
-    n->position = {0.0f, 0.0f, 0.9f};
-    n->scale = {1.0f, 1.0f, 1.0f};
-    n->orientation.x += 0.0031f;
-    n->orientation.z += 0.0031f;
-  };
-  entities.push_back(test_cube);
-
-  Entity test_light;
-  test_light.node =
-      scene.add_single_mesh("cube", "test_entity_light", material);
-  test_light.light = add_light();
-  test_light.update = [material](Scene_Graph &scene, Entity &e,
-                                 float64 current_time) {
-    Scene_Graph_Node *n = scene.get_node(e.node);
-    ASSERT(n);
-
-    float32 x, y, z;
-    x = 1.2f * cos(float32(current_time) * 2.0f);
-    y = 1.2f * sin(float32(current_time) * 2.0f);
-    z = 0.91f + 0.9f * sin(float32(current_time));
-    n->position = {x, y, z};
-    n->scale = {0.15f, 0.15f, 0.15f};
-
-    const float32 intensity = 20.0f;
-    e.light->position = n->position;
-    e.light->color = intensity * vec3(1.0, 0.2, 0.2);
-    e.light->attenuation = vec3(1, .7, 1.8);
-    e.light->ambient = 0.0f;
-    e.light->type = omnidirectional;
-  };
-  entities.push_back(test_light);
-
-  material.albedo = "pebbles_diffuse.png";
-  material.emissive = "";
-  material.normal = "pebbles_normal.png";
-  material.roughness = "pebbles_roughness.png";
-
-  Entity test_plane;
-  test_plane.node =
-      scene.add_single_mesh("plane", "test_entity_plane", material);
-  test_plane.update = [material](Scene_Graph &scene, Entity &e,
-                                 float64 current_time) {
-    Scene_Graph_Node *n = scene.get_node(e.node);
-    ASSERT(n);
-
-    n->scale = {10.0f, 10.0f, 1.0f};
-  };
-  entities.push_back(test_plane);
+  player_mesh = scene.add_single_mesh("cube", "test_entity_cube", material);
 
   SDL_SetRelativeMouseMode(SDL_bool(true));
   reset_mouse_delta();
@@ -155,10 +69,10 @@ void State::prepare_renderer(double t)
   */
 
   // camera must be set before entities, or they get a 1 frame lag
-  renderer.set_camera(camera_position, camera_gaze_dir);
+  renderer.set_camera(cam_pos, cam_dir);
 
   // Traverse graph nodes and submit to renderer for packing:
-  auto render_entities = scene.visit_nodes_st_start();
+  auto render_entities = scene.visit_nodes_async_start();
   renderer.set_render_entities(render_entities);
 }
 
@@ -184,6 +98,20 @@ void State::handle_input()
         running = false;
         return;
       }
+    }
+    else if (_e.type == SDL_KEYUP)
+    {
+      if (_e.key.keysym.sym == SDLK_F1)
+      {
+        cam_free = !cam_free;
+      }
+    }
+    else if (_e.type == SDL_MOUSEWHEEL)
+    {
+      if (_e.wheel.y < 0)
+        cam_zoom += 0.1f;
+      else if (_e.wheel.y > 0)
+        cam_zoom -= 0.1f;
     }
     else if (_e.type == SDL_WINDOWEVENT)
     {
@@ -213,36 +141,59 @@ void State::handle_input()
   ivec2 mouse_delta;
   SDL_GetRelativeMouseState(&mouse_delta.x, &mouse_delta.y);
 
-  float32 radians_x = -mouse_delta.x * MOUSE_X_SENS;
-  float32 radians_y = mouse_delta.y * MOUSE_Y_SENS;
-
-  camera_x_radians += radians_x;
-  camera_y_radians += radians_y;
-
-  camera_y_radians = clamp(camera_y_radians, -half_pi<float32>() + 0.0001f,
-                           half_pi<float32>() - 0.0001f);
-
-  mat4 rx = rotate(camera_x_radians, vec3(0, 0, 1));
-  vec4 heading = rx * vec4(1, 0, 0, 0);
-  mat4 ry = rotate(camera_y_radians, vec3(-heading.y, heading.x, 0));
-
-  camera_gaze_dir = vec3(ry * rx * vec4(1, 0, 0, 0));
+  vec2 mouse_angle =
+      vec2(-mouse_delta.x * MOUSE_X_SENS, mouse_delta.y * MOUSE_Y_SENS);
 
   bool left_button_down = mouse_state & SDL_BUTTON(SDL_BUTTON_LEFT);
+  bool right_button_down = mouse_state & SDL_BUTTON(SDL_BUTTON_RIGHT);
 
-  if (is_pressed(SDL_SCANCODE_W))
-    camera_position += MOVE_SPEED * camera_gaze_dir;
-  if (is_pressed(SDL_SCANCODE_S))
-    camera_position -= MOVE_SPEED * camera_gaze_dir;
-  if (is_pressed(SDL_SCANCODE_D))
+  if (cam_free)
   {
-    camera_position +=
-        MOVE_SPEED * vec3(rotate(-half_pi<float>(), vec3(0, 0, 1)) * heading);
+    mat4 rx = rotate(mouse_angle.x, vec3(0, 0, 1));
+    cam_dir = vec3(rx * vec4(cam_dir, 0));
+    mat4 ry = rotate(mouse_angle.y, vec3(-cam_dir.y, cam_dir.x, 0));
+    cam_dir = vec3(ry * rx * vec4(cam_dir, 0));
+
+    if (is_pressed(SDL_SCANCODE_W))
+      cam_pos += MOVE_SPEED * cam_dir;
+    if (is_pressed(SDL_SCANCODE_S))
+      cam_pos -= MOVE_SPEED * cam_dir;
+    if (is_pressed(SDL_SCANCODE_D))
+      cam_pos += MOVE_SPEED * vec3(rotate(-half_pi<float>(), vec3(0, 0, 1)) *
+                                   vec4(cam_dir.x, cam_dir.y, 0, 0));
+    if (is_pressed(SDL_SCANCODE_A))
+      cam_pos += MOVE_SPEED * vec3(rotate(half_pi<float>(), vec3(0, 0, 1)) *
+                                   vec4(cam_dir.x, cam_dir.y, 0, 0));
   }
-  if (is_pressed(SDL_SCANCODE_A))
+  else
   {
-    camera_position +=
-        MOVE_SPEED * vec3(rotate(half_pi<float>(), vec3(0, 0, 1)) * heading);
+    if (left_button_down || right_button_down)
+    {
+
+      mat4 rx = rotate(mouse_angle.x, vec3(0, 0, 1));
+      mat4 ry = rotate(mouse_angle.y, vec3(0, 1, 0));
+
+      cam_rel = vec3(ry * rx * vec4(cam_rel.x, cam_rel.y, cam_rel.z, 0));
+
+      if (right_button_down)
+      {
+        player_dir = -cam_rel;
+      }
+    }
+
+    if (is_pressed(SDL_SCANCODE_W))
+      player_pos += MOVE_SPEED * vec3(player_dir.x, player_dir.y, 0.0f);
+    if (is_pressed(SDL_SCANCODE_S))
+      player_pos -= MOVE_SPEED * vec3(player_dir.x, player_dir.y, 0.0f);
+    if (is_pressed(SDL_SCANCODE_A))
+      player_pos += MOVE_SPEED * vec3(rotate(half_pi<float>(), vec3(0, 0, 1)) *
+                                      vec4(player_dir.x, player_dir.y, 0, 0));
+    if (is_pressed(SDL_SCANCODE_D))
+      player_pos += MOVE_SPEED * vec3(rotate(-half_pi<float>(), vec3(0, 0, 1)) *
+                                      vec4(player_dir.x, player_dir.y, 0, 0));
+
+    cam_pos = player_pos + cam_rel * cam_zoom;
+    cam_dir = -cam_rel;
   }
 }
 
@@ -254,11 +205,14 @@ void State::reset_mouse_delta()
 
 void State::update()
 {
-  for (auto &entity : entities)
-  {
-    entity.update(scene, entity, current_time);
-  }
+  Scene_Graph_Node *n = scene.get_node(player_mesh);
+  ASSERT(n);
+
+  n->position = player_pos;
+  n->scale = vec3(1.0f);
+  n->orientation = player_dir;
 }
+
 void State::render(float64 t)
 {
   check_gl_error();
