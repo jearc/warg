@@ -174,7 +174,8 @@ struct Render
   float32 get_render_scale()const { return render_scale; }
   float32 get_vfov() { return vfov; }
   void set_render_scale(float32 scale);
-  void set_camera(vec3 camera_position, vec3 camera_gaze);
+  void set_camera(vec3 camera_pos, vec3 dir);
+  void set_camera_gaze(vec3 camera_pos, vec3 p);
   void set_vfov(float32 vfov); // vertical field of view in degrees
   SDL_Window *window;
   void set_render_entities(std::vector<Render_Entity> entities);

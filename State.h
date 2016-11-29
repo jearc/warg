@@ -32,14 +32,15 @@ private:
   void prepare_renderer(double t);
   SDL_Window *window = nullptr;
   ivec2 mouse_position = ivec2(0, 0);
-
-  vec3 cam_rel = vec3(-1.0, 0.0, 1.0);
+  uint32 previous_mouse_state = 0;
+  float32 cam_theta = 0;
+  float32 cam_phi = half_pi<float32>()*0.5f;
   float32 cam_zoom = 4;
   vec3 cam_pos;
   vec3 cam_dir;
   bool cam_free = false;
 
   vec3 player_pos = vec3(0, 0, 0.5);
-  vec3 player_dir = vec3(1, 0, 0);
+  vec3 player_dir = vec3(0, 1, 0);
   Node_Ptr player_mesh = Node_Ptr(-1);
 };

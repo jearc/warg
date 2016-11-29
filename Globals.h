@@ -1,4 +1,5 @@
 #pragma once
+#define GLM_SWIZZLE
 #include "Timer.h"
 #include <fstream>
 #include <glm/glm.hpp>
@@ -22,6 +23,7 @@ extern const float32 dt;
 extern const float32 MOVE_SPEED;
 extern const float32 MOUSE_X_SENS;
 extern const float32 MOUSE_Y_SENS;
+extern const float32 ZOOM_STEP;
 extern uint32 LAST_RENDER_ENTITY_COUNT;
 extern const std::string BASE_TEXTURE_PATH;
 extern const std::string BASE_SHADER_PATH;

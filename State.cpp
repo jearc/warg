@@ -109,9 +109,9 @@ void State::handle_input()
     else if (_e.type == SDL_MOUSEWHEEL)
     {
       if (_e.wheel.y < 0)
-        cam_zoom += 0.1f;
+        cam_zoom += ZOOM_STEP;
       else if (_e.wheel.y > 0)
-        cam_zoom -= 0.1f;
+        cam_zoom -= ZOOM_STEP;
     }
     else if (_e.type == SDL_WINDOWEVENT)
     {
@@ -141,60 +141,124 @@ void State::handle_input()
   ivec2 mouse_delta;
   SDL_GetRelativeMouseState(&mouse_delta.x, &mouse_delta.y);
 
-  vec2 mouse_angle =
-      vec2(-mouse_delta.x * MOUSE_X_SENS, mouse_delta.y * MOUSE_Y_SENS);
-
   bool left_button_down = mouse_state & SDL_BUTTON(SDL_BUTTON_LEFT);
   bool right_button_down = mouse_state & SDL_BUTTON(SDL_BUTTON_RIGHT);
+  bool last_seen_lmb = previous_mouse_state & SDL_BUTTON(SDL_BUTTON_LEFT);
+  bool last_seen_rmb = previous_mouse_state & SDL_BUTTON(SDL_BUTTON_RIGHT);
 
   if (cam_free)
   {
-    mat4 rx = rotate(mouse_angle.x, vec3(0, 0, 1));
-    cam_dir = vec3(rx * vec4(cam_dir, 0));
-    mat4 ry = rotate(mouse_angle.y, vec3(-cam_dir.y, cam_dir.x, 0));
-    cam_dir = vec3(ry * rx * vec4(cam_dir, 0));
+    cam_theta += mouse_delta.x * MOUSE_X_SENS;
+    cam_phi += mouse_delta.y * MOUSE_Y_SENS;
+    // wrap x
+    if (cam_theta > two_pi<float32>())
+      cam_theta = cam_theta - two_pi<float32>();
+    if (cam_theta < 0)
+      cam_theta = two_pi<float32>() + cam_theta;
+    // clamp y
+    const float32 upper = half_pi<float32>() - 100 * epsilon<float32>();
+    if (cam_phi > upper)
+      cam_phi = upper;
+    const float32 lower = -half_pi<float32>() + 100 * epsilon<float32>();
+    if (cam_phi < lower)
+      cam_phi = lower;
+
+    mat4 rx = rotate(-cam_theta, vec3(0, 0, 1));
+    vec4 vr = rx * vec4(0, 1, 0, 0);
+    vec3 perp = vec3(-vr.y, vr.x, 0);
+    mat4 ry = rotate(cam_phi, perp);
+    cam_dir = normalize(vec3(ry * vr));
 
     if (is_pressed(SDL_SCANCODE_W))
       cam_pos += MOVE_SPEED * cam_dir;
     if (is_pressed(SDL_SCANCODE_S))
       cam_pos -= MOVE_SPEED * cam_dir;
     if (is_pressed(SDL_SCANCODE_D))
-      cam_pos += MOVE_SPEED * vec3(rotate(-half_pi<float>(), vec3(0, 0, 1)) *
-                                   vec4(cam_dir.x, cam_dir.y, 0, 0));
+    {
+      mat4 r = rotate(-half_pi<float>(), vec3(0, 0, 1));
+      vec4 v = vec4(vr.xy, 0, 0);
+      cam_pos += vec3(MOVE_SPEED * r * v);
+    }
     if (is_pressed(SDL_SCANCODE_A))
-      cam_pos += MOVE_SPEED * vec3(rotate(half_pi<float>(), vec3(0, 0, 1)) *
-                                   vec4(cam_dir.x, cam_dir.y, 0, 0));
+    {
+      mat4 r = rotate(half_pi<float>(), vec3(0, 0, 1));
+      vec4 v = vec4(vr.xy, 0, 0);
+      cam_pos += vec3(MOVE_SPEED * r * v);
+    }
   }
   else
-  {
-    if (left_button_down || right_button_down)
-    {
-
-      mat4 rx = rotate(mouse_angle.x, vec3(0, 0, 1));
-      mat4 ry = rotate(mouse_angle.y, vec3(0, 1, 0));
-
-      cam_rel = vec3(ry * rx * vec4(cam_rel.x, cam_rel.y, cam_rel.z, 0));
-
-      if (right_button_down)
-      {
-        player_dir = -cam_rel;
-      }
+  { // wow style camera
+    vec4 cam_rel;
+    if ((left_button_down || right_button_down) &&
+        (last_seen_lmb || last_seen_rmb))
+    { // won't track mouse delta that happened when mouse button was not pressed
+      cam_theta += mouse_delta.x * MOUSE_X_SENS;
+      cam_phi += mouse_delta.y * MOUSE_Y_SENS;
     }
+    // wrap x
+    if (cam_theta > two_pi<float32>())
+      cam_theta = cam_theta - two_pi<float32>();
+    if (cam_theta < 0)
+      cam_theta = two_pi<float32>() + cam_theta;
+    // clamp y
+    const float32 upper = half_pi<float32>() - 100 * epsilon<float32>();
+    if (cam_phi > upper)
+      cam_phi = upper;
+    const float32 lower = 100 * epsilon<float32>();
+    if (cam_phi < lower)
+      cam_phi = lower;
 
+    //+x right, +y forward, +z up
+
+    // construct a matrix that represents a rotation around the z axis by
+    // theta(x) radians
+    mat4 rx = rotate(-cam_theta, vec3(0, 0, 1));
+
+    //'default' position of camera is behind the character
+    // rotate that vector by our rx matrix
+    cam_rel = rx * normalize(vec4(0, -1, 0.0, 0));
+
+    // perp is the camera-relative 'x' axis that moves with the camera
+    // as the camera rotates around the character-centered y axis
+    // should always point towards the right of the screen
+    vec3 perp = vec3(-cam_rel.y, cam_rel.x, 0);
+
+    // construct a matrix that represents a rotation around perp by -phi
+    mat4 ry = rotate(-cam_phi, perp);
+
+    // rotate the camera vector around perp
+    cam_rel = normalize(ry * cam_rel);
+
+    if (right_button_down)
+    {
+      player_dir = normalize(-vec3(cam_rel.xy, 0));
+    }
     if (is_pressed(SDL_SCANCODE_W))
-      player_pos += MOVE_SPEED * vec3(player_dir.x, player_dir.y, 0.0f);
+    {
+      vec3 v = vec3(player_dir.xy, 0.0f);
+      player_pos += MOVE_SPEED * v;
+    }
     if (is_pressed(SDL_SCANCODE_S))
-      player_pos -= MOVE_SPEED * vec3(player_dir.x, player_dir.y, 0.0f);
+    {
+      vec3 v = vec3(player_dir.xy, 0.0f);
+      player_pos -= MOVE_SPEED * v;
+    }
     if (is_pressed(SDL_SCANCODE_A))
-      player_pos += MOVE_SPEED * vec3(rotate(half_pi<float>(), vec3(0, 0, 1)) *
-                                      vec4(player_dir.x, player_dir.y, 0, 0));
+    {
+      mat4 r = rotate(half_pi<float>(), vec3(0, 0, 1));
+      vec4 v = vec4(player_dir.xy, 0, 0);
+      player_pos += MOVE_SPEED * vec3(r * v);
+    }
     if (is_pressed(SDL_SCANCODE_D))
-      player_pos += MOVE_SPEED * vec3(rotate(-half_pi<float>(), vec3(0, 0, 1)) *
-                                      vec4(player_dir.x, player_dir.y, 0, 0));
-
-    cam_pos = player_pos + cam_rel * cam_zoom;
-    cam_dir = -cam_rel;
+    {
+      mat4 r = rotate(-half_pi<float>(), vec3(0, 0, 1));
+      vec4 v = vec4(player_dir.x, player_dir.y, 0, 0);
+      player_pos += MOVE_SPEED * vec3(r * v);
+    }
+    cam_pos = player_pos + (cam_rel.xyz * cam_zoom);
+    cam_dir = -vec3(cam_rel);
   }
+  previous_mouse_state = mouse_state;
 }
 
 void State::reset_mouse_delta()
@@ -205,12 +269,22 @@ void State::reset_mouse_delta()
 
 void State::update()
 {
-  Scene_Graph_Node *n = scene.get_node(player_mesh);
-  ASSERT(n);
+  // the idea was to actually use this all over in the code
+  // wherever you need to set these variables
+  // instead of storing it locally in the state as well
+  // for example: in the input handler, you could do
+  // scene.get_node(player)
+  // and then assign the position from there, directly
+  // same with orientation
+  // however non-render related things should not be added to the
+  // graph nodes, but rather keep the graph node as a component
+  // to an entity that needs to be rendered
+  Scene_Graph_Node *player = scene.get_node(player_mesh);
+  ASSERT(player);
 
-  n->position = player_pos;
-  n->scale = vec3(1.0f);
-  n->orientation = player_dir;
+  player->position = player_pos;
+  player->scale = vec3(1.0f);
+  player->orientation = vec3(0, 0, atan2(player_dir.y, player_dir.x));
 }
 
 void State::render(float64 t)
@@ -219,5 +293,3 @@ void State::render(float64 t)
   prepare_renderer(t);
   renderer.render(t);
 }
-
-Light *State::add_light() { return &scene.lights[scene.light_count++]; }

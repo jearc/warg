@@ -813,11 +813,11 @@ void Render::set_render_scale(float32 scale)
   time_of_last_scale_change = get_real_time();
 }
 
-void Render::set_camera(vec3 camera_position, vec3 camera_gaze_dir)
+void Render::set_camera(vec3 pos, vec3 camera_gaze_dir)
 {
-  vec3 camera_gaze_point = camera_position + camera_gaze_dir;
-  this->camera_position = camera_position;
-  camera = glm::lookAt(camera_position, camera_gaze_point, {0, 0, 1});
+  vec3 p = pos + camera_gaze_dir;
+  camera_position = pos;
+  camera = glm::lookAt(pos, p, {0, 0, 1});
 }
 
 void Render::set_vfov(float32 vfov)
