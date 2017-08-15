@@ -2,11 +2,13 @@
 #include <glm/glm.hpp>
 #include "Globals.h"
 #include "Mesh_Loader.h"
+#include "Render.h"
 #include <assimp/types.h>
 #include <assimp/Importer.hpp>
 #include <assimp/scene.h>
 #include <assimp/postprocess.h>
 #include <GL/glew.h>
+
 
 void add_quad(vec3 a, vec3 b, vec3 c, vec3 d,
 	Mesh_Data& mesh)
@@ -72,41 +74,42 @@ Mesh_Data load_mesh_cube()
 {
 	Mesh_Data cube;
   cube.name = "cube";
+  cube.unique_identifier = identifier_for_primitive(Mesh_Primitive::cube);
 	vec3 a, b, c, d;
 
 	//top
-	a = { -0.5,-0.5,0.5 };
-	b = { -0.5,0.5,0.5 };
-	c = { 0.5,0.5,0.5 };
-	d = { 0.5,-0.5,0.5 };
+	a = { -0.5, -0.5, 0.5 };
+	b = { -0.5, 0.5, 0.5 };
+	c = { 0.5, 0.5, 0.5 };
+	d = { 0.5, -0.5, 0.5 };
 	add_quad(a, b, c, d, cube);
 
 	//bottom
-	a = { -0.5,-0.5,-0.5 };
-	b = { 0.5,-0.5,-0.5 };
-	c = { 0.5,0.5,-0.5 };
-	d = { -0.5,0.5,-0.5 };
+	a = { -0.5, -0.5, -0.5 };
+	b = { 0.5, -0.5, -0.5 };
+	c = { 0.5, 0.5, -0.5 };
+	d = { -0.5, 0.5, -0.5 };
 	add_quad(a, b, c, d, cube);
 
 	//left
-	a = { -0.5,0.5,-0.5 };
-	b = { -0.5,0.5,0.5 };
-	c = { -0.5,-0.5,0.5 };
-	d = { -0.5,-0.5,-0.5 };
+	a = { -0.5, 0.5, -0.5 };
+	b = { -0.5, 0.5, 0.5 };
+	c = { -0.5, -0.5, 0.5 };
+	d = { -0.5, -0.5, -0.5 };
 	add_quad(a, b, c, d, cube);
 
 	//right
 	a = { 0.5, -0.5, -0.5 };
 	b = { 0.5, -0.5, 0.5 };
 	c = { 0.5, 0.5, 0.5 };
-	d = { 0.5,0.5,-0.5 };
+	d = { 0.5, 0.5, -0.5 };
 	add_quad(a, b, c, d, cube);
 
 	//front
 	a = { -0.5, -0.5, -0.5 };
 	b = { -0.5, -0.5, 0.5 };
 	c = { 0.5, -0.5, 0.5 };
-	d = { 0.5,-0.5,-0.5 };
+	d = { 0.5, -0.5, -0.5 };
 	add_quad(a, b, c, d, cube);
 
 	//back
@@ -123,6 +126,7 @@ Mesh_Data load_mesh_plane()
 {
 	Mesh_Data mesh;
   mesh.name = "plane";
+  mesh.unique_identifier = identifier_for_primitive(Mesh_Primitive::plane);
   mesh.positions =
 	{
 		{-0.5,-0.5,0}, {-0.5,0.5,0}, {0.5,0.5,0},
@@ -157,15 +161,31 @@ Mesh_Data load_mesh_plane()
 }
 
 
-Mesh_Data load_mesh(const char* path)
+Mesh_Data load_mesh(Mesh_Primitive p)
 {
-	if (!strcmp(path, "cube"))
+	if (p == cube)
 		return load_mesh_cube();
-	else if (!strcmp(path, "plane"))
+	else if (p == plane)
 		return load_mesh_plane();
 
   ASSERT(0);
 	return Mesh_Data();
+}
+
+std::string identifier_for_primitive(Mesh_Primitive p)
+{
+  if (p == plane)
+  {
+    return "generated plane";
+  }
+  else if (p == cube)
+  {
+    return "generated cube";
+  }
+  else
+  {
+    ASSERT(0);
+  }
 }
 
 void copy_mesh_data(std::vector<vec3>& dst, aiVector3D* src, uint32 length)
@@ -183,7 +203,7 @@ void copy_mesh_data(std::vector<vec2>& dst, aiVector3D* src, uint32 length)
 	  dst.push_back(vec2(src[i].x, src[i].y));
 }
 
-Mesh_Data load_mesh(const aiMesh* aimesh)
+Mesh_Data load_mesh(const aiMesh* aimesh, std::string unique_identifier)
 {
   ASSERT(aimesh);
   ASSERT(aimesh->HasNormals());
@@ -194,6 +214,8 @@ Mesh_Data load_mesh(const aiMesh* aimesh)
   ASSERT(aimesh->HasVertexColors(0) == false); //TODO: add support for this
   ASSERT(aimesh->mNumUVComponents[0] == 2); //TODO: add support for UVW cubemaps
   Mesh_Data data;
+  data.unique_identifier = unique_identifier;
+
   for (uint32 i = 0; i < aimesh->mName.length; ++i)
     data.name.push_back(aimesh->mName.data[i]);
 

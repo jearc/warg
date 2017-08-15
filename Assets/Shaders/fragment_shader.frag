@@ -31,6 +31,10 @@ in vec3 frag_world_position;
 in mat3 frag_TBN;
 in vec2 frag_uv;
 
+#define ALBEDO_TARGET gl_FragData[0]
+#define NORMAL_TARGET gl_FragData[1]
+#define POSITION_TARGET gl_FragData[2]
+
 const float PI = 3.14159265358979f;
 const float gamma = 2.2;
 
@@ -56,17 +60,29 @@ struct Material
 };
 
 void main()
-{
+  {
+  vec4 albedo_tex = texture2D(albedo, frag_uv).rgba;
+
+  if(albedo_tex.a < 0.3)
+  {
+    discard;
+  }
+
   Material m;
   m.specular = to_linear(texture2D(specular, frag_uv).rgb);
-  m.albedo = to_linear(texture2D(albedo, frag_uv).rgb) / PI;
+  m.albedo = to_linear(albedo_tex.rgb) / PI;
   m.emissive = to_linear(texture2D(emissive, frag_uv).rgb);
-  m.shininess = 1.0 + 44 * (1.0 - to_linear(texture2D(roughness, frag_uv).r));
+  m.shininess = 1.0 + 84 * (1.0 - to_linear(texture2D(roughness, frag_uv).r));
   vec3 n = texture2D(normal, frag_uv).rgb;
   if (n == vec3(0))
+{
     n = vec3(0, 0, 1);
+    m.normal = frag_TBN * n;
+}
+else
+{
   m.normal = frag_TBN * normalize((n * 2) - 1.0f);
-
+}
   vec3 debug = vec3(-1);
   vec3 result = vec3(0);
   for (int i = 0; i < number_of_lights; ++i)
@@ -93,23 +109,25 @@ void main()
       alpha = 0.0f;
       if (phi < theta)
       {
-        float edge_softness_distance = 0.3f;
+        float edge_softness_distance = 2.3f*theta;
         alpha = clamp((theta - phi) / edge_softness_distance, 0, 1);
       }
     }
     float ldotn = clamp(dot(l, m.normal), 0, 1);
     float ec = (8.0f * m.shininess) / (8.0f * PI);
     float specular = ec * pow(max(dot(h, m.normal), 0.0), m.shininess);
-    vec3 ambient = lights[i].ambient * m.albedo * att;
-
+    
+    vec3 ambient = vec3(lights[i].ambient * at * m.albedo);
     result += ldotn * specular * m.albedo * lights[i].color * at * alpha;
     result += ambient;
   }
   result += m.emissive;
-  result += vec3(0.25) * additional_ambient * m.albedo;
+  result += additional_ambient * m.albedo;
 
   if (debug != vec3(-1))
     result = debug;
 
-  gl_FragColor = vec4(to_srgb(result), 1);
+ //result = vec3(texture2D(roughness, frag_uv).r);
+
+  ALBEDO_TARGET = vec4(to_srgb(result), 1);
 }

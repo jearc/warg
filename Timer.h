@@ -6,7 +6,7 @@
 using namespace glm;
 struct Timer
 {
-  // samples is the number of start() -> stop() times to keep track of
+  // 'samples' is the number of start() -> stop() times to keep track of
   Timer(uint32 samples);
 
   // begin a new sample

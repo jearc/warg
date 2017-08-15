@@ -1,5 +1,6 @@
 #include "Scene_Graph.h"
 #include "Render.h"
+#include "Globals.h"
 #include <array>
 #include <assimp/Importer.hpp>
 #include <assimp/postprocess.h>
@@ -8,28 +9,11 @@
 #include <atomic>
 #include <thread>
 
-// TODO optimize: hashtable the path of each loaded mesh as the key, include
-// indices into the mesh/material vectors as the value, construct new meshes if
-// the value doesnt exist, skip construction and use the indices if they do
-// exist, and if you do the next optimization, destroy the key/value when you
-// free the mesh/material
-// TODO optimize: make these private, make a getter function that will count the
-// times each index is accessed per frame, if the render prepare function
-// completes without touching one of them, it has no references, and should be
-// safe to free
-// to free, you can mark the index as 'free', unload it (but dont delete the
-// mesh object from the pool vector - that invalidates the other indices as they
-// are shared), and re-use the index for the next mesh that is loaded
-
-// if multithreading make a get_const_ptr and get_ptr with different locks,
-// get_const_ptr needs to lock just for reallocation of vector its inside of,
-// get_ptr needs to lock that entire entity
 
 glm::mat4 copy(aiMatrix4x4 m)
 {
   // assimp is row-major
   // glm is column-major
-  const mat4 I(1);
   glm::mat4 result;
   for (uint32 i = 0; i < 4; ++i)
   {
@@ -40,218 +24,145 @@ glm::mat4 copy(aiMatrix4x4 m)
   }
   return result;
 }
-
-Scene_Graph_Node::Material_Assigned_Meshes::Material_Assigned_Meshes() {}
-Scene_Graph_Node::Material_Assigned_Meshes::Material_Assigned_Meshes(
-    aiNode *node, Scene_Graph *owner, const aiScene *scene)
+Scene_Graph_Node::Scene_Graph_Node(std::string name, 
+                                   Node_Ptr parent, const mat4 *basis)
+    : parent(parent), name(name)
 {
+  if (basis)
+    import_basis = *basis;
 }
-
-// number of meshes in this array
-uint32 Scene_Graph_Node::Material_Assigned_Meshes::count() const
-{
-  return indices.size();
-}
-void Scene_Graph_Node::Material_Assigned_Meshes::get(Scene_Graph *graph,
-                                                     uint32 index, Mesh **mesh,
-                                                     Material **material) const
-{
-  ASSERT(index < indices.size());
-  ASSERT(index >= 0);
-  ASSERT(mesh);
-  ASSERT(material);
-  const std::pair<Mesh_Ptr, Material_Ptr> model = indices[index];
-  *mesh = graph->get_mesh(model.first);
-  *material = graph->get_material(model.second);
-}
-void Scene_Graph_Node::Material_Assigned_Meshes::push_mesh(
-    Mesh_Ptr mesh_index, Material_Ptr material_index)
-{
-  indices.push_back({mesh_index, material_index});
-}
-Scene_Graph_Node::Scene_Graph_Node(std::string name, Scene_Graph *owner,
-                                   Node_Ptr parent, const mat4 *import_basis)
-    : owner(owner), parent(parent), name(name)
-{
-  if (import_basis)
-    this->import_basis = *import_basis;
-}
-Scene_Graph_Node::Scene_Graph_Node(const aiNode *node, const Scene_Graph *owner,
+Scene_Graph_Node::Scene_Graph_Node(std::string name, const aiNode *node, const 
                                    Node_Ptr parent, const mat4 *import_basis_,
-                                   const aiScene *scene,
-                                   Base_Indices base_indices)
-    : owner(owner), parent(parent)
+                                   const aiScene *scene,std::string scene_file_path, Uint32* mesh_num, Material_Descriptor* material_override) :  parent(parent)
 {
   ASSERT(node);
   ASSERT(scene);
-  ASSERT(owner);
-
-  name = copy(node->mName);
-
+  this->name = name;
   basis = copy(node->mTransformation);
-
   if (import_basis_)
     import_basis = *import_basis_;
+  size_t slice = scene_file_path.find_last_of("/\\");
+  std::string dir = scene_file_path.substr(0, slice) + '/';
 
   for (uint32 i = 0; i < node->mNumMeshes; ++i)
   {
-    // create the pointer to where this mesh should be in our mesh pool
-    uint32 ai_index = node->mMeshes[i];
-    const Mesh_Ptr mesh_ptr =
-        Mesh_Ptr(ai_index + base_indices.index_to_first_mesh);
-    const aiMesh *mesh = scene->mMeshes[ai_index];
-    ASSERT(mesh);
-    const Material_Ptr material_ptr = Material_Ptr(
-        mesh->mMaterialIndex + base_indices.index_to_first_material);
-
-    ASSERT(owner->mesh_exists(mesh_ptr));
-    ASSERT(owner->material_exists(material_ptr));
-
-    meshes.push_mesh(mesh_ptr, material_ptr);
+    auto ai_i = node->mMeshes[i];
+    const aiMesh *aimesh = scene->mMeshes[ai_i];
+    (*mesh_num) += 1;
+    std::string unique_id = scene_file_path + std::to_string(*mesh_num);
+    Mesh mesh(aimesh, unique_id);
+    aiMaterial *ptr = scene->mMaterials[aimesh->mMaterialIndex];
+    Material material(ptr, dir, material_override);
+    model.push_back({ mesh,material });
   }
   children.reserve(node->mNumChildren);
 }
-const std::vector<Node_Ptr> *Scene_Graph_Node::peek_children() const
-{
-  return &children;
-}
-std::vector<Node_Ptr> *Scene_Graph_Node::get_children() { return &children; }
-void Scene_Graph_Node::push_child(Node_Ptr ptr) { children.push_back(ptr); }
 
 Scene_Graph::Scene_Graph() : root(0)
 {
-  Scene_Graph_Node root(std::string("SCENE_GRAPH_ROOT"), this, Node_Ptr(0),
+  Scene_Graph_Node root(std::string("SCENE_GRAPH_ROOT"), Node_Ptr(0),
                         nullptr);
+  
   nodes.reserve(1000);
-  meshes.reserve(1000);
-  materials.reserve(1000);
   nodes.push_back(root);
-  nodes.back().get_children()->reserve(1000);
+  nodes.back().children.reserve(1000);
 }
 void Scene_Graph::add_graph_node(const aiNode *node, Node_Ptr parent,
                                  const mat4 *import_basis,
-                                 const aiScene *aiscene,
-                                 Base_Indices base_indices)
+                                 const aiScene *aiscene,std::string scene_file_path,Uint32* mesh_num, Material_Descriptor* material_override)
 {
   ASSERT(node_exists(parent));
+  ASSERT(node);
+  ASSERT(aiscene);
+  std::string name = copy(&node->mName);
   // construct just this node in the main node array
-  Scene_Graph_Node node_obj(node, this, parent, import_basis, aiscene,
-                            base_indices);
+  Scene_Graph_Node node_obj(name, node,  parent, import_basis, aiscene, scene_file_path, mesh_num, material_override);
   nodes.push_back(node_obj);
 
   // give the parent node the pointer to that entity
   const Node_Ptr new_node_ptr = Node_Ptr(nodes.size() - 1);
+  ASSERT(node_exists(parent));
   Scene_Graph_Node *this_nodes_parent = get_node(parent);
-  this_nodes_parent->push_child(new_node_ptr);
+  this_nodes_parent->children.push_back(new_node_ptr);
 
   // construct all the new node's children, because its constructor doesn't
   for (uint32 i = 0; i < node->mNumChildren; ++i)
   {
     const aiNode *child = node->mChildren[i];
-    add_graph_node(child, new_node_ptr, import_basis, aiscene, base_indices);
+    add_graph_node(child, new_node_ptr, import_basis, aiscene, scene_file_path, mesh_num, material_override);
   }
 }
-const aiScene *Scene_Graph::load_aiscene(std::string final_path,
-                                         Assimp::Importer *importer) const
-{
-  ASSERT(importer);
-  auto flags = aiProcess_FlipWindingOrder | aiProcess_Triangulate |
-               aiProcess_FlipUVs | aiProcess_CalcTangentSpace |
-               // aiProcess_MakeLeftHanded|
-               aiProcess_PreTransformVertices | aiProcess_GenUVCoords |
-               // aiProcess_OptimizeGraph|
-               // aiProcess_ImproveCacheLocality|
-               //  aiProcess_OptimizeMeshes|
-               0;
 
-  const aiScene *aiscene = importer->ReadFile(final_path.c_str(), flags);
-  if (!aiscene || aiscene->mFlags == AI_SCENE_FLAGS_INCOMPLETE ||
-      !aiscene->mRootNode)
+void Scene_Graph::set_parent(Node_Ptr p, Node_Ptr desired_parent)
+{
+  Scene_Graph_Node* ptr = this->get_node(p);
+  Scene_Graph_Node* dptr = this->get_node(desired_parent);
+
+  Scene_Graph_Node* current_parent = this->get_node(ptr->parent);
+
+  for (auto i = current_parent->children.begin(); i != current_parent->children.end(); ++i)
   {
-    std::cout << "ERROR::ASSIMP::" << importer->GetErrorString() << std::endl;
-    ASSERT(0);
+    if (i->i == p.i)
+    {
+      current_parent->children.erase(i);
+      break;
+    }
   }
-  return aiscene;
+  dptr->children.push_back(p);
 }
 
-// import_basis intended to only be used as an initial
-// transform from the aiscene's world basis to our world basis
-Node_Ptr Scene_Graph::add_aiscene(std::string path, const mat4 *import_basis,
-                                  Node_Ptr parent, std::string vertex_shader,
-                                  std::string fragment_shader)
-{
-  path = BASE_MODEL_PATH + path;
-  const aiScene *scene;
-  auto cache_entry = &assimp_cache[path];
-  if (!cache_entry->scene)
-  {
-    cache_entry->path = path;
-    cache_entry->scene = load_aiscene(path, &cache_entry->importer);
-  }
-  scene = cache_entry->scene;
-  // a duplicate scene added needs to be able to point to the first scene's
-  // mesh and material(if shaders are the same) entries in the pool
-  // in order for them to be recognized and packed for instancing
 
-  // map string(path+vert+frag) -> base_indices and skip mesh/mat copy
-  Base_Indices base_indices;
-  base_indices.index_to_first_mesh = meshes.size();
-  base_indices.index_to_first_material = materials.size();
-  std::string key_value = path + vertex_shader + fragment_shader;
-  Base_Indices *entry = &shaded_object_cache[key_value];
-  if (entry->index_to_first_mesh != -1)
-  { // entry was already present, use these indices
-    base_indices = *entry;
-  }
-  else
-  { // entry missing, add mesh data and assign base indices
-    *entry = base_indices;
-    for (uint32 i = 0; i < scene->mNumMeshes; ++i)
-    {
-      meshes.emplace_back(scene->mMeshes[i]);
-    }
-    for (uint32 i = 0; i < scene->mNumMaterials; ++i)
-    {
-      aiMaterial *ptr = scene->mMaterials[i];
-      size_t slice = path.find_last_of("/\\");
-      std::string dir = path.substr(0, slice);
-      dir += "/";
-      Material m(ptr, dir, vertex_shader, fragment_shader);
-      materials.push_back(m);
-    }
-  }
-  // create a node that will hold all the root node's children
-  Scene_Graph_Node root_for_new_scene(std::string("ROOT FOR: ") + path, this,
-                                      parent, import_basis);
+Node_Ptr Scene_Graph::add_aiscene(std::string scene_file_path, const mat4 *import_basis,
+  Node_Ptr parent, Material_Descriptor* material_override)
+{
+  return add_aiscene(load_aiscene(scene_file_path), scene_file_path, import_basis, parent, material_override);
+}
+
+Node_Ptr Scene_Graph::add_aiscene(std::string scene_file_path, Material_Descriptor* material_override)
+{
+  return add_aiscene(load_aiscene(scene_file_path), scene_file_path, nullptr, Node_Ptr(0), material_override);
+}
+
+
+Node_Ptr Scene_Graph::add_aiscene(const aiScene* scene, std::string scene_file_path, const mat4 *import_basis,
+                                  Node_Ptr parent, Material_Descriptor* material_override)
+{
+  //accumulates as meshes are imported, used along with the scene file path
+  //to create a unique_id for the mesh
+  Uint32 mesh_num = 0;
+  const aiNode *root = scene->mRootNode; 
+
+
+  // create the root node for this scene
+  std::string name = std::string("ROOT FOR: ") + scene_file_path + " " + copy(&root->mName);
+  scene_file_path = BASE_MODEL_PATH + scene_file_path;
+  Scene_Graph_Node root_for_new_scene(name,root,parent,import_basis,scene, scene_file_path, &mesh_num, material_override);
 
   // push root node to scene graph and parent
-  // root for new_scene_ptr will contain all of this aiscene's children
   nodes.push_back(root_for_new_scene);
   Node_Ptr root_for_new_scene_ptr = Node_Ptr(nodes.size() - 1);
   Scene_Graph_Node *parent_ptr = get_node(parent);
-  parent_ptr->push_child(root_for_new_scene_ptr);
+  parent_ptr->children.push_back(root_for_new_scene_ptr);
 
   // add every aiscene child to the new node
   const uint32 num_children = scene->mRootNode->mNumChildren;
-  parent_ptr->get_children()->reserve(num_children);
+  nodes.back().children.reserve(num_children);
   for (uint32 i = 0; i < num_children; ++i)
   {
     const aiNode *node = scene->mRootNode->mChildren[i];
-    add_graph_node(node, root_for_new_scene_ptr, import_basis, scene,
-                   base_indices);
+    add_graph_node(node, root_for_new_scene_ptr, import_basis, scene, scene_file_path, &mesh_num, material_override);
   }
   return root_for_new_scene_ptr;
 }
 void Scene_Graph::visit_nodes(const Node_Ptr node_ptr, const mat4 &M,
                               std::vector<Render_Entity> &accumulator)
 {
-  const Scene_Graph_Node *const entity = get_const_node(node_ptr);
+  Scene_Graph_Node *const entity = get_node(node_ptr);
   ASSERT(entity);
 
-  const vec3 o = entity->orientation;
   const mat4 T = translate(entity->position);
   const mat4 S = scale(entity->scale);
-  const mat4 R = eulerAngleYXZ(o.y, o.x, o.z);
+  const mat4 R = toMat4(entity->orientation);
   const mat4 B = entity->basis;
   const mat4 STACK = M * B * T * S * R;
   const mat4 I = entity->import_basis;
@@ -259,65 +170,61 @@ void Scene_Graph::visit_nodes(const Node_Ptr node_ptr, const mat4 &M,
 
   // TODO optimize: only set lights that will have a noticable effect
   Light_Array affected_lights;
-  affected_lights.lights = lights;
-  affected_lights.count = light_count;
+  affected_lights = lights;
+  affected_lights.light_count = lights.light_count;
 
   // Construct render entities from all meshes in this model:
-  const uint32 num_meshes = entity->meshes.count();
+  const uint32 num_meshes = entity->model.size();
   for (uint32 i = 0; i < num_meshes; ++i)
   {
-    Mesh *mesh_ptr;
-    Material *material_ptr;
-    entity->meshes.get(this, i, &mesh_ptr, &material_ptr);
+    Mesh *mesh_ptr = &entity->model[i].first;
+    Material *material_ptr = &entity->model[i].second;
 
     // TODO optimize: this is copying all mesh data, because it is kept in the
     // mesh object
     accumulator.emplace_back(mesh_ptr, material_ptr, affected_lights, FINAL);
   }
-  const std::vector<Node_Ptr> *children = entity->peek_children();
-  for (uint32 i = 0; i < children->size(); ++i)
+  const uint32 size = entity->children.size();
+  for (uint32 i = 0; i < size; ++i)
   {
-    Node_Ptr child = (*entity->peek_children())[i];
+    Node_Ptr child = entity->children[i];
     visit_nodes(child, STACK, accumulator);
   }
 }
 void Scene_Graph::visit_nodes_locked_accumulator(
-    const Node_Ptr node_ptr, const mat4 &M,
+    Node_Ptr node_ptr, const mat4 &M,
     std::vector<Render_Entity> *accumulator, std::atomic_flag *lock)
 {
-  const Scene_Graph_Node *const entity = get_const_node(node_ptr);
+  Scene_Graph_Node *const entity = get_node(node_ptr);
 
-  const vec3 o = entity->orientation;
   const mat4 T = translate(entity->position);
   const mat4 S = scale(entity->scale);
-  const mat4 R = eulerAngleYXZ(o.y, o.x, o.z);
+  const mat4 R = toMat4(entity->orientation);
   const mat4 B = entity->basis;
   const mat4 STACK = M * B * T * S * R;
   const mat4 I = entity->import_basis;
   const mat4 FINAL = STACK * I;
 
+  // TODO optimize: only set lights that will have a noticable effect
   Light_Array affected_lights;
-  affected_lights.lights = lights;
-  affected_lights.count = light_count;
+  affected_lights = lights;
+  affected_lights.light_count = lights.light_count;
 
-  const int num_meshes = entity->meshes.count();
+  const int num_meshes = entity->model.size();
   for (int i = 0; i < num_meshes; ++i)
   {
-    Mesh *mesh_ptr;
-    Material *material_ptr;
-    entity->meshes.get(this, i, &mesh_ptr, &material_ptr);
-
+    Mesh *mesh_ptr = &entity->model[i].first;
+    Material *material_ptr = &entity->model[i].second;
     while (lock->test_and_set())
     { /*spin*/
     }
     accumulator->emplace_back(mesh_ptr, material_ptr, affected_lights, FINAL);
     lock->clear();
   }
-  const std::vector<Node_Ptr> *children = entity->peek_children();
-  const uint32 size = children->size();
+  const uint32 size = entity->children.size();
   for (uint32 i = 0; i < size; ++i)
   {
-    Node_Ptr child = (*entity->peek_children())[i];
+    Node_Ptr child = entity->children[i];
     visit_nodes_locked_accumulator(child, STACK, accumulator, lock);
   }
 }
@@ -326,18 +233,15 @@ void Scene_Graph::visit_root_node_base_index(
     uint32 node_index, uint32 count, std::vector<Render_Entity> *accumulator,
     std::atomic_flag *lock)
 {
-  const Scene_Graph_Node *const entity = get_const_node(Node_Ptr(0));
+  const Scene_Graph_Node *const entity = get_node(Node_Ptr(0));
   ASSERT(entity->name == "SCENE_GRAPH_ROOT");
   ASSERT(entity->position == vec3(0));
-  ASSERT(entity->orientation == vec3(0));
+  ASSERT(entity->orientation == quat());
   ASSERT(entity->import_basis == mat4(1));
-
-  const std::vector<Node_Ptr> *children = entity->peek_children();
-  const uint32 size = children->size();
+  
   for (uint32 i = node_index; i < node_index + count; ++i)
   {
-    const std::vector<Node_Ptr> *v = entity->peek_children();
-    Node_Ptr child = (*v)[i];
+    Node_Ptr child = entity->children[i];
     visit_nodes_locked_accumulator(child, mat4(1), accumulator, lock);
   }
 }
@@ -346,20 +250,17 @@ void Scene_Graph::visit_root_node_base_index_alt(
     uint32 node_index, uint32 count, std::vector<Render_Entity> *accumulator,
     std::atomic_flag *lock)
 {
-  const Scene_Graph_Node *const entity = get_const_node(Node_Ptr(0));
+  Scene_Graph_Node *const entity = get_node(Node_Ptr(0));
   ASSERT(entity->name == "SCENE_GRAPH_ROOT");
   ASSERT(entity->position == vec3(0));
-  ASSERT(entity->orientation == vec3(0));
+  ASSERT(entity->orientation == quat(0, 0, 0, 1));
   ASSERT(entity->import_basis == mat4(1));
 
-  const std::vector<Node_Ptr> *children = entity->peek_children();
-  const uint32 size = children->size();
   std::vector<Render_Entity> my_accumulator;
   my_accumulator.reserve(count * 1000);
   for (uint32 i = node_index; i < node_index + count; ++i)
   {
-    const std::vector<Node_Ptr> *v = entity->peek_children();
-    Node_Ptr child = (*v).at(i);
+    Node_Ptr child = entity->children[i];
     visit_nodes(child, mat4(1), my_accumulator);
   }
   while (lock->test_and_set())
@@ -373,10 +274,9 @@ std::vector<Render_Entity> Scene_Graph::visit_nodes_async_start()
 {
   std::vector<Render_Entity> accumulator;
   accumulator.reserve(uint32(last_accumulator_size * 1.5));
-  const Scene_Graph_Node *rootnode = get_const_node(Node_Ptr(0));
-  const auto children = rootnode->peek_children();
+  const Scene_Graph_Node *rootnode = get_node(Node_Ptr(0));
 
-  const uint32 root_children_count = children->size();
+  const uint32 root_children_count = rootnode->children.size();
   const uint32 thread_count = 4;
   const uint32 nodes_per_thread = root_children_count / thread_count;
   const uint32 leftover_nodes = root_children_count % thread_count;
@@ -423,58 +323,24 @@ Scene_Graph_Node *Scene_Graph::get_node(Node_Ptr ptr)
   ASSERT(node_exists(ptr));
   return &nodes[ptr.i];
 }
-const Scene_Graph_Node *Scene_Graph::get_const_node(Node_Ptr ptr) const
-{
-  ASSERT(node_exists(ptr));
-  return &nodes[ptr.i];
-}
-// note: these raw pointers are INVALID after any call to any function
-// that adds scene_graph_nodes
-Mesh *Scene_Graph::get_mesh(Mesh_Ptr ptr)
-{
-  ASSERT(mesh_exists(ptr));
-  return &meshes[ptr.i];
-}
-// note: these raw pointers are INVALID after any call to any function
-// that adds scene_graph_nodes
-Material *Scene_Graph::get_material(Material_Ptr ptr)
-{
-  ASSERT(material_exists(ptr));
-  return &materials[ptr.i];
-}
 bool Scene_Graph::node_exists(Node_Ptr ptr) const
 {
   ASSERT(ptr.i < nodes.size());
-  ASSERT(nodes[ptr.i].owner == this);
   return ptr.i < nodes.size();
 }
-bool Scene_Graph::mesh_exists(Mesh_Ptr ptr) const
-{
-  ASSERT(ptr.i < meshes.size());
-  ASSERT(ptr.i < INT32_MAX);
-  return ptr.i < meshes.size();
-}
-bool Scene_Graph::material_exists(Material_Ptr ptr) const
-{
-  ASSERT(ptr.i < materials.size());
-  ASSERT(ptr.i < INT32_MAX);
-  return ptr.i < materials.size();
-}
-int32 Scene_Graph::node_count() const { return nodes.size(); }
+uint32 Scene_Graph::node_count() const { return nodes.size(); }
 
-Node_Ptr Scene_Graph::add_single_mesh(const char *path, std::string name,
+Node_Ptr Scene_Graph::add_primitive_mesh(Mesh_Primitive p, std::string name,
                                       Material_Descriptor m, Node_Ptr parent,
                                       const mat4 *import_basis)
 {
-  // load the meshes and materials for this node
-  meshes.emplace_back(load_mesh(path), name);
-  materials.emplace_back(m);
-  Mesh_Ptr mesh_index = Mesh_Ptr(meshes.size() - 1);
-  Material_Ptr material_index = Material_Ptr(materials.size() - 1);
+  // create the meshes and materials for this node
+  Mesh mesh(p, name);
+  Material material(m);
 
   // create the node itself
-  Scene_Graph_Node new_node(name, this, parent, import_basis);
-  new_node.meshes.push_mesh(mesh_index, material_index);
+  Scene_Graph_Node new_node(name, parent, import_basis);
+  new_node.model.push_back({ mesh, material });
 
   // push the new node onto this graph
   // construct a ptr to it
@@ -486,7 +352,7 @@ Node_Ptr Scene_Graph::add_single_mesh(const char *path, std::string name,
   Scene_Graph_Node *parent_ptr = get_node(parent);
 
   // push the new node's pointer onto the parent node
-  parent_ptr->push_child(node_ptr);
+  parent_ptr->children.push_back(node_ptr);
 
   return node_ptr;
 }

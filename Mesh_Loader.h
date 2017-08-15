@@ -15,13 +15,20 @@ struct Mesh_Data
   std::vector<vec3> bitangents;
   std::vector<uint32> indices;
   std::string name;
-};
 
+  //two mesh data structs with the same unique_ID are assumed
+  //to contain the same exact data above
+  std::string unique_identifier = "NULL";
+};
+enum Mesh_Primitive
+{
+  plane,
+  cube
+};
 // expects clockwise abcd vertices for front-facing side
 void add_quad(vec3 a, vec3 b, vec3 c, vec3 d, Mesh_Data &mesh);
-Mesh_Data load_mesh_cube();
-Mesh_Data load_mesh_plane();
-Mesh_Data load_mesh(const char *path);
+Mesh_Data load_mesh(Mesh_Primitive p);
+std::string identifier_for_primitive(Mesh_Primitive p);
 void copy_mesh_data(std::vector<vec3> &dst, aiVector3D *src, uint32 length);
 void copy_mesh_data(std::vector<vec2> &dst, aiVector3D *src, uint32 length);
-Mesh_Data load_mesh(const aiMesh *aimesh);
+Mesh_Data load_mesh(const aiMesh *aimesh, std::string unique_identifier);

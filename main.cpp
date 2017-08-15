@@ -10,35 +10,7 @@
 #include <stdlib.h>
 #include <sstream>
 
-static void performance_output(const State &state)
-{
-  std::stringstream s;
-  static float64 last_output = 0;
-  static uint64 frames_at_last_tick = 0;
-  const float64 report_delay = 1.0;
-  const uint64 frame_count = state.renderer.frame_count;
-  const uint64 frames_since_last_tick = frame_count - frames_at_last_tick;
-  const float64 current_time = state.current_time;
 
-  if (last_output + report_delay < state.current_time)
-  {
-#ifdef __linux__
-    system("clear");
-#elif _WIN32
-    system("cls");
-#endif
-    frames_at_last_tick = frame_count;
-    last_output = current_time;
-    Uint64 current_frame_rate = (1.0 / report_delay) * frames_since_last_tick;
-    s << PERF_TIMER.string_report();
-    s << "FPS: " << current_frame_rate << "\n";
-    s << "Total FPS:" << (float64)frame_count / current_time;
-    s << "\nRender Scale: " << state.renderer.get_render_scale();
-    s << "\nDraw calls: " << state.renderer.render_instances.size();
-    set_message("Performance output: ",s.str(),report_delay/2);
-    std::cout << get_messages() << std::endl;
-  }
-}
 
 int main(int argc, char *argv[])
 {
@@ -91,7 +63,7 @@ int main(int argc, char *argv[])
   {
     swap = SDL_GL_SetSwapInterval(1);
   }
-
+  
   glewExperimental = GL_TRUE;
   GLenum err = glewInit();
   glClearColor(0, 0, 0, 1);
@@ -107,27 +79,52 @@ int main(int argc, char *argv[])
   SDL_ClearError();
   float64 last_time = 0.0;
   float64 elapsed_time = 0.0;
-  State state(window, window_size);
-  while (state.running)
-  {
-    float64 time = get_real_time();
-    elapsed_time = time - state.current_time;
+  INIT_RENDERER();
 
+  std::vector<State*> states;
+  Game_State game_state("Game State", window, window_size);
+  states.push_back((State*)&game_state);
+  Render_Test_State render_test_state("Render Test State", window, window_size);
+  states.push_back((State*)&render_test_state);
+  State* current_state = &*states[0];
+  while (current_state->running)
+  {
+
+    const float64 real_time = get_real_time();
+    if (current_state->paused)
+    {
+      float64 past_accum = current_state->paused_time_accumulator;
+      float64 real_time_of_last_update = current_state->current_time + past_accum;
+      float64 real_time_since_last_update = real_time - real_time_of_last_update;
+      current_state->paused_time_accumulator += real_time_since_last_update;
+      current_state->paused = false;
+      continue;
+    }
+    const float64 time = real_time - current_state->paused_time_accumulator;
+    elapsed_time = time - current_state->current_time;
+    set_message("time", std::to_string(time), 1);
     if (elapsed_time > 0.3)
       elapsed_time = 0.3;
-    last_time = state.current_time;
+    last_time = current_state->current_time;
 
-    while (state.current_time + dt < last_time + elapsed_time)
+    while (current_state->current_time + dt < last_time + elapsed_time)
     {
-      state.current_time += dt;
-      state.handle_input();
-      state.update();
+      State* s = current_state;
+      s->current_time += dt;
+      current_state->handle_input(&current_state, states);
+      s->update();
+      if (s != current_state)
+      {
+        s->paused = true;
+        current_state->renderer.set_render_scale(1);
+        break;
+      }
     }
-    state.render(state.current_time);
-    performance_output(state);
-    // SDL_Delay();
+    current_state->render(current_state->current_time);
+    current_state->performance_output();
   }
   push_log_to_disk();
+  CLEANUP_RENDERER();
   SDL_Quit();
   return 0;
 }

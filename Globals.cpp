@@ -12,17 +12,59 @@ const float32 MOVE_SPEED = 2.0f * dt;
 const float32 MOUSE_X_SENS = .0041f;
 const float32 MOUSE_Y_SENS = .0041f;
 const float32 ZOOM_STEP = 0.2f;
+const float32 ATK_RANGE = 5.0f;
 #ifdef __linux__
 #define ROOT_PATH std::string("../")
 #elif _WIN32
 #define ROOT_PATH std::string("../")
 #endif
-const std::string BASE_TEXTURE_PATH =
-    ROOT_PATH + std::string("Assets/Textures/");
-const std::string BASE_SHADER_PATH = ROOT_PATH + std::string("Assets/Shaders/");
-const std::string BASE_MODEL_PATH = ROOT_PATH + std::string("Assets/Models/");
+const std::string BASE_ASSET_PATH = ROOT_PATH + "Assets/";
+const std::string BASE_TEXTURE_PATH = BASE_ASSET_PATH + std::string("Textures/");
+const std::string BASE_SHADER_PATH = BASE_ASSET_PATH + std::string("Shaders/");
+const std::string BASE_MODEL_PATH = BASE_ASSET_PATH + std::string("Models/");
 const std::string ERROR_TEXTURE_PATH = BASE_TEXTURE_PATH + "err.png";
 Timer PERF_TIMER = Timer(1000);
+float32 wrap_to_range(const float32 input, const float32 min, const float32 max)
+{
+  const float32 range = max - min;
+  const float32 offset = input - min;
+  return (offset - (floor(offset / range) * range)) + min;
+}
+
+static Assimp::Importer importer;
+
+const int default_assimp_flags = aiProcess_FlipWindingOrder |
+aiProcess_Triangulate |
+aiProcess_FlipUVs |
+aiProcess_CalcTangentSpace |
+// aiProcess_MakeLeftHanded|
+//aiProcess_JoinIdenticalVertices |
+//aiProcess_PreTransformVertices |
+aiProcess_GenUVCoords |
+// aiProcess_OptimizeGraph|
+// aiProcess_ImproveCacheLocality|
+ // aiProcess_OptimizeMeshes|
+//aiProcess_GenNormals|
+//aiProcess_GenSmoothNormals|
+//aiProcess_FixInfacingNormals |
+0;
+
+const aiScene* load_aiscene(std::string path, const int* assimp_flags)
+{
+  if (!assimp_flags)
+    assimp_flags = &default_assimp_flags;
+  path = BASE_MODEL_PATH + path;
+    int flags = *assimp_flags;
+    auto p = importer.ReadFile(path.c_str(), flags);
+    if (!p || p->mFlags == AI_SCENE_FLAGS_INCOMPLETE ||
+      !p->mRootNode)
+    {
+      set_message("ERROR::ASSIMP::", importer.GetErrorString());
+      ASSERT(0);
+    }
+  return p;
+}
+
 
 bool all_equal(int32 a, int32 b, int32 c) { return (a == b) && (a == c); }
 bool all_equal(int32 a, int32 b, int32 c, int32 d)
@@ -85,25 +127,82 @@ std::string copy(aiString str)
   result = str.C_Str();
   return result;
 }
-
-std::string read_file(const char *filePath)
+std::string copy(const aiString* str)
 {
-  std::string content;
-  std::ifstream fileStream(filePath, std::ios::in);
-  if (!fileStream.is_open())
+  ASSERT(str);
+  std::string result;
+  result.resize(str->length);
+  result = str->C_Str();
+  return result;
+}
+
+std::string read_file(const char *path)
+{
+  std::string result;
+  std::ifstream f(path, std::ios::in);
+  if (!f.is_open())
   {
-    std::cerr << "Could not read file " << filePath << ". File does not exist."
+    std::cerr << "Could not read file " << path << ". File does not exist."
               << std::endl;
     return "";
   }
   std::string line = "";
-  while (!fileStream.eof())
+  while (!f.eof())
   {
-    std::getline(fileStream, line);
-    content.append(line + "\n");
+    std::getline(f, line);
+    result.append(line + "\n");
   }
-  fileStream.close();
-  return content;
+  f.close();
+  return result;
+}
+
+Uint32 string_to_color(std::string color)
+{
+  //color(n,n,n,n)
+  std::string a = color.substr(6);
+  //n,n,n,n)
+  a.pop_back();
+  //n,n,n,n
+
+  std::string c;
+  ivec4 r(0);
+
+  int i = 0;
+  auto it = a.begin();
+  while (true)
+  {
+    if (it == a.end() || *it == ',')
+    {
+      ASSERT(i < 4);
+      r[i] = std::stoi(c);
+      if (it == a.end())
+      {
+        break;
+      }
+      c.clear();
+      ++i;
+      ++it;
+      continue;
+    }
+    c.push_back(*it);
+    ++it;
+  }
+  Uint32 result = (r.r << 24) + (r.g << 16) + (r.b << 8) + r.a;
+  return result;
+}
+
+Uint64 hash(float* data, uint32 size)
+{
+  Uint64 h = 1631243561234777777;
+  Uint64 acc = 0;
+  for (int i = 0; i < size; ++i)
+  {
+    float c = data[i];
+    Uint64 a = (Uint64)c;
+    acc += a;
+    h = (h ^ a) * a * i; //idk what im doing
+  }
+  return h + acc;
 }
 
 void _check_gl_error(const char *file, uint32 line)
@@ -132,10 +231,10 @@ void _check_gl_error(const char *file, uint32 line)
         error = "INVALID_FRAMEBUFFER_OPERATION";
         break;
     }
-    std::cerr << "GL_" << error.c_str() << " - " << file << ":" << line
-              << std::endl;
-    err = glGetError();
-    ASSERT(0);
+    set_message("GL ERROR", "GL_" + error + " - " + file + ":" + std::to_string(line) + "\n",1.0);
+    std::cout << get_messages();
+    push_log_to_disk();
+    throw;
   }
 }
 void checkSDLError(int32 line)
@@ -168,19 +267,33 @@ float64 get_real_time()
 }
 static struct Message
 {
+  std::string identifier;
   std::string message;
   float64 time_of_expiry;
 };
-static std::unordered_map<std::string, Message> messages;
+static std::vector<Message> messages;
 static std::string message_log = "";
 void set_message(std::string identifier, std::string message,
                  float64 msg_duration)
 {
   const float64 time = get_real_time();
-  Message m;
-  m.message = message;
-  m.time_of_expiry = time + msg_duration;
-  messages[identifier] = m;
+  bool found = false;
+  for (auto& msg : messages)
+  {
+    if (msg.identifier == identifier)
+    {
+      msg.message = message;
+      msg.time_of_expiry = time + msg_duration;
+      found = true;
+      break;
+    }
+  }
+  if (!found)
+  {
+    Message m = { identifier,message,time+msg_duration };
+    messages.push_back(std::move(m));
+  }
+
   message_log.append("time: " + std::to_string(time) + "--- " + identifier + " " + message + "\n\n");
 }
 std::string get_messages()
@@ -190,12 +303,12 @@ std::string get_messages()
   auto it = messages.begin();
   while (it != messages.end())
   {
-    if (it->second.time_of_expiry < time)
+    if (it->time_of_expiry < time)
     {
       it = messages.erase(it);
       continue;
     }
-    result = result + it->first + std::string(" ") + it->second.message +
+    result = result + it->identifier + std::string(" ") + it->message +
              std::string("\n");
     ++it;
   }
@@ -206,7 +319,7 @@ void push_log_to_disk()
   static bool first = true;
   if (first)
   {
-    std::fstream file("warg_log.txt", std::ios::trunc);
+    std::fstream file("warg_log.txt", std::ios::out|std::ios::trunc);
     first = false;
   }
   std::fstream file("warg_log.txt", std::ios::in | std::ios::out);
