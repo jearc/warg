@@ -206,3 +206,5 @@ private:
   bool jitter_switch = false;
   mat4 txaa_jitter = mat4(1);
 };
+
+void printFrameBufferStatus();

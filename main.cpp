@@ -38,7 +38,7 @@ int main(int argc, char *argv[])
   int32 flags = SDL_WINDOW_OPENGL;
   // SDL_GL_SetAttribute(SDL_GL_CONTEXT_FLAGS, SDL_GL_CONTEXT_DEBUG_FLAG);
   SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
-  SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 3);
+  SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 1);
   SDL_Window *window =
       SDL_CreateWindow("title", 100, 130, window_size.x, window_size.y, flags);
 
@@ -50,7 +50,7 @@ int main(int argc, char *argv[])
   set_message("OpenGL Version.", std::to_string(major) + " " + std::to_string(minor));
   if (major <= 3)
   {
-    if (major < 3 || minor < 3)
+    if (major < 3 || minor < 1)
     {
       set_message("Unsupported OpenGL Version.");
       push_log_to_disk();

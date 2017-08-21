@@ -31,12 +31,11 @@ using namespace glm;
 
 // our frag shader output attachment points for deferred rendering
 #define DIFFUSE_TARGET GL_COLOR_ATTACHMENT0
-#define NORMAL_TARGET GL_COLOR_ATTACHMENT1
-#define POSITION_TARGET GL_COLOR_ATTACHMENT2
-#define DEPTH_TARGET GL_COLOR_ATTACHMENT3
+#define DEPTH_TARGET GL_COLOR_ATTACHMENT1
+#define NORMAL_TARGET GL_COLOR_ATTACHMENT2
+#define POSITION_TARGET GL_COLOR_ATTACHMENT3
 
-const GLenum RENDER_TARGETS[] = {DIFFUSE_TARGET, NORMAL_TARGET, POSITION_TARGET,
-                                 DEPTH_TARGET};
+const GLenum RENDER_TARGETS[] = {DIFFUSE_TARGET};
 #define TARGET_COUNT sizeof(RENDER_TARGETS) / sizeof(GLenum)
 
 
@@ -1108,4 +1107,41 @@ Mesh_Handle::~Mesh_Handle()
   bitangents_buffer = 0;
   indices_buffer = 0;
   indices_buffer_size = 0;
+}
+
+void printFrameBufferStatus()
+{
+  auto result = glCheckFramebufferStatus(GL_FRAMEBUFFER);
+  std::string str;
+  switch (result)
+  {
+    case GL_FRAMEBUFFER_UNDEFINED:
+      str = "GL_FRAMEBUFFER_UNDEFINED";
+      break;
+    case GL_FRAMEBUFFER_INCOMPLETE_ATTACHMENT:
+      str = "GL_FRAMEBUFFER_INCOMPLETE_ATTACHMENT";
+      break;
+    case GL_FRAMEBUFFER_INCOMPLETE_MISSING_ATTACHMENT:
+      str = "GL_FRAMEBUFFER_INCOMPLETE_MISSING_ATTACHMENT";
+      break;
+    case GL_FRAMEBUFFER_INCOMPLETE_DRAW_BUFFER:
+      str = "GL_FRAMEBUFFER_INCOMPLETE_DRAW_BUFFER";
+      break;
+    case GL_FRAMEBUFFER_INCOMPLETE_READ_BUFFER:
+      str = "GL_FRAMEBUFFER_INCOMPLETE_READ_BUFFER";
+      break;
+    case GL_FRAMEBUFFER_UNSUPPORTED:
+      str = "GL_FRAMEBUFFER_UNSUPPORTED";
+      break;
+    case GL_FRAMEBUFFER_INCOMPLETE_MULTISAMPLE:
+      str = "GL_FRAMEBUFFER_INCOMPLETE_MULTISAMPLE";
+      break;
+    case GL_FRAMEBUFFER_INCOMPLETE_LAYER_TARGETS:
+      str = "GL_FRAMEBUFFER_INCOMPLETE_LAYER_TARGETS";
+      break;
+    case GL_FRAMEBUFFER_COMPLETE:
+      str = "GL_FRAMEBUFFER_COMPLETE";
+      break;
+  }
+  std::cout << "Framebuffer status: " << str << std::endl;
 }
