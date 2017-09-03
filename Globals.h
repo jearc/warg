@@ -1,7 +1,7 @@
 #pragma once
-#define GLM_SWIZZLE
 #include "Timer.h"
 #include <fstream>
+#define GLM_SWIZZLE
 #include <glm/glm.hpp>
 #include <iostream>
 #include <random>
@@ -74,18 +74,6 @@ Uint32 string_to_color(std::string color);
 Uint64 hash(float* data, uint32 size);
 
 
-template <typename T> void _errr(T t,const char* file, uint32 line)
-{
-#ifndef DISABLE_ASSERT
-  if (!t)
-  {
-    set_message("", "\nAssertion failed in:" + std::string(file) +"\non line:" + std::to_string(line),1.0);
-    std::cout << get_messages();
-    push_log_to_disk();
-    throw;
-  }
-#endif
-}
 
 #define check_gl_error() _check_gl_error(__FILE__, __LINE__)
 void _check_gl_error(const char *file, uint32 line);
@@ -113,3 +101,17 @@ std::string get_messages();
 //appends all messages to disk that have been set
 //since the last call to this function
 void push_log_to_disk();
+
+
+template <typename T> void _errr(T t,const char* file, uint32 line)
+{
+#ifndef DISABLE_ASSERT
+  if (!t)
+  {
+    set_message("", "\nAssertion failed in:" + std::string(file) +"\non line:" + std::to_string(line),1.0);
+    std::cout << get_messages();
+    push_log_to_disk();
+    throw;
+  }
+#endif
+}

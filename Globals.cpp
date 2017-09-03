@@ -265,7 +265,7 @@ float64 get_real_time()
   Uint64 elapsed = current - begin_time;
   return (float64)elapsed / (float64)freq;
 }
-static struct Message
+struct Message
 {
   std::string identifier;
   std::string message;

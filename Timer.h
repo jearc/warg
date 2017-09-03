@@ -1,6 +1,6 @@
 #pragma once
 #include <SDL.h>
-#include <glm\glm.hpp>
+#include <glm/glm.hpp>
 #include <string>
 #include <vector>
 using namespace glm;
