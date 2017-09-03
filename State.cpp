@@ -937,13 +937,13 @@ void Render_Test_State::handle_input(State** current_state, std::vector<State*> 
     if (is_pressed(SDL_SCANCODE_D))
     {
       mat4 r = rotate(-half_pi<float>(), vec3(0, 0, 1));
-      vec4 v = vec4(vr.xy, 0, 0);
+      vec4 v = vec4(vr.x, vr.y, 0, 0);
       cam.pos += vec3(MOVE_SPEED * r * v);
     }
     if (is_pressed(SDL_SCANCODE_A))
     {
       mat4 r = rotate(half_pi<float>(), vec3(0, 0, 1));
-      vec4 v = vec4(vr.xy, 0, 0);
+      vec4 v = vec4(vr.x, vr.y, 0, 0);
       cam.pos += vec3(MOVE_SPEED * r * v);
     }
   }
@@ -992,22 +992,22 @@ void Render_Test_State::handle_input(State** current_state, std::vector<State*> 
 
     if (right_button_down)
     {
-      player_dir = normalize(-vec3(cam_rel.xy, 0));
+      player_dir = normalize(-vec3(cam_rel.x, cam_rel.y, 0));
     }
     if (is_pressed(SDL_SCANCODE_W))
     {
-      vec3 v = vec3(player_dir.xy, 0.0f);
+      vec3 v = vec3(player_dir.x, player_dir.y, 0.0f);
       player_pos += MOVE_SPEED * v;
     }
     if (is_pressed(SDL_SCANCODE_S))
     {
-      vec3 v = vec3(player_dir.xy, 0.0f);
+      vec3 v = vec3(player_dir.x, player_dir.y, 0.0f);
       player_pos -= MOVE_SPEED * v;
     }
     if (is_pressed(SDL_SCANCODE_A))
     {
       mat4 r = rotate(half_pi<float>(), vec3(0, 0, 1));
-      vec4 v = vec4(player_dir.xy, 0, 0);
+      vec4 v = vec4(player_dir.x, player_dir.y, 0, 0);
       player_pos += MOVE_SPEED * vec3(r * v);
     }
     if (is_pressed(SDL_SCANCODE_D))
@@ -1016,7 +1016,7 @@ void Render_Test_State::handle_input(State** current_state, std::vector<State*> 
       vec4 v = vec4(player_dir.x, player_dir.y, 0, 0);
       player_pos += MOVE_SPEED * vec3(r * v);
     }
-    cam.pos = player_pos + (cam_rel.xyz * cam.zoom);
+    cam.pos = player_pos + vec3(cam_rel.x, cam_rel.y, cam_rel.z) * cam.zoom;
     cam.dir = -vec3(cam_rel);
   }
   previous_mouse_state = mouse_state;
