@@ -1,7 +1,6 @@
 #pragma once
 #include "Timer.h"
 #include <fstream>
-#define GLM_SWIZZLE
 #include <glm/glm.hpp>
 #include <iostream>
 #include <random>
