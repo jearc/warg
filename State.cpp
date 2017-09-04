@@ -1061,7 +1061,7 @@ void Game_State::update()
 
     m->position = c.pos;
     m->scale = vec3(1.0f);
-    m->orientation = angleAxis(atan2(c.dir.y, c.dir.x), vec3(0, 0, 1));
+    m->orientation = angleAxis((float32)atan2(c.dir.y, c.dir.x), vec3(0.f, 0.f, 1.f));
 
     if (c.target && !c.target->alive)
     {

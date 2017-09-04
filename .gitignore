@@ -5,3 +5,4 @@ Assets/Models/
 .directory
 .dir-locals.el
 CMakeCache.txt
+warg_log.txt

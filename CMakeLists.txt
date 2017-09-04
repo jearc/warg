@@ -1,5 +1,4 @@
 cmake_minimum_required (VERSION 2.6)
-
 include (FindPkgConfig)
 
 project (warg)
@@ -12,7 +11,8 @@ file (GLOB CPP_FILES "*.cpp")
 file (GLOB HEADER_FILES "*.h" ".hpp")
 file (GLOB SHADER_FILES "Assets/Shaders/*.vert" "Assets/Shaders/*.frag")
 
-add_executable (warg ${CPP_FILES} ${HEADER_FILES} ${SHADER_FILES})
+add_library(warglib ${CPP_FILES} ${HEADER_FILES} ${SHADER_FILES})
+add_executable (warg main.cpp)
 
 find_package (Threads REQUIRED)
 find_package (SDL2 REQUIRED)
@@ -25,15 +25,11 @@ include_directories (${GLEW_INCLUDE_DIRS})
 include_directories (${OpenGL_INCLUDE_DIRS})
 include_directories (${ASSIMP_INCLUDE_DIRS})
 include_directories (${glm_INCLUDE_DIRS})
-if (WIN32)
-include_directories (${SDL2_INCLUDE_DIR})
-endif (WIN32)
-if (UNIX)
 include_directories (${SDL2_INCLUDE_DIRS})
-endif (UNIX)
 
+target_link_libraries (warg warglib)
 target_link_libraries (warg ${CMAKE_THREAD_LIBS_INIT})
 target_link_libraries (warg ${GLEW_LIBRARIES})
 target_link_libraries (warg ${OPENGL_LIBRARIES})
-target_link_libraries (warg ${SDL2_LIBRARY})
+target_link_libraries (warg ${SDL2_LIBRARIES})
 target_link_libraries (warg ${ASSIMP_LIBRARIES})
