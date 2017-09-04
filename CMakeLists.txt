@@ -31,5 +31,14 @@ target_link_libraries (warg warglib)
 target_link_libraries (warg ${CMAKE_THREAD_LIBS_INIT})
 target_link_libraries (warg ${GLEW_LIBRARIES})
 target_link_libraries (warg ${OPENGL_LIBRARIES})
+<<<<<<< HEAD
 target_link_libraries (warg ${SDL2_LIBRARIES})
+=======
+if (WIN32)
+target_link_libraries (warg ${SDL2_LIBRARY})
+endif (WIN32)
+if (UNIX)
+target_link_libraries (warg ${SDL2_LIBRARIES})
+endif (UNIX)
+>>>>>>> a790bb361a92275e6559ee58bdc11e03a536ab44
 target_link_libraries (warg ${ASSIMP_LIBRARIES})

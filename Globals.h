@@ -1,4 +1,5 @@
 #pragma once
+#define GLM_FORCE_SWIZZLE
 #include "Timer.h"
 #include <fstream>
 #include <glm/glm.hpp>
