@@ -583,7 +583,7 @@ int main(int argc, char *argv[]) {
                         if (mp_event->event_id == MPV_EVENT_NONE)
                             break;
 						if (mp_event->event_id == MPV_EVENT_FILE_LOADED) {
-							mpv_command_string(mpv, "pause");
+							mpv_command_string(mpv, "set pause yes");
 						}
 						if (mp_event->event_id == MPV_EVENT_PLAYBACK_RESTART) {
 							auto status = getstatus();
