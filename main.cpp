@@ -456,7 +456,6 @@ int main(int argc, char *argv[]) {
     if (!mpv)
         die("context init failed");
 
-    // Some minor options can only be set before mpv_initialize().
     if (mpv_initialize(mpv) < 0)
         die("mpv init failed");
 
@@ -480,8 +479,6 @@ int main(int argc, char *argv[]) {
     if (!window)
         die("failed to create SDL window");
 
-    // The OpenGL API is somewhat separate from the normal mpv API. This only
-    // returns NULL if no OpenGL support is compiled.
     mpv_opengl_cb_context *mpv_gl =
         (mpv_opengl_cb_context *)mpv_get_sub_api(mpv, MPV_SUB_API_OPENGL_CB);
     if (!mpv_gl)
@@ -493,19 +490,14 @@ int main(int argc, char *argv[]) {
 
     gl3wInit();
 
-    // Setup ImGui binding
     ImGui_ImplSdlGL3_Init(window);
 
     ImGuiIO &io = ImGui::GetIO();
     // io.Fonts->AddFontFromFileTTF("LiberationSans-Regular.ttf", 14.0f);
 
-    // This makes mpv use the currently set GL context. It will use the callback
-    // to resolve GL builtin functions, as well as extensions.
     if (mpv_opengl_cb_init_gl(mpv_gl, NULL, get_proc_address_mpv, NULL) < 0)
         die("failed to initialize mpv GL context");
 
-    // Actually using the opengl_cb state has to be explicitly requested.
-    // Otherwise, mpv will create a separate platform window.
     if (mpv_set_option_string(mpv, "vo", "opengl-cb") < 0)
         die("failed to set VO");
 
@@ -516,7 +508,6 @@ int main(int argc, char *argv[]) {
         die("could not register events");
     mpv_set_wakeup_callback(mpv, on_mpv_events, NULL);
 
-    // Play this file. Note that this starts playback asynchronously.
     const char *cmd[] = {"loadfile", argv[2], NULL};
     mpv_command(mpv, cmd);
     for (int i = 3; i < argc; i++) {
@@ -567,9 +558,7 @@ int main(int argc, char *argv[]) {
                     ImGui_ImplSdlGL3_ProcessEvent(&event);
                 break;
             default:
-                // Happens when at least 1 new event is in the mpv event queue.
                 if (event.type == wakeup_on_mpv_events) {
-                    // Handle all remaining mpv events.
                     while (1) {
                         mpv_event *mp_event = mpv_wait_event(mpv, 0);
                         if (mp_event->event_id == MPV_EVENT_NONE)
@@ -581,8 +570,6 @@ int main(int argc, char *argv[]) {
                             auto status = getstatus();
                             msg(status.c_str());
                         }
-                        // printf("event: %s\n",
-                        //        mpv_event_name(mp_event->event_id));
                     }
                 }
                 ImGui_ImplSdlGL3_ProcessEvent(&event);
@@ -591,21 +578,17 @@ int main(int argc, char *argv[]) {
 
         int w, h;
         SDL_GetWindowSize(window, &w, &h);
-
         glClearColor(clear_color.x, clear_color.y, clear_color.z,
                      clear_color.w);
         glClear(GL_COLOR_BUFFER_BIT);
-
         mpv_opengl_cb_draw(mpv_gl, 0, w, -h);
-
         ui();
-
         SDL_GL_SwapWindow(window);
     }
 
 done:
     mpv_opengl_cb_uninit_gl(mpv_gl);
-
     mpv_terminate_destroy(mpv);
+
     return 0;
 }
