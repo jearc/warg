@@ -1,14 +1,14 @@
 #include <algorithm>
 #include <ctime>
+#include <iostream>
+#include <mutex>
 #include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string>
+#include <thread>
 #include <unistd.h>
 #include <vector>
-#include <iostream>
-#include <thread>
-#include <mutex>
 
 #include <GL/gl3w.h>
 #include <SDL.h>
@@ -110,7 +110,7 @@ int get_num_audio_sub_tracks(mpv_handle *mpv, int *naudio, int *nsubs) {
 }
 
 void sendmsg(const char *msg) {
-	std::cout << msg << std::endl;
+    std::cout << msg << std::endl;
 }
 
 std::string getstatus() {
@@ -180,7 +180,7 @@ void writechat(const char *text, const char *from = NULL) {
     msg.from = from ? from : username;
     msg.text = text;
 
-	std::lock_guard<std::mutex> guard(chat_log_mutex);
+    std::lock_guard<std::mutex> guard(chat_log_mutex);
     chat_log.push_back(msg);
     scroll_to_bottom = true;
 }
@@ -377,22 +377,22 @@ void chatbox() {
     ImGui::BeginChild("LogRegion",
                       ImVec2(0, -ImGui::GetItemsLineHeightWithSpacing()), false,
                       ImGuiWindowFlags_NoScrollbar);
-	{
-		std::lock_guard<std::mutex> guard(chat_log_mutex);
-		for (auto &msg : chat_log) {
-			tm *now = localtime(&msg.time);
-			char buf[20] = {0};
-			strftime(buf, sizeof(buf), "%X", now);
-			std::string formatted;
-			formatted += "[";
-			formatted += buf;
-			formatted += "] ";
-			formatted += msg.from;
-			formatted += ": ";
-			formatted += msg.text;
-			ImGui::TextWrapped(formatted.c_str());
-		}
-	}
+    {
+        std::lock_guard<std::mutex> guard(chat_log_mutex);
+        for (auto &msg : chat_log) {
+            tm *now = localtime(&msg.time);
+            char buf[20] = {0};
+            strftime(buf, sizeof(buf), "%X", now);
+            std::string formatted;
+            formatted += "[";
+            formatted += buf;
+            formatted += "] ";
+            formatted += msg.from;
+            formatted += ": ";
+            formatted += msg.text;
+            ImGui::TextWrapped(formatted.c_str());
+        }
+    }
     if (scroll_to_bottom) {
         ImGui::SetScrollHere();
         scroll_to_bottom = false;
@@ -511,10 +511,10 @@ int main(int argc, char *argv[]) {
 
     mpv_set_option_string(mpv, "ytdl", "yes");
 
-	wakeup_on_mpv_events = SDL_RegisterEvents(1);
+    wakeup_on_mpv_events = SDL_RegisterEvents(1);
     if (wakeup_on_mpv_events == (Uint32)-1)
         die("could not register events");
-	mpv_set_wakeup_callback(mpv, on_mpv_events, NULL);
+    mpv_set_wakeup_callback(mpv, on_mpv_events, NULL);
 
     // Play this file. Note that this starts playback asynchronously.
     const char *cmd[] = {"loadfile", argv[2], NULL};
@@ -524,19 +524,19 @@ int main(int argc, char *argv[]) {
         mpv_command(mpv, cmd2);
     }
 
-	auto t = std::thread([](){
-			for (std::string line; std::getline(std::cin, line);) {
-				int namelen = (int)line[0];
-				std::string from;
-				from.insert(0, line.c_str() + 1, namelen);
-				std::string text;
-				text.insert(0, line.c_str() + 1 + namelen);
+    auto t = std::thread([]() {
+        for (std::string line; std::getline(std::cin, line);) {
+            int namelen = (int)line[0];
+            std::string from;
+            from.insert(0, line.c_str() + 1, namelen);
+            std::string text;
+            text.insert(0, line.c_str() + 1 + namelen);
 
-				msg(text.c_str(), from.c_str());
-			}
-			return;
-		});
-	t.detach();
+            msg(text.c_str(), from.c_str());
+        }
+        return;
+    });
+    t.detach();
 
     while (1) {
         current_tick = SDL_GetTicks();
@@ -574,13 +574,13 @@ int main(int argc, char *argv[]) {
                         mpv_event *mp_event = mpv_wait_event(mpv, 0);
                         if (mp_event->event_id == MPV_EVENT_NONE)
                             break;
-						if (mp_event->event_id == MPV_EVENT_FILE_LOADED) {
-							mpv_command_string(mpv, "set pause yes");
-						}
-						if (mp_event->event_id == MPV_EVENT_PLAYBACK_RESTART) {
-							auto status = getstatus();
-							msg(status.c_str());
-						}
+                        if (mp_event->event_id == MPV_EVENT_FILE_LOADED) {
+                            mpv_command_string(mpv, "set pause yes");
+                        }
+                        if (mp_event->event_id == MPV_EVENT_PLAYBACK_RESTART) {
+                            auto status = getstatus();
+                            msg(status.c_str());
+                        }
                         // printf("event: %s\n",
                         //        mpv_event_name(mp_event->event_id));
                     }
