@@ -221,7 +221,7 @@ void on_msg(const char *s, bool self) {
     } else if (com == "SEEK") {
         if (words.size() < 2)
             return;
-        double time = atoi(words[1].c_str());
+        double time = parse_time(words[1].c_str());
         mpv_set_property(mpv, "time-pos", MPV_FORMAT_DOUBLE, &time);
     } else if (com == "INDEX") {
         if (words.size() < 2)
