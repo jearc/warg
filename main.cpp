@@ -12,7 +12,6 @@
 
 #include <GL/gl3w.h>
 #include <SDL.h>
-#include <SDL_net.h>
 
 #include <mpv/client.h>
 #include <mpv/opengl_cb.h>
@@ -39,10 +38,6 @@ void on_msg(const char *s, bool self);
 SDL_Window *window;
 
 mpv_handle *mpv;
-
-IPaddress ip;
-TCPsocket ssock = NULL, csock = NULL;
-SDLNet_SocketSet sockset;
 
 char buffer[BUFFER_SIZE];
 std::vector<Message> chat_log;
@@ -114,11 +109,7 @@ int get_num_audio_sub_tracks(mpv_handle *mpv, int *naudio, int *nsubs) {
     return 0;
 }
 
-void sendmsg(TCPsocket sock, const char *msg) {
-    int len = strlen(msg);
-    if (sock) {
-        SDLNet_TCP_Send(sock, (void *)msg, len);
-    }
+void sendmsg(const char *msg) {
 	std::cout << msg << std::endl;
 }
 
@@ -203,7 +194,7 @@ void msg(const char *text, const char *from = NULL) {
     writechat(text, from);
 
     if (!(from || (len > 2 && text[0] == ':')))
-        sendmsg(csock, text);
+        sendmsg(text);
 
     on_msg(text, from ? false : true);
 }
@@ -469,25 +460,6 @@ int main(int argc, char *argv[]) {
 
     username = argv[1];
 
-    if (SDLNet_Init() == -1)
-        die("failed to initialize SDLNet");
-
-    sockset = SDLNet_AllocSocketSet(10);
-    if (!sockset) {
-        puts(SDLNet_GetError());
-        die("failed to allocate socket set");
-    }
-
-    if (SDLNet_ResolveHost(&ip, NULL, PORT))
-        die("failed to resolve server host");
-
-    ssock = SDLNet_TCP_Open(&ip);
-
-    if (!ssock)
-        die("failed to open the server socket");
-
-    SDLNet_TCP_AddSocket(sockset, ssock);
-
     mpv = mpv_create();
     if (!mpv)
         die("context init failed");
@@ -533,7 +505,7 @@ int main(int argc, char *argv[]) {
     ImGui_ImplSdlGL3_Init(window);
 
     ImGuiIO &io = ImGui::GetIO();
-    io.Fonts->AddFontFromFileTTF("LiberationSans-Regular.ttf", 14.0f);
+    // io.Fonts->AddFontFromFileTTF("LiberationSans-Regular.ttf", 14.0f);
 
     // This makes mpv use the currently set GL context. It will use the callback
     // to resolve GL builtin functions, as well as extensions.
@@ -546,6 +518,11 @@ int main(int argc, char *argv[]) {
         die("failed to set VO");
 
     mpv_set_option_string(mpv, "ytdl", "yes");
+
+	wakeup_on_mpv_events = SDL_RegisterEvents(1);
+    if (wakeup_on_mpv_events == (Uint32)-1)
+        die("could not register events");
+	mpv_set_wakeup_callback(mpv, on_mpv_events, NULL);
 
     // Play this file. Note that this starts playback asynchronously.
     const char *cmd[] = {"loadfile", argv[2], NULL};
@@ -605,8 +582,15 @@ int main(int argc, char *argv[]) {
                         mpv_event *mp_event = mpv_wait_event(mpv, 0);
                         if (mp_event->event_id == MPV_EVENT_NONE)
                             break;
-                        printf("event: %s\n",
-                               mpv_event_name(mp_event->event_id));
+						if (mp_event->event_id == MPV_EVENT_FILE_LOADED) {
+							mpv_command_string(mpv, "pause");
+						}
+						if (mp_event->event_id == MPV_EVENT_PLAYBACK_RESTART) {
+							auto status = getstatus();
+							msg(status.c_str());
+						}
+                        // printf("event: %s\n",
+                        //        mpv_event_name(mp_event->event_id));
                     }
                 }
                 ImGui_ImplSdlGL3_ProcessEvent(&event);
@@ -625,27 +609,6 @@ int main(int argc, char *argv[]) {
         ui();
 
         SDL_GL_SwapWindow(window);
-
-        int nactivesock = SDLNet_CheckSockets(sockset, 0);
-        int ssockactivity = SDLNet_SocketReady(ssock);
-        if (ssockactivity && !csock) {
-            csock = SDLNet_TCP_Accept(ssock);
-            SDLNet_TCP_AddSocket(sockset, csock);
-        }
-
-        int csockactivity = SDLNet_SocketReady(csock);
-        if (csockactivity) {
-            char buf[BUFFER_SIZE] = {0};
-            int nrecbytes = SDLNet_TCP_Recv(csock, buf, BUFFER_SIZE);
-
-            int namelen = (int)buf[0];
-            std::string from;
-            from.insert(0, buf + 1, namelen);
-            std::string text;
-            text.insert(0, buf + 1 + namelen);
-
-            msg(text.c_str(), from.c_str());
-        }
     }
 
 done:

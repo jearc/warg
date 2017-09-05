@@ -21,7 +21,7 @@ UNAME_S := $(shell uname -s)
 
 ifeq ($(UNAME_S), Linux) #LINUX
 	ECHO_MESSAGE = "Linux"
-	LIBS = -lGL -ldl -lSDL2_net `sdl2-config --libs` `pkg-config --libs --cflags mpv` -pthread
+	LIBS = -lGL -ldl `sdl2-config --libs` `pkg-config --libs --cflags mpv` -pthread
 
 	CXXFLAGS = -I./imgui -I./libs/gl3w `sdl2-config --cflags`
 	CXXFLAGS += -g
