@@ -525,7 +525,6 @@ int main(int argc, char *argv[]) {
 
             msg(text.c_str(), from.c_str());
         }
-        return;
     });
     t.detach();
 
