@@ -6,6 +6,9 @@
 #include <string>
 #include <unistd.h>
 #include <vector>
+#include <iostream>
+#include <thread>
+#include <mutex>
 
 #include <GL/gl3w.h>
 #include <SDL.h>
@@ -43,6 +46,7 @@ SDLNet_SocketSet sockset;
 
 char buffer[BUFFER_SIZE];
 std::vector<Message> chat_log;
+std::mutex chat_log_mutex;
 
 ImVec4 clear_color = ImColor(114, 144, 154);
 char chat_input_buf[256] = {0};
@@ -115,6 +119,7 @@ void sendmsg(TCPsocket sock, const char *msg) {
     if (sock) {
         SDLNet_TCP_Send(sock, (void *)msg, len);
     }
+	std::cout << msg << std::endl;
 }
 
 std::string getstatus() {
@@ -184,6 +189,7 @@ void writechat(const char *text, const char *from = NULL) {
     msg.from = from ? from : username;
     msg.text = text;
 
+	std::lock_guard<std::mutex> guard(chat_log_mutex);
     chat_log.push_back(msg);
     scroll_to_bottom = true;
 }
@@ -388,19 +394,22 @@ void chatbox() {
     ImGui::BeginChild("LogRegion",
                       ImVec2(0, -ImGui::GetItemsLineHeightWithSpacing()), false,
                       ImGuiWindowFlags_NoScrollbar);
-    for (auto &msg : chat_log) {
-        tm *now = localtime(&msg.time);
-        char buf[20] = {0};
-        strftime(buf, sizeof(buf), "%X", now);
-        std::string formatted;
-        formatted += "[";
-        formatted += buf;
-        formatted += "] ";
-        formatted += msg.from;
-        formatted += ": ";
-        formatted += msg.text;
-        ImGui::TextWrapped(formatted.c_str());
-    }
+	{
+		std::lock_guard<std::mutex> guard(chat_log_mutex);
+		for (auto &msg : chat_log) {
+			tm *now = localtime(&msg.time);
+			char buf[20] = {0};
+			strftime(buf, sizeof(buf), "%X", now);
+			std::string formatted;
+			formatted += "[";
+			formatted += buf;
+			formatted += "] ";
+			formatted += msg.from;
+			formatted += ": ";
+			formatted += msg.text;
+			ImGui::TextWrapped(formatted.c_str());
+		}
+	}
     if (scroll_to_bottom) {
         ImGui::SetScrollHere();
         scroll_to_bottom = false;
@@ -545,6 +554,20 @@ int main(int argc, char *argv[]) {
         const char *cmd2[] = {"loadfile", argv[i], "append", NULL};
         mpv_command(mpv, cmd2);
     }
+
+	auto t = std::thread([](){
+			for (std::string line; std::getline(std::cin, line);) {
+				int namelen = (int)line[0];
+				std::string from;
+				from.insert(0, line.c_str() + 1, namelen);
+				std::string text;
+				text.insert(0, line.c_str() + 1 + namelen);
+
+				msg(text.c_str(), from.c_str());
+			}
+			return;
+		});
+	t.detach();
 
     while (1) {
         current_tick = SDL_GetTicks();
