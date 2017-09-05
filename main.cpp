@@ -216,26 +216,18 @@ void on_msg(const char *s, bool self) {
         msg(status.c_str());
     } else if (com == "NEXT") {
         mpv_command_string(mpv, "playlist-next");
-        auto status = getstatus();
-        msg(status.c_str());
     } else if (com == "PREV") {
         mpv_command_string(mpv, "playlist-prev");
-        auto status = getstatus();
-        msg(status.c_str());
     } else if (com == "SEEK") {
         if (words.size() < 2)
             return;
         double time = atoi(words[1].c_str());
         mpv_set_property(mpv, "time-pos", MPV_FORMAT_DOUBLE, &time);
-        auto status = getstatus();
-        msg(status.c_str());
     } else if (com == "INDEX") {
         if (words.size() < 2)
             return;
         int64_t index = atoi(words[1].c_str()) - 1;
         mpv_set_property(mpv, "playlist-pos", MPV_FORMAT_INT64, &index);
-        auto status = getstatus();
-        msg(status.c_str());
     } else if (com == ":set" && self) {
         if (words.size() < 2)
             return;
