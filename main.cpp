@@ -196,7 +196,7 @@ void msg(const char *text, const char *from = NULL) {
 
     writechat(text, from);
 
-    if (!(from || (len > 2 && text[0] != ':')))
+    if (!(from || (len > 2 && text[0] == ':')))
         sendmsg(csock, text);
 
     on_msg(text, from ? false : true);
