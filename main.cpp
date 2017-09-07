@@ -20,6 +20,7 @@
 #include "imgui/imgui_impl_sdl_gl3.h"
 
 #include "libs/json.hpp"
+using json = nlohmann::json;
 
 static Uint32 wakeup_on_mpv_events;
 
