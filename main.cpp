@@ -3,7 +3,6 @@
 #include <iostream>
 #include <mutex>
 #include <stddef.h>
-#include <stdio.h>
 #include <stdlib.h>
 #include <string>
 #include <thread>
@@ -64,7 +63,7 @@ float osd_opacity = DEFAULT_OPACITY;
 std::string username = "User";
 
 static void die(const char *msg) {
-    fprintf(stderr, "moov: error: %s\n", msg);
+    std::cerr << "moov: error: " << msg << std::endl;
     exit(1);
 }
 
