@@ -22,6 +22,7 @@
 static Uint32 wakeup_on_mpv_events;
 
 const uint16_t BUFFER_SIZE = 512;
+const char *PIPE = "/tmp/mpvpipe";
 
 const uint16_t MARGIN_SIZE = 8;
 const float DEFAULT_OPACITY = 0.5;
@@ -501,6 +502,7 @@ int main(int argc, char *argv[]) {
         die("failed to set VO");
 
     mpv_set_option_string(mpv, "ytdl", "yes");
+    mpv_set_option_string(mpv, "input-ipc-server", PIPE);
 
     wakeup_on_mpv_events = SDL_RegisterEvents(1);
     if (wakeup_on_mpv_events == (Uint32)-1)
