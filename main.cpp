@@ -115,7 +115,7 @@ int get_num_audio_sub_tracks(mpv_handle *mpv, int *naudio, int *nsubs) {
 void sendmsg(const char *msg) {
     json j;
     j["message"] = msg;
-    std::cout << j;
+    std::cout << j << std::endl;
 }
 
 std::string getstatus() {
