@@ -63,7 +63,7 @@ float osd_opacity = DEFAULT_OPACITY;
 std::string username = "User";
 
 static void die(const char *msg) {
-    std::cerr << "moov: error: " << msg << std::endl;
+    std::cerr << "error: " << msg << std::endl;
     exit(1);
 }
 
