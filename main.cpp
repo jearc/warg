@@ -523,12 +523,13 @@ int main(int argc, char *argv[]) {
 
     auto t = std::thread([]() {
         for (std::string line; std::getline(std::cin, line);) {
-            auto j = json::parse(line);
-            if (j.count("user") && j["user"].is_string() &&
-                j.count("message") && j["message"].is_string()) {
+            try {
+                auto j = json::parse(line);
                 std::string user = j["user"];
                 std::string message = j["message"];
                 msg(message.c_str(), user.c_str());
+            } catch (...) {
+                std::cerr << "exception: failed to parse input" << std::endl;
             }
         }
     });
