@@ -589,8 +589,8 @@ int main(int argc, char *argv[]) {
 done:
     mpv_opengl_cb_uninit_gl(mpv_gl);
     mpv_terminate_destroy(mpv);
-	SDL_GL_DeleteContext(glcontext);
-	SDL_DestroyWindow(window);
+    SDL_GL_DeleteContext(glcontext);
+    SDL_DestroyWindow(window);
 
     return 0;
 }
