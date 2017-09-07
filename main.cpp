@@ -19,6 +19,8 @@
 #include "imgui/imgui.h"
 #include "imgui/imgui_impl_sdl_gl3.h"
 
+#include "libs/json.hpp"
+
 static Uint32 wakeup_on_mpv_events;
 
 const uint16_t BUFFER_SIZE = 512;
