@@ -523,13 +523,13 @@ int main(int argc, char *argv[]) {
 
     auto t = std::thread([]() {
         for (std::string line; std::getline(std::cin, line);) {
-            int namelen = (int)line[0];
-            std::string from;
-            from.insert(0, line.c_str() + 1, namelen);
-            std::string text;
-            text.insert(0, line.c_str() + 1 + namelen);
-
-            msg(text.c_str(), from.c_str());
+            auto j = json::parse(line);
+            if (j.count("user") && j["user"].is_string() &&
+                j.count("message") && j["message"].is_string()) {
+                std::string user = j["user"];
+                std::string message = j["message"];
+                msg(message.c_str(), user.c_str());
+            }
         }
     });
     t.detach();
