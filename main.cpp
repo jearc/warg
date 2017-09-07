@@ -21,7 +21,6 @@
 
 static Uint32 wakeup_on_mpv_events;
 
-const uint16_t PORT = 1234;
 const uint16_t BUFFER_SIZE = 512;
 
 const uint16_t MARGIN_SIZE = 8;
