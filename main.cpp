@@ -18,9 +18,6 @@
 #include "imgui/imgui.h"
 #include "imgui/imgui_impl_sdl_gl3.h"
 
-#include "libs/json.hpp"
-using json = nlohmann::json;
-
 static Uint32 wakeup_on_mpv_events;
 
 const uint16_t BUFFER_SIZE = 512;
@@ -112,9 +109,7 @@ int get_num_audio_sub_tracks(mpv_handle *mpv, int *naudio, int *nsubs) {
 }
 
 void sendmsg(const char *msg) {
-    json j;
-    j["message"] = msg;
-    std::cout << j << std::endl;
+    std::cout << "MSG :" << msg << std::endl;
 }
 
 std::string getstatus() {
@@ -450,6 +445,33 @@ void ui() {
     ImGui::Render();
 }
 
+int readmsg(const char *l) {
+    char *user = NULL;
+    const char *message = NULL;
+
+    if (!l)
+        return 1;
+
+    if (strncmp("MSG", l, 3))
+        return 2;
+
+    if (strnlen(l, 5) < 5)
+        return 3;
+    const char *u = l + 4;
+    const char *c = strchr(u, ':');
+    user = strndup(u, c - u);
+
+    if (strnlen(c, 2) < 2)
+        return 4;
+    message = c + 1;
+
+    msg(message, user);
+
+    free(user);
+
+    return 0;
+}
+
 int main(int argc, char *argv[]) {
     if (argc < 3)
         die("pass a username and media file(s) or URL(s) as arguments");
@@ -522,14 +544,9 @@ int main(int argc, char *argv[]) {
 
     auto t = std::thread([]() {
         for (std::string line; std::getline(std::cin, line);) {
-            try {
-                auto j = json::parse(line);
-                std::string user = j["user"];
-                std::string message = j["message"];
-                msg(message.c_str(), user.c_str());
-            } catch (...) {
-                std::cerr << "exception: failed to parse input" << std::endl;
-            }
+            int err = readmsg(line.c_str());
+            if (err)
+                fprintf(stderr, "parsing error: %d\n", err);
         }
     });
     t.detach();
