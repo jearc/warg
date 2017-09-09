@@ -459,10 +459,12 @@ int readmsg(const char *l) {
         return 3;
     const char *u = l + 4;
     const char *c = strchr(u, ':');
+    if (!c)
+        return 4;
     user = strndup(u, c - u);
 
     if (strnlen(c, 2) < 2)
-        return 4;
+        return 5;
     message = c + 1;
 
     msg(message, user);
