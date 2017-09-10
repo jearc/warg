@@ -195,7 +195,7 @@ void msg(const char *text, const char *from = NULL) {
     if (!(from || (len > 2 && text[0] == ':')))
         sendmsg(text);
 
-    on_msg(text, from ? false : true);
+    on_msg(text, !from);
 }
 
 void on_msg(const char *s, bool self) {
@@ -230,18 +230,12 @@ void on_msg(const char *s, bool self) {
     } else if (com == ":set" && self) {
         if (words.size() < 2)
             return;
-        if (words[1] == "chat_opacity") {
-            if (words.size() > 2)
-                chat_opacity = atof(words[2].c_str());
-            else
-                chat_opacity = DEFAULT_OPACITY;
-        }
-        if (words[1] == "osd_opacity") {
-            if (words.size() > 2)
-                osd_opacity = atof(words[2].c_str());
-            else
-                osd_opacity = DEFAULT_OPACITY;
-        }
+        if (words[1] == "chat_opacity")
+            chat_opacity =
+                words.size() > 2 ? atof(words[2].c_str()) : DEFAULT_OPACITY;
+        if (words[1] == "osd_opacity")
+            osd_opacity =
+                words.size() > 2 ? atof(words[2].c_str()) : DEFAULT_OPACITY;
     }
 }
 
