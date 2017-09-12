@@ -1332,15 +1332,9 @@ void Game_State::add_wall(vec3 p1, vec2 p2, float32 h)
   Mesh_Data data;
   vec3 a, b, c, d;
   a = p1;
-  b = p1 + vec3(0,0,h);
-  c = p1 + vec3(p2.x, p2.y, h);
-  d = p1 + vec3(p2.x, p2.y, 0);
-
-  a = p1;
   b = vec3(p2.x, p2.y, 0);
   c = vec3(p2.x, p2.y, h);
   d = vec3(p1.x, p1.y, h);
-
 
   add_quad(a, b, c, d, data);
   auto mesh = scene.add_mesh(data, material, "some wall");
