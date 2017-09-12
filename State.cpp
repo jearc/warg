@@ -58,37 +58,37 @@ Game_State::Game_State(std::string name, SDL_Window *window, ivec2 window_size)
   ground_mesh->position = ground_pos;
   ground_mesh->scale = ground_dim;
 
-  add_wall({0, 2, 0}, {3, 2}, 5);
-  add_wall({3, 0, 0}, {3, 2}, 5);
-  add_wall({3, 0, 0}, {5, 0}, 5);
-  add_wall({5, 0, 0}, {5, 2}, 5);
-  add_wall({5, 2, 0}, {8, 2}, 5);
+  add_wall({0, 4, 0}, {6, 4}, 10);
+  add_wall({6, 0, 0}, {6, 4}, 10);
+  add_wall({6, 0, 0}, {10, 0}, 10);
+  add_wall({10, 0, 0}, {10, 4}, 10);
+  add_wall({10, 4, 0}, {16, 4}, 10);
 
-  add_wall({7, 2, 0}, {8, 3}, 5);
+  add_wall({14, 4, 0}, {16, 6}, 10);
 
-  add_wall({8, 2, 0}, {8, 9}, 5);
-  add_wall({8, 9, 0}, {5, 9}, 5);
-  add_wall({5, 9, 0}, {5, 11}, 5);
-  add_wall({5, 11, 0}, {3, 11}, 5);
-  add_wall({3, 11, 0}, {3, 9}, 5);
-  add_wall({3, 9, 0}, {0, 9}, 5);
-  add_wall({0, 9, 0}, {0, 2}, 5);
-  add_wall({1, 7, 0}, {1, 8}, 5);
-  add_wall({1, 8, 0}, {2, 8}, 5);
-  add_wall({2, 8, 0}, {2, 7}, 5);
-  add_wall({2, 7, 0}, {1, 7}, 5);
-  add_wall({6, 7, 0}, {6, 8}, 5);
-  add_wall({6, 8, 0}, {7, 8}, 5);
-  add_wall({7, 8, 0}, {7, 7}, 5);
-  add_wall({7, 7, 0}, {6, 7}, 5);
-  add_wall({6, 4, 0}, {7, 4}, 5);
-  add_wall({7, 4, 0}, {7, 3}, 5);
-  add_wall({7, 3, 0}, {6, 3}, 5);
-  add_wall({6, 3, 0}, {6, 4}, 5);
-  add_wall({2, 3, 0}, {2, 4}, 5);
-  add_wall({2, 4, 0}, {1, 4}, 5);
-  add_wall({1, 4, 0}, {1, 3}, 5);
-  add_wall({1, 3, 0}, {2, 3}, 5);
+  add_wall({16, 4, 0}, {16, 18}, 10);
+  add_wall({16, 18, 0}, {10, 18}, 10);
+  add_wall({10, 18, 0}, {10, 22}, 10);
+  add_wall({10, 22, 0}, {6, 22}, 10);
+  add_wall({6, 22, 0}, {6, 18}, 10);
+  add_wall({6, 18, 0}, {0, 18}, 10);
+  add_wall({0, 18, 0}, {0, 4}, 10);
+  add_wall({2, 14, 0}, {2, 16}, 10);
+  add_wall({2, 16, 0}, {4, 16}, 10);
+  add_wall({4, 16, 0}, {4, 14}, 10);
+  add_wall({4, 14, 0}, {2, 14}, 10);
+  add_wall({12, 14, 0}, {12, 16}, 10);
+  add_wall({12, 16, 0}, {14, 16}, 10);
+  add_wall({14, 16, 0}, {14, 14}, 10);
+  add_wall({14, 14, 0}, {12, 14}, 10);
+  add_wall({12, 8, 0}, {14, 8}, 10);
+  add_wall({14, 8, 0}, {14, 6}, 10);
+  add_wall({14, 6, 0}, {12, 6}, 10);
+  add_wall({12, 6, 0}, {12, 8}, 10);
+  add_wall({4, 6, 0}, {4, 8}, 10);
+  add_wall({4, 8, 0}, {2, 8}, 10);
+  add_wall({2, 8, 0}, {2, 6}, 10);
+  add_wall({2, 6, 0}, {4, 6}, 10);
 
   scene.lights.light_count = 1;
   Light *light = &scene.lights.lights[0];
@@ -1041,7 +1041,7 @@ void Game_State::update()
   for (int i = 0; i < nchars; i++)
   {
     Character *c = &chars[i];
-     
+
 
     c->mesh->position = c->pos;
     c->mesh->scale = vec3(1.0f);
@@ -1206,7 +1206,7 @@ void Game_State::update()
 }
 void Render_Test_State::update()
 {
-   
+
   const float32 height = 3.25;
 
   cube_star->scale = vec3(.85); // +0.65f*vec3(sin(current_time*.2));
@@ -1236,7 +1236,7 @@ void Render_Test_State::update()
                                         sin(current_time / moon_year), 0);
   cube_moon->orientation =
       angleAxis((float32)current_time / moon_day, vec3(0, 0, 1));
-   
+
   sphere->position = vec3(-3, 3, 1.5);
   sphere->scale = vec3(0.4);
 
@@ -1255,7 +1255,7 @@ void Render_Test_State::update()
   lights[1].direction = vec3(0);
   lights[1].color = 320.f * vec3(0.8, 1.0, 0.8);
   lights[1].cone_angle = 0.11; //+ 0.14*sin(current_time);
-  lights[1].ambient = 0.01; 
+  lights[1].ambient = 0.01;
   cone_light->position = lights[1].position;
   cone_light->scale = vec3(0.2);
 
@@ -1264,7 +1264,7 @@ void Render_Test_State::update()
   lights[2].color = 51.f * vec3(1, 0.05, 1.05);
   lights[2].type = Light_Type::omnidirectional;
   lights[2].attenuation = vec3(1.0, .7, 1.8);
-  lights[2].ambient = 0.0026f; 
+  lights[2].ambient = 0.0026f;
   small_light->position = lights[2].position;
   small_light->scale = vec3(0.1);
 
