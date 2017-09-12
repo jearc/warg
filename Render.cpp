@@ -21,12 +21,12 @@
 #include <glm/gtx/transform.hpp>
 #include <iostream>
 #include <memory>
-#include <unordered_map>
-#include <vector>
+#include <sstream>
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <time.h>
-#include <sstream>
+#include <unordered_map>
+#include <vector>
 using namespace glm;
 
 // our frag shader output attachment points for deferred rendering
@@ -38,25 +38,24 @@ using namespace glm;
 const GLenum RENDER_TARGETS[] = {DIFFUSE_TARGET};
 #define TARGET_COUNT sizeof(RENDER_TARGETS) / sizeof(GLenum)
 
-
 static Timer FRAME_TIMER = Timer(60);
 static Timer SWAP_TIMER = Timer(60);
-static GLuint TARGET_FRAMEBUFFER = 0; //fbo that gets rendered to
-static GLuint COLOR_TARGET_TEXTURE = 0; //color texture that is bound to target framebuffer
-static GLuint DEPTH_TARGET_TEXTURE = 0; //depth texture that is bound to target framebuffer
-static GLuint PREV_COLOR_TARGET = 0; //color texture from previous frame
+static GLuint TARGET_FRAMEBUFFER = 0; // fbo that gets rendered to
+static GLuint COLOR_TARGET_TEXTURE =
+    0; // color texture that is bound to target framebuffer
+static GLuint DEPTH_TARGET_TEXTURE =
+    0; // depth texture that is bound to target framebuffer
+static GLuint PREV_COLOR_TARGET = 0; // color texture from previous frame
 static bool PREV_COLOR_TARGET_MISSING = true;
-static GLuint INSTANCE_MVP_BUFFER = 0; //buffer object holding MVP matrices
-static GLuint INSTANCE_MODEL_BUFFER = 0;//buffer object holding model matrices
+static GLuint INSTANCE_MVP_BUFFER = 0;   // buffer object holding MVP matrices
+static GLuint INSTANCE_MODEL_BUFFER = 0; // buffer object holding model matrices
 static Mesh QUAD;
 static Shader TEMPORALAA;
 static Shader PASSTHROUGH;
 static bool INIT = false;
 static std::unordered_map<std::string, std::weak_ptr<Mesh_Handle>> MESH_CACHE;
-static std::unordered_map<std::string, std::weak_ptr<Texture_Handle>> TEXTURE_CACHE;
-
-
-
+static std::unordered_map<std::string, std::weak_ptr<Texture_Handle>>
+    TEXTURE_CACHE;
 
 void INIT_RENDERER()
 {
@@ -70,13 +69,13 @@ void INIT_RENDERER()
   set_message("Initializing renderer...");
   set_message("Creating renderer QUAD");
 
+  // the uid for the renderer's quad must be different than the
+  // planes used in the game world because that plane
+  // will have its instance attributes enabled when it gets bound in the
+  // renderer loop and  the passthrough shader doesn't have attribute slots for
+  // them
 
-  //the uid for the renderer's quad must be different than the
-  //planes used in the game world because that plane
-  //will have its instance attributes enabled when it gets bound in the renderer loop and
-  //the passthrough shader doesn't have attribute slots for them
-
-  //alternatively enable/disable the attributes every frame as needed
+  // alternatively enable/disable the attributes every frame as needed
   Mesh_Data quad_data = load_mesh_plane();
   quad_data.unique_identifier = "RENDERER's PLANE";
   QUAD = Mesh(quad_data, "RENDERER's PLANE");
@@ -84,7 +83,6 @@ void INIT_RENDERER()
   set_message("Creating TXAA and PASSTHROUGH shaders");
   TEMPORALAA = Shader("passthrough.vert", "TemporalAA.frag");
   PASSTHROUGH = Shader("passthrough.vert", "passthrough.frag");
-
 
   set_message("Initializing instance buffers");
   // instancing MVP Matrix buffer init
@@ -94,19 +92,17 @@ void INIT_RENDERER()
   glGenBuffers(1, &INSTANCE_MVP_BUFFER);
   glBindBuffer(GL_ARRAY_BUFFER, INSTANCE_MVP_BUFFER);
   glBufferData(GL_ARRAY_BUFFER, instance_buffer_size, (void *)0,
-    GL_DYNAMIC_DRAW);
+               GL_DYNAMIC_DRAW);
 
   // instancing Model Matrix buffer init
   glGenBuffers(1, &INSTANCE_MODEL_BUFFER);
   glBindBuffer(GL_ARRAY_BUFFER, INSTANCE_MODEL_BUFFER);
   glBufferData(GL_ARRAY_BUFFER, instance_buffer_size, (void *)0,
-    GL_DYNAMIC_DRAW);
+               GL_DYNAMIC_DRAW);
 
   glBindBuffer(GL_ARRAY_BUFFER, 0);
 
   set_message("Renderer init finished");
-
-
 }
 void CLEANUP_RENDERER()
 {
@@ -115,9 +111,10 @@ void CLEANUP_RENDERER()
   TEMPORALAA = Shader();
   PASSTHROUGH = Shader();
 
-  set_message("Deleting FBO, 3 textures, 2 instance buffers:", s(TARGET_FRAMEBUFFER," ",
-    COLOR_TARGET_TEXTURE," ",PREV_COLOR_TARGET," ",DEPTH_TARGET_TEXTURE," ",
-    INSTANCE_MVP_BUFFER," ",INSTANCE_MODEL_BUFFER));
+  set_message("Deleting FBO, 3 textures, 2 instance buffers:",
+              s(TARGET_FRAMEBUFFER, " ", COLOR_TARGET_TEXTURE, " ",
+                PREV_COLOR_TARGET, " ", DEPTH_TARGET_TEXTURE, " ",
+                INSTANCE_MVP_BUFFER, " ", INSTANCE_MODEL_BUFFER));
 
   glDeleteFramebuffers(1, &TARGET_FRAMEBUFFER);
   glDeleteTextures(1, &COLOR_TARGET_TEXTURE);
@@ -162,13 +159,15 @@ void save_and_log_screen()
   GLint width = viewport[2];
   GLint height = viewport[3];
 
-  SDL_Surface* surface = SDL_CreateRGBSurface(0, width, height, 32, 0xff000000, 0x00ff0000, 0x0000ff00, 0x000000ff);
-  if(surface)
+  SDL_Surface *surface = SDL_CreateRGBSurface(
+      0, width, height, 32, 0xff000000, 0x00ff0000, 0x0000ff00, 0x000000ff);
+  if (surface)
   {
-    std::string name = s("screen_",i,".png");
+    std::string name = s("screen_", i, ".png");
     set_message("Saving Screenshot: ", " With name: " + name);
     glPixelStorei(GL_PACK_ALIGNMENT, 1);
-    glReadPixels(0, 0, width, height, GL_RGBA, GL_UNSIGNED_BYTE, surface->pixels);
+    glReadPixels(0, 0, width, height, GL_RGBA, GL_UNSIGNED_BYTE,
+                 surface->pixels);
     IMG_SavePNG(surface, name.c_str());
     SDL_FreeSurface(surface);
   }
@@ -176,7 +175,6 @@ void save_and_log_screen()
   {
     set_message("surface creation failed in save_and_log_screen()");
   }
-
 }
 
 void save_and_log_texture(GLuint texture)
@@ -184,18 +182,19 @@ void save_and_log_texture(GLuint texture)
   static uint64 i = 0;
   ++i;
 
-  glBindTexture(GL_TEXTURE_2D,texture);
+  glBindTexture(GL_TEXTURE_2D, texture);
 
   GLint width = 0;
   GLint height = 0;
   glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_WIDTH, &width);
   glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_HEIGHT, &height);
 
-  SDL_Surface* surface = SDL_CreateRGBSurface(0, width, height, 32, 0xff000000, 0x00ff0000, 0x0000ff00, 0x000000ff);
-  if(surface)
+  SDL_Surface *surface = SDL_CreateRGBSurface(
+      0, width, height, 32, 0xff000000, 0x00ff0000, 0x0000ff00, 0x000000ff);
+  if (surface)
   {
-    std::string name = s("Texture object ",texture," #",i,".png");
-    set_message("Saving Texture: ", s(texture," With name: ",name));
+    std::string name = s("Texture object ", texture, " #", i, ".png");
+    set_message("Saving Texture: ", s(texture, " With name: ", name));
     glPixelStorei(GL_PACK_ALIGNMENT, 1);
     glGetTexImage(GL_TEXTURE_2D, 0, GL_RGBA, GL_UNSIGNED_BYTE, surface->pixels);
     IMG_SavePNG(surface, name.c_str());
@@ -210,36 +209,37 @@ void save_and_log_texture(GLuint texture)
 void dump_gl_float32_buffer(GLenum target, GLuint buffer, uint32 parse_stride)
 {
   set_message("Dumping buffer: ", s(buffer));
-  glBindBuffer(target,buffer);
+  glBindBuffer(target, buffer);
   GLint size = 0;
-  glGetBufferParameteriv(target, GL_BUFFER_SIZE,&size);//bytes
+  glGetBufferParameteriv(target, GL_BUFFER_SIZE, &size); // bytes
   set_message("size in bytes: ", s(size));
-  uint8* data = new uint8[size];
-  glGetBufferSubData(target,0,size,data);
+  uint8 *data = new uint8[size];
+  glGetBufferSubData(target, 0, size, data);
 
-  float32* fp = (float32*)data;
-  uint32 count = size/sizeof(float32);
+  float32 *fp = (float32 *)data;
+  uint32 count = size / sizeof(float32);
 
   std::string result = "\n";
-  for(uint32 i = 0; i < count;)
+  for (uint32 i = 0; i < count;)
   {
-    if(i+parse_stride > count)
+    if (i + parse_stride > count)
     {
-      set_message("warning: stride likely wrong in dump buffer: size mismatch. missing data in this dump");
+      set_message("warning: stride likely wrong in dump buffer: size mismatch. "
+                  "missing data in this dump");
       break;
     }
     result += "(";
-    for(uint32 j = 0; j < parse_stride; ++j)
+    for (uint32 j = 0; j < parse_stride; ++j)
     {
-      float32 f = fp[i+j];
+      float32 f = fp[i + j];
       result += s(f);
-      if(j != parse_stride-1)
+      if (j != parse_stride - 1)
       {
         result += ",";
       }
     }
     result += ")";
-    i+= parse_stride;
+    i += parse_stride;
   }
 
   set_message("GL buffer dump: ", result);
@@ -291,8 +291,9 @@ void Texture::load()
 {
 #if !SHOW_ERROR_TEXTURE
   if (file_path == ERROR_TEXTURE_PATH || file_path == BASE_TEXTURE_PATH)
-  { //the file path doesnt point to a valid texture, or points to the error texture
-    //a null texture here shows as 0,0,0,0 in the shader
+  { // the file path doesnt point to a valid texture, or points to the error
+    // texture
+    // a null texture here shows as 0,0,0,0 in the shader
     texture = nullptr;
     return;
   }
@@ -313,10 +314,9 @@ void Texture::load()
     glGenTextures(1, &texture->texture);
     glBindTexture(GL_TEXTURE_2D, texture->texture);
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA,
-      GL_UNSIGNED_INT_8_8_8_8, &color);
+                 GL_UNSIGNED_INT_8_8_8_8, &color);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER,
-      GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
     glBindTexture(GL_TEXTURE_2D, 0);
 
     return;
@@ -324,7 +324,7 @@ void Texture::load()
   auto *data = stbi_load(file_path.c_str(), &width, &height, &n, 4);
 
   if (!data)
-  {//error loading file...
+  { // error loading file...
 #if DYNAMIC_TEXTURE_RELOADING
     // retry next frame
     set_message("Warning: missing texture:" + file_path);
@@ -332,7 +332,7 @@ void Texture::load()
     return;
 #else
     if (!data)
-    {//no dynamic texture reloading, so log fail and load the error texture
+    { // no dynamic texture reloading, so log fail and load the error texture
       set_message("STBI failed to find or load texture: " + file_path);
       if (file_path == ERROR_TEXTURE_PATH)
       {
@@ -345,7 +345,6 @@ void Texture::load()
     }
 #endif
   }
-
 
   set_message("Texture load cache miss. Texture from disk: ", file_path, 1.0);
   // TODO: optimize the texture storage types to save GPU memory
@@ -375,7 +374,7 @@ void Texture::bind(const char *name, GLuint binding, Shader &shader)
   load();
 #endif
   GLuint u = glGetUniformLocation(shader.program->program, name);
-  //ASSERT(u != -1);
+  // ASSERT(u != -1);
   glUniform1i(u, binding);
   glActiveTexture(GL_TEXTURE0 + (GLuint)binding);
   glBindTexture(GL_TEXTURE_2D, texture ? texture->texture : 0);
@@ -393,43 +392,41 @@ Mesh::Mesh(Mesh_Primitive p, std::string mesh_name) : name(mesh_name)
   auto ptr = MESH_CACHE[unique_identifier].lock();
   if (ptr)
   {
-    //assert that the data is actually exactly the same
+    // assert that the data is actually exactly the same
     mesh = ptr;
     return;
   }
   set_message("caching mesh with uid: ", unique_identifier);
   MESH_CACHE[unique_identifier] = mesh = upload_data(load_mesh(p));
 }
-Mesh::Mesh(Mesh_Data data, std::string mesh_name)
-    : name(mesh_name)
+Mesh::Mesh(Mesh_Data data, std::string mesh_name) : name(mesh_name)
 {
   unique_identifier = data.unique_identifier;
   auto ptr = MESH_CACHE[unique_identifier].lock();
   if (ptr)
   {
-    //assert that the data is actually exactly the same
+    // assert that the data is actually exactly the same
     mesh = ptr;
     return;
   }
   set_message("caching mesh with uid: ", unique_identifier);
   MESH_CACHE[unique_identifier] = mesh = upload_data(data);
 }
-Mesh::Mesh(const aiMesh *aimesh,std::string unique_identifier)
+Mesh::Mesh(const aiMesh *aimesh, std::string unique_identifier)
 {
   ASSERT(aimesh);
   this->unique_identifier = unique_identifier;
   auto ptr = MESH_CACHE[unique_identifier].lock();
   if (ptr)
   {
-    //assert that the data is actually exactly the same
+    // assert that the data is actually exactly the same
     mesh = ptr;
     return;
   }
   set_message("caching mesh with uid: ", unique_identifier);
-  MESH_CACHE[unique_identifier] = mesh = upload_data(load_mesh(aimesh, unique_identifier));
+  MESH_CACHE[unique_identifier] = mesh =
+      upload_data(load_mesh(aimesh, unique_identifier));
 }
-
- 
 
 void Mesh::bind_to_shader(Shader &shader)
 {
@@ -441,36 +438,36 @@ void Mesh::bind_to_shader(Shader &shader)
   ASSERT(current_vao == mesh->vao);
   ASSERT(current_shader = shader.program->program);
 
-  //int32 loc = glGetAttribLocation(shader.program->program, "position");
-  //ASSERT(loc != -1);
+  // int32 loc = glGetAttribLocation(shader.program->program, "position");
+  // ASSERT(loc != -1);
   uint32 loc = 0;
   glEnableVertexAttribArray(loc);
   glBindBuffer(GL_ARRAY_BUFFER, mesh->position_buffer);
   glVertexAttribPointer(loc, 3, GL_FLOAT, GL_FALSE, sizeof(float32) * 3, 0);
 
- // loc = glGetAttribLocation(shader.program->program, "normal");
- // ASSERT(loc != -1);
+  // loc = glGetAttribLocation(shader.program->program, "normal");
+  // ASSERT(loc != -1);
   loc = 1;
   glEnableVertexAttribArray(loc);
   glBindBuffer(GL_ARRAY_BUFFER, mesh->normal_buffer);
   glVertexAttribPointer(loc, 3, GL_FLOAT, GL_FALSE, sizeof(float32) * 3, 0);
 
- // loc = glGetAttribLocation(shader.program->program, "uv");
-  //ASSERT(loc != -1);
+  // loc = glGetAttribLocation(shader.program->program, "uv");
+  // ASSERT(loc != -1);
   loc = 2;
   glEnableVertexAttribArray(loc);
   glBindBuffer(GL_ARRAY_BUFFER, mesh->uv_buffer);
   glVertexAttribPointer(loc, 2, GL_FLOAT, GL_FALSE, sizeof(float32) * 2, 0);
 
- // loc = glGetAttribLocation(shader.program->program, "tangent");
- // ASSERT(loc != -1);
+  // loc = glGetAttribLocation(shader.program->program, "tangent");
+  // ASSERT(loc != -1);
   loc = 3;
   glEnableVertexAttribArray(loc);
   glBindBuffer(GL_ARRAY_BUFFER, mesh->tangents_buffer);
   glVertexAttribPointer(loc, 3, GL_FLOAT, GL_FALSE, sizeof(float32) * 3, 0);
 
- // loc = glGetAttribLocation(shader.program->program, "bitangent");
- // ASSERT(loc != -1);
+  // loc = glGetAttribLocation(shader.program->program, "bitangent");
+  // ASSERT(loc != -1);
   loc = 4;
   glEnableVertexAttribArray(loc);
   glBindBuffer(GL_ARRAY_BUFFER, mesh->bitangents_buffer);
@@ -555,203 +552,202 @@ std::shared_ptr<Mesh_Handle> Mesh::upload_data(const Mesh_Data &mesh_data)
   glBindBuffer(GL_ARRAY_BUFFER, 0);
   glBindVertexArray(0);
   return mesh;
-  }
+}
 
-  Material::Material() {}
-  Material::Material(Material_Descriptor m) { load(m); }
-  Material::Material(aiMaterial * ai_material, std::string working_directory,
-                     Material_Descriptor * material_override)
+Material::Material() {}
+Material::Material(Material_Descriptor m) { load(m); }
+Material::Material(aiMaterial *ai_material, std::string working_directory,
+                   Material_Descriptor *material_override)
+{
+  ASSERT(ai_material);
+  const int albedo_n = ai_material->GetTextureCount(aiTextureType_DIFFUSE);
+  const int specular_n = ai_material->GetTextureCount(aiTextureType_SPECULAR);
+  const int emissive_n = ai_material->GetTextureCount(aiTextureType_EMISSIVE);
+  const int normal_n = ai_material->GetTextureCount(aiTextureType_NORMALS);
+  const int roughness_n = ai_material->GetTextureCount(aiTextureType_SHININESS);
+
+  // unused:
+  aiTextureType_HEIGHT;
+  aiTextureType_OPACITY;
+  aiTextureType_DISPLACEMENT;
+  aiTextureType_AMBIENT;
+  aiTextureType_LIGHTMAP;
+
+  Material_Descriptor m;
+  aiString name;
+  ai_material->GetTexture(aiTextureType_DIFFUSE, 0, &name);
+  m.albedo = copy(&name);
+  name.Clear();
+  ai_material->GetTexture(aiTextureType_SPECULAR, 0, &name);
+  m.specular = copy(&name);
+  name.Clear();
+  ai_material->GetTexture(aiTextureType_EMISSIVE, 0, &name);
+  m.emissive = copy(&name);
+  name.Clear();
+  ai_material->GetTexture(aiTextureType_NORMALS, 0, &name);
+  m.normal = copy(&name);
+  name.Clear();
+  ai_material->GetTexture(aiTextureType_LIGHTMAP, 0, &name);
+  m.ambient_occlusion = copy(&name);
+  name.Clear();
+  ai_material->GetTexture(aiTextureType_SHININESS, 0, &name);
+  m.roughness = copy(&name);
+  name.Clear();
+
+  if (albedo_n)
+    m.albedo = working_directory + m.albedo;
+  if (specular_n)
+    m.specular = working_directory + m.specular;
+  if (emissive_n)
+    m.emissive = working_directory + m.emissive;
+  if (normal_n)
+    m.normal = working_directory + m.normal;
+  if (roughness_n)
+    m.roughness = working_directory + m.roughness;
+
+  if (material_override)
   {
-    ASSERT(ai_material);
-    const int albedo_n = ai_material->GetTextureCount(aiTextureType_DIFFUSE);
-    const int specular_n = ai_material->GetTextureCount(aiTextureType_SPECULAR);
-    const int emissive_n = ai_material->GetTextureCount(aiTextureType_EMISSIVE);
-    const int normal_n = ai_material->GetTextureCount(aiTextureType_NORMALS);
-    const int roughness_n =
-        ai_material->GetTextureCount(aiTextureType_SHININESS);
-
-    // unused:
-    aiTextureType_HEIGHT;
-    aiTextureType_OPACITY;
-    aiTextureType_DISPLACEMENT;
-    aiTextureType_AMBIENT;
-    aiTextureType_LIGHTMAP;
-
-    Material_Descriptor m;
-    aiString name;
-    ai_material->GetTexture(aiTextureType_DIFFUSE, 0, &name);
-    m.albedo = copy(&name);
-    name.Clear();
-    ai_material->GetTexture(aiTextureType_SPECULAR, 0, &name);
-    m.specular = copy(&name);
-    name.Clear();
-    ai_material->GetTexture(aiTextureType_EMISSIVE, 0, &name);
-    m.emissive = copy(&name);
-    name.Clear();
-    ai_material->GetTexture(aiTextureType_NORMALS, 0, &name);
-    m.normal = copy(&name);
-    name.Clear();
-    ai_material->GetTexture(aiTextureType_LIGHTMAP, 0, &name);
-    m.ambient_occlusion = copy(&name);
-    name.Clear();
-    ai_material->GetTexture(aiTextureType_SHININESS, 0, &name);
-    m.roughness = copy(&name);
-    name.Clear();
-
-    if (albedo_n)
-      m.albedo = working_directory + m.albedo;
-    if (specular_n)
-      m.specular = working_directory + m.specular;
-    if (emissive_n)
-      m.emissive = working_directory + m.emissive;
-    if (normal_n)
-      m.normal = working_directory + m.normal;
-    if (roughness_n)
-      m.roughness = working_directory + m.roughness;
-
-    if (material_override)
-    {
-      if (material_override->albedo != "")
-        m.albedo = material_override->albedo;
-      if (material_override->roughness != "")
-        m.roughness = material_override->roughness;
-      if (material_override->specular != "")
-        m.specular = material_override->specular;
-      if (material_override->metalness != "")
-        m.metalness = material_override->metalness;
-      if (material_override->tangent != "")
-        m.tangent = material_override->tangent;
-      if (material_override->normal != "")
-        m.normal = material_override->normal;
-      if (material_override->ambient_occlusion != "")
-        m.ambient_occlusion = material_override->ambient_occlusion;
-      if (material_override->emissive != "")
-        m.emissive = material_override->emissive;
-      m.vertex_shader = material_override->vertex_shader;
-      m.frag_shader = material_override->frag_shader;
-      m.backface_culling = material_override->backface_culling;
-      m.has_transparency = material_override->has_transparency;
-      m.uv_scale = material_override->uv_scale;
-    }
-    load(m);
+    if (material_override->albedo != "")
+      m.albedo = material_override->albedo;
+    if (material_override->roughness != "")
+      m.roughness = material_override->roughness;
+    if (material_override->specular != "")
+      m.specular = material_override->specular;
+    if (material_override->metalness != "")
+      m.metalness = material_override->metalness;
+    if (material_override->tangent != "")
+      m.tangent = material_override->tangent;
+    if (material_override->normal != "")
+      m.normal = material_override->normal;
+    if (material_override->ambient_occlusion != "")
+      m.ambient_occlusion = material_override->ambient_occlusion;
+    if (material_override->emissive != "")
+      m.emissive = material_override->emissive;
+    m.vertex_shader = material_override->vertex_shader;
+    m.frag_shader = material_override->frag_shader;
+    m.backface_culling = material_override->backface_culling;
+    m.has_transparency = material_override->has_transparency;
+    m.uv_scale = material_override->uv_scale;
   }
-  void Material::load(Material_Descriptor m)
-  {
-    this->m = m;
-    albedo = Texture(m.albedo);
-    //specular_color = Texture(m.specular);
-    normal = Texture(m.normal);
-    emissive = Texture(m.emissive);
-    roughness = Texture(m.roughness);
-    shader = Shader(m.vertex_shader, m.frag_shader);
-    uv_scale = m.uv_scale;
-  }
-  void Material::bind()
-  {
-    if (m.backface_culling)
-      glEnable(GL_CULL_FACE);
-    else
-      glDisable(GL_CULL_FACE);
+  load(m);
+}
+void Material::load(Material_Descriptor m)
+{
+  this->m = m;
+  albedo = Texture(m.albedo);
+  // specular_color = Texture(m.specular);
+  normal = Texture(m.normal);
+  emissive = Texture(m.emissive);
+  roughness = Texture(m.roughness);
+  shader = Shader(m.vertex_shader, m.frag_shader);
+  uv_scale = m.uv_scale;
+}
+void Material::bind()
+{
+  if (m.backface_culling)
+    glEnable(GL_CULL_FACE);
+  else
+    glDisable(GL_CULL_FACE);
 
-    albedo.bind("albedo", 0, shader);
-    //specular_color.bind("specular", 1, shader);
-    normal.bind("normal", 2, shader);
-    emissive.bind("emissive", 3, shader);
-    roughness.bind("roughness", 4, shader);
-  }
-  void Material::unbind_textures()
-  {
-    glActiveTexture(GL_TEXTURE0 + Texture_Location::albedo);
-    glBindTexture(GL_TEXTURE_2D, 0);
-    glActiveTexture(GL_TEXTURE0 + Texture_Location::specular);
-    glBindTexture(GL_TEXTURE_2D, 0);
-    glActiveTexture(GL_TEXTURE0 + Texture_Location::normal);
-    glBindTexture(GL_TEXTURE_2D, 0);
-    glActiveTexture(GL_TEXTURE0 + Texture_Location::emissive);
-    glBindTexture(GL_TEXTURE_2D, 0);
-    glActiveTexture(GL_TEXTURE0 + Texture_Location::roughness);
-    glBindTexture(GL_TEXTURE_2D, 0);
-  }
+  albedo.bind("albedo", 0, shader);
+  // specular_color.bind("specular", 1, shader);
+  normal.bind("normal", 2, shader);
+  emissive.bind("emissive", 3, shader);
+  roughness.bind("roughness", 4, shader);
+}
+void Material::unbind_textures()
+{
+  glActiveTexture(GL_TEXTURE0 + Texture_Location::albedo);
+  glBindTexture(GL_TEXTURE_2D, 0);
+  glActiveTexture(GL_TEXTURE0 + Texture_Location::specular);
+  glBindTexture(GL_TEXTURE_2D, 0);
+  glActiveTexture(GL_TEXTURE0 + Texture_Location::normal);
+  glBindTexture(GL_TEXTURE_2D, 0);
+  glActiveTexture(GL_TEXTURE0 + Texture_Location::emissive);
+  glBindTexture(GL_TEXTURE_2D, 0);
+  glActiveTexture(GL_TEXTURE0 + Texture_Location::roughness);
+  glBindTexture(GL_TEXTURE_2D, 0);
+}
 
-  bool Light::operator==(const Light &rhs) const
+bool Light::operator==(const Light &rhs) const
+{
+  bool b1 = position == rhs.position;
+  bool b2 = direction == rhs.direction;
+  bool b3 = color == rhs.color;
+  bool b4 = attenuation == rhs.attenuation;
+  bool b5 = ambient == rhs.ambient;
+  bool b6 = cone_angle == rhs.cone_angle;
+  bool b7 = type == rhs.type;
+  return b1 & b2 & b3 & b4 & b5 & b6 & b7;
+}
+
+bool Light_Array::operator==(const Light_Array &rhs)
+{
+  if (light_count != rhs.light_count)
+    return false;
+  if (lights != rhs.lights)
   {
-    bool b1 = position == rhs.position;
-    bool b2 = direction == rhs.direction;
-    bool b3 = color == rhs.color;
-    bool b4 = attenuation == rhs.attenuation;
-    bool b5 = ambient == rhs.ambient;
-    bool b6 = cone_angle == rhs.cone_angle;
-    bool b7 = type == rhs.type;
-    return b1 & b2 & b3 & b4 & b5 & b6 & b7;
+    return false;
   }
-
-  bool Light_Array::operator==(const Light_Array &rhs)
+  if (additional_ambient != rhs.additional_ambient)
   {
-    if (light_count != rhs.light_count)
-      return false;
-    if (lights != rhs.lights)
-    {
-      return false;
-    }
-    if (additional_ambient != rhs.additional_ambient)
-    {
-      return false;
-    }
-    return true;
+    return false;
   }
+  return true;
+}
 
-  Render_Entity::Render_Entity(Mesh * mesh, Material * material,
-                               Light_Array lights, mat4 world_to_model)
-      : mesh(mesh), material(material), lights(lights),
-        transformation(world_to_model)
+Render_Entity::Render_Entity(Mesh *mesh, Material *material, Light_Array lights,
+                             mat4 world_to_model)
+    : mesh(mesh), material(material), lights(lights),
+      transformation(world_to_model)
+{
+  ASSERT(mesh);
+  ASSERT(material);
+}
+
+Render::Render(SDL_Window *window, ivec2 window_size)
+{
+  set_message("Render constructor");
+  this->window = window;
+  this->window_size = window_size;
+  SDL_DisplayMode current;
+  SDL_GetCurrentDisplayMode(0, &current);
+  target_frame_time = 1.0f / (float32)current.refresh_rate;
+  set_vfov(vfov);
+  init_render_targets();
+  FRAME_TIMER.start();
+}
+
+void set_uniform_lights(Shader &shader, Light_Array &lights)
+{
+  ASSERT(lights.lights.size() == MAX_LIGHTS);
+  uint32 location = -1;
+  // todo: this is horrible. do something much better than this - precompute
+  // all these godawful strings and just select them
+
+  for (int i = 0; i < MAX_LIGHTS; ++i)
   {
-    ASSERT(mesh);
-    ASSERT(material);
+    shader.set_uniform((s("lights[", i, "].position")).c_str(),
+                       lights.lights[i].position);
+    shader.set_uniform((s("lights[", i, "].direction")).c_str(),
+                       lights.lights[i].direction);
+    shader.set_uniform((s("lights[", i, "].color")).c_str(),
+                       lights.lights[i].color);
+    shader.set_uniform((s("lights[", i, "].attenuation")).c_str(),
+                       lights.lights[i].attenuation);
+    vec3 ambient = lights.lights[i].ambient * lights.lights[i].color;
+    shader.set_uniform((s("lights[", i, "].ambient")).c_str(), ambient);
+    shader.set_uniform((s("lights[", i, "].cone_angle")).c_str(),
+                       lights.lights[i].cone_angle);
+    shader.set_uniform((s("lights[", i, "].type")).c_str(),
+                       (int32)lights.lights[i].type);
   }
+  shader.set_uniform("number_of_lights", (int32)lights.light_count);
+  shader.set_uniform("additional_ambient", lights.additional_ambient);
+}
 
-  Render::Render(SDL_Window * window, ivec2 window_size)
-  {
-    set_message("Render constructor");
-    this->window = window;
-    this->window_size = window_size;
-    SDL_DisplayMode current;
-    SDL_GetCurrentDisplayMode(0, &current);
-    target_frame_time = 1.0f / (float32)current.refresh_rate;
-    set_vfov(vfov);
-    init_render_targets();
-    FRAME_TIMER.start();
-  }
-
-  void set_uniform_lights(Shader & shader, Light_Array & lights)
-  {
-    ASSERT(lights.lights.size() == MAX_LIGHTS);
-    uint32 location = -1;
-    // todo: this is horrible. do something much better than this - precompute
-    // all these godawful strings and just select them
-
-    for (int i = 0; i < MAX_LIGHTS; ++i)
-    {
-      shader.set_uniform((s("lights[", i, "].position")).c_str(),
-                         lights.lights[i].position);
-      shader.set_uniform((s("lights[", i, "].direction")).c_str(),
-                         lights.lights[i].direction);
-      shader.set_uniform((s("lights[", i, "].color")).c_str(),
-                         lights.lights[i].color);
-      shader.set_uniform((s("lights[", i, "].attenuation")).c_str(),
-                         lights.lights[i].attenuation);
-      vec3 ambient = lights.lights[i].ambient * lights.lights[i].color;
-      shader.set_uniform((s("lights[", i, "].ambient")).c_str(), ambient);
-      shader.set_uniform((s("lights[", i, "].cone_angle")).c_str(),
-                         lights.lights[i].cone_angle);
-      shader.set_uniform((s("lights[", i, "].type")).c_str(),
-                         (int32)lights.lights[i].type);
-    }
-    shader.set_uniform("number_of_lights", (int32)lights.light_count);
-    shader.set_uniform("additional_ambient", lights.additional_ambient);
-  }
-
-  void Render::render(float64 state_time)
-  {
+void Render::render(float64 state_time)
+{
 #if DYNAMIC_FRAMERATE_TARGET
   dynamic_framerate_target();
 #endif
@@ -773,7 +769,7 @@ std::shared_ptr<Mesh_Handle> Mesh::upload_data(const Mesh_Data &mesh_data)
   glEnable(GL_DEPTH_TEST);
   glDepthFunc(GL_LESS);
 
-  for (Render_Entity& entity : render_entities)
+  for (Render_Entity &entity : render_entities)
   {
     ASSERT(entity.mesh);
     int vao = entity.mesh->get_vao();
@@ -786,18 +782,19 @@ std::shared_ptr<Mesh_Handle> Mesh::upload_data(const Mesh_Data &mesh_data)
     shader.set_uniform("txaa_jitter", txaa_jitter);
     shader.set_uniform("camera_position", camera_position);
     shader.set_uniform("uv_scale", entity.material->uv_scale);
-    shader.set_uniform("MVP", projection*camera*entity.transformation);
+    shader.set_uniform("MVP", projection * camera * entity.transformation);
     shader.set_uniform("Model", entity.transformation);
     set_uniform_lights(shader, entity.lights);
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, entity.mesh->get_indices_buffer());
-    glDrawElements(GL_TRIANGLES, entity.mesh->get_indices_buffer_size(), GL_UNSIGNED_INT, nullptr);
+    glDrawElements(GL_TRIANGLES, entity.mesh->get_indices_buffer_size(),
+                   GL_UNSIGNED_INT, nullptr);
   }
   for (auto &entity : render_instances)
   {
-    ASSERT(0);//untested
+    ASSERT(0); // untested
     ASSERT(entity.mesh);
     int vao = entity.mesh->get_vao();
-    glBindVertexArray(vao); 
+    glBindVertexArray(vao);
     Shader &shader = entity.material->shader;
     ASSERT(shader.vs == "instance.vert");
     shader.use();
@@ -820,7 +817,6 @@ std::shared_ptr<Mesh_Handle> Mesh::upload_data(const Mesh_Data &mesh_data)
     uint32 num_instances = entity.MVP_Matrices.size();
     uint32 buffer_size = num_instances * sizeof(mat4);
 
-    
     glBindBuffer(GL_ARRAY_BUFFER, INSTANCE_MVP_BUFFER);
     glBufferSubData(GL_ARRAY_BUFFER, 0, buffer_size,
                     &entity.MVP_Matrices[0][0][0]);
@@ -845,11 +841,11 @@ std::shared_ptr<Mesh_Handle> Mesh::upload_data(const Mesh_Data &mesh_data)
     glBindBuffer(GL_ARRAY_BUFFER, INSTANCE_MVP_BUFFER);
     glVertexAttribPointer(loc1, 4, GL_FLOAT, GL_FALSE, mat4_size, (void *)(0));
     glVertexAttribPointer(loc2, 4, GL_FLOAT, GL_FALSE, mat4_size,
-      (void *)(sizeof(GLfloat) * 4));
+                          (void *)(sizeof(GLfloat) * 4));
     glVertexAttribPointer(loc3, 4, GL_FLOAT, GL_FALSE, mat4_size,
-      (void *)(sizeof(GLfloat) * 8));
+                          (void *)(sizeof(GLfloat) * 8));
     glVertexAttribPointer(loc4, 4, GL_FLOAT, GL_FALSE, mat4_size,
-      (void *)(sizeof(GLfloat) * 12));
+                          (void *)(sizeof(GLfloat) * 12));
     glVertexAttribDivisor(loc1, 1);
     glVertexAttribDivisor(loc2, 1);
     glVertexAttribDivisor(loc3, 1);
@@ -869,18 +865,19 @@ std::shared_ptr<Mesh_Handle> Mesh::upload_data(const Mesh_Data &mesh_data)
     glBindBuffer(GL_ARRAY_BUFFER, INSTANCE_MODEL_BUFFER);
     glVertexAttribPointer(loc_1, 4, GL_FLOAT, GL_FALSE, mat4_size, (void *)(0));
     glVertexAttribPointer(loc_2, 4, GL_FLOAT, GL_FALSE, mat4_size,
-      (void *)(sizeof(GLfloat) * 4));
+                          (void *)(sizeof(GLfloat) * 4));
     glVertexAttribPointer(loc_3, 4, GL_FLOAT, GL_FALSE, mat4_size,
-      (void *)(sizeof(GLfloat) * 8));
+                          (void *)(sizeof(GLfloat) * 8));
     glVertexAttribPointer(loc_4, 4, GL_FLOAT, GL_FALSE, mat4_size,
-      (void *)(sizeof(GLfloat) * 12));
+                          (void *)(sizeof(GLfloat) * 12));
     glVertexAttribDivisor(loc_1, 1);
     glVertexAttribDivisor(loc_2, 1);
     glVertexAttribDivisor(loc_3, 1);
     glVertexAttribDivisor(loc_4, 1);
-     
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, entity.mesh->get_indices_buffer());  
-    glDrawElementsInstanced(GL_TRIANGLES, entity.mesh->get_indices_buffer_size(),
+
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, entity.mesh->get_indices_buffer());
+    glDrawElementsInstanced(GL_TRIANGLES,
+                            entity.mesh->get_indices_buffer_size(),
                             GL_UNSIGNED_INT, (void *)0, num_instances);
 
     entity.material->unbind_textures();
@@ -916,12 +913,13 @@ std::shared_ptr<Mesh_Handle> Mesh::upload_data(const Mesh_Data &mesh_data)
     GLuint u2 = glGetUniformLocation(TEMPORALAA.program->program, "previous");
     glUniform1i(u2, 1);
     glActiveTexture(GL_TEXTURE0 + 1);
-    glBindTexture(GL_TEXTURE_2D,
-                  PREV_COLOR_TARGET_MISSING ? COLOR_TARGET_TEXTURE : PREV_COLOR_TARGET);
+    glBindTexture(GL_TEXTURE_2D, PREV_COLOR_TARGET_MISSING
+                                     ? COLOR_TARGET_TEXTURE
+                                     : PREV_COLOR_TARGET);
     TEMPORALAA.set_uniform("transform", o);
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, QUAD.get_indices_buffer());
-    glDrawElements(GL_TRIANGLES, QUAD.get_indices_buffer_size(), GL_UNSIGNED_INT,
-                   (void *)0);
+    glDrawElements(GL_TRIANGLES, QUAD.get_indices_buffer_size(),
+                   GL_UNSIGNED_INT, (void *)0);
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, 0);
     glActiveTexture(GL_TEXTURE0 + 1);
@@ -951,12 +949,13 @@ std::shared_ptr<Mesh_Handle> Mesh::upload_data(const Mesh_Data &mesh_data)
     glBindTexture(GL_TEXTURE_2D, COLOR_TARGET_TEXTURE);
     PASSTHROUGH.set_uniform("transform", o);
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, QUAD.get_indices_buffer());
-    glDrawElements(GL_TRIANGLES, QUAD.get_indices_buffer_size(), GL_UNSIGNED_INT,
-      (void *)0);
+    glDrawElements(GL_TRIANGLES, QUAD.get_indices_buffer_size(),
+                   GL_UNSIGNED_INT, (void *)0);
 
     PREV_COLOR_TARGET_MISSING = false;
     // place color_target back in target_fbo
-    glFramebufferTexture(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, COLOR_TARGET_TEXTURE, 0);
+    glFramebufferTexture(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0,
+                         COLOR_TARGET_TEXTURE, 0);
     glBindTexture(GL_TEXTURE_2D, 0);
     txaa_jitter = get_next_TXAA_sample();
   }
@@ -986,8 +985,8 @@ std::shared_ptr<Mesh_Handle> Mesh::upload_data(const Mesh_Data &mesh_data)
 
     PASSTHROUGH.set_uniform("transform", o);
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, QUAD.get_indices_buffer());
-    glDrawElements(GL_TRIANGLES, QUAD.get_indices_buffer_size(), GL_UNSIGNED_INT,
-                   (void *)0);
+    glDrawElements(GL_TRIANGLES, QUAD.get_indices_buffer_size(),
+                   GL_UNSIGNED_INT, (void *)0);
 
     glBindTexture(GL_TEXTURE_2D, 0);
     glFinish(); // intent is to time just the swap itself
@@ -998,8 +997,8 @@ std::shared_ptr<Mesh_Handle> Mesh::upload_data(const Mesh_Data &mesh_data)
     SWAP_TIMER.stop();
     FRAME_TIMER.start();
     glBindVertexArray(0);
-    //set_message("Swap complete... Saving default framebuffer");
-    //save_and_log_screen();
+    // set_message("Swap complete... Saving default framebuffer");
+    // save_and_log_screen();
   }
   frame_count += 1;
 }
@@ -1050,7 +1049,6 @@ void Render::set_render_entities(std::vector<Render_Entity> render_entities)
   this->render_entities = render_entities;
 }
 
-
 void check_FBO_status()
 {
   auto result = glCheckFramebufferStatus(GL_FRAMEBUFFER);
@@ -1086,9 +1084,9 @@ void check_FBO_status()
       break;
   }
 
-  if(str != "GL_FRAMEBUFFER_COMPLETE")
+  if (str != "GL_FRAMEBUFFER_COMPLETE")
   {
-    set_message("FBO_ERROR",str);
+    set_message("FBO_ERROR", str);
     ASSERT(0);
   }
 }
@@ -1097,10 +1095,10 @@ void Render::init_render_targets()
 {
   set_message("init_render_targets()");
   set_message("Deleting FBO", std::to_string(TARGET_FRAMEBUFFER));
-  set_message("Deleting Textures", std::to_string(COLOR_TARGET_TEXTURE) +
-  " "+ std::to_string(PREV_COLOR_TARGET) + 
-  " " + std::to_string(DEPTH_TARGET_TEXTURE));
-  
+  set_message("Deleting Textures", std::to_string(COLOR_TARGET_TEXTURE) + " " +
+                                       std::to_string(PREV_COLOR_TARGET) + " " +
+                                       std::to_string(DEPTH_TARGET_TEXTURE));
+
   glBindFramebuffer(GL_FRAMEBUFFER, 0);
   glDeleteFramebuffers(1, &TARGET_FRAMEBUFFER);
   glDeleteTextures(1, &COLOR_TARGET_TEXTURE);
@@ -1139,13 +1137,12 @@ void Render::init_render_targets()
 
   PREV_COLOR_TARGET_MISSING = true;
 
-
   set_message("Init FBO", s(TARGET_FRAMEBUFFER));
-  set_message("Init Textures", s(COLOR_TARGET_TEXTURE) + " "+ s(PREV_COLOR_TARGET));
+  set_message("Init Textures",
+              s(COLOR_TARGET_TEXTURE) + " " + s(PREV_COLOR_TARGET));
   set_message("Init renderbuffers", s(DEPTH_TARGET_TEXTURE));
-  
-  check_FBO_status();
 
+  check_FBO_status();
 
   glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }
@@ -1198,7 +1195,9 @@ void Render::dynamic_framerate_target()
 
   if (percent_high > reduce_threshold)
   {
-    set_message("Number of missed frames over threshold. Reducing resolution.: ",std::to_string(percent_high)+" "+std::to_string(target_frame_time));
+    set_message(
+        "Number of missed frames over threshold. Reducing resolution.: ",
+        std::to_string(percent_high) + " " + std::to_string(target_frame_time));
     set_render_scale(render_scale * reduction_factor);
 
     // we need to clear the timers because the render scale change
@@ -1220,7 +1219,9 @@ void Render::dynamic_framerate_target()
       { // increase resolution slowly
         return;
       }
-      set_message("High avg swap. Increasing resolution.",std::to_string(swap_avg)+" "+std::to_string(target_frame_time));
+      set_message("High avg swap. Increasing resolution.",
+                  std::to_string(swap_avg) + " " +
+                      std::to_string(target_frame_time));
       set_render_scale(render_scale * increase_factor);
       uint64 last_start = FRAME_TIMER.get_begin();
       SWAP_TIMER.clear_all();
@@ -1242,7 +1243,7 @@ mat4 Render::get_next_TXAA_sample()
   jitter_switch = !jitter_switch;
   return result;
 }
- 
+
 Mesh_Handle::~Mesh_Handle()
 {
   if (position_buffer == 27)
@@ -1266,4 +1267,3 @@ Mesh_Handle::~Mesh_Handle()
   indices_buffer = 0;
   indices_buffer_size = 0;
 }
-

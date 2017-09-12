@@ -18,7 +18,8 @@ const float32 ATK_RANGE = 5.0f;
 #define ROOT_PATH std::string("../")
 #endif
 const std::string BASE_ASSET_PATH = ROOT_PATH + "Assets/";
-const std::string BASE_TEXTURE_PATH = BASE_ASSET_PATH + std::string("Textures/");
+const std::string BASE_TEXTURE_PATH =
+    BASE_ASSET_PATH + std::string("Textures/");
 const std::string BASE_SHADER_PATH = BASE_ASSET_PATH + std::string("Shaders/");
 const std::string BASE_MODEL_PATH = BASE_ASSET_PATH + std::string("Models/");
 const std::string ERROR_TEXTURE_PATH = BASE_TEXTURE_PATH + "err.png";
@@ -33,37 +34,34 @@ float32 wrap_to_range(const float32 input, const float32 min, const float32 max)
 static Assimp::Importer importer;
 
 const int default_assimp_flags = aiProcess_FlipWindingOrder |
-aiProcess_Triangulate |
-aiProcess_FlipUVs |
-aiProcess_CalcTangentSpace |
-// aiProcess_MakeLeftHanded|
-//aiProcess_JoinIdenticalVertices |
-//aiProcess_PreTransformVertices |
-aiProcess_GenUVCoords |
-// aiProcess_OptimizeGraph|
-// aiProcess_ImproveCacheLocality|
- // aiProcess_OptimizeMeshes|
-//aiProcess_GenNormals|
-//aiProcess_GenSmoothNormals|
-//aiProcess_FixInfacingNormals |
-0;
+                                 aiProcess_Triangulate | aiProcess_FlipUVs |
+                                 aiProcess_CalcTangentSpace |
+                                 // aiProcess_MakeLeftHanded|
+                                 // aiProcess_JoinIdenticalVertices |
+                                 // aiProcess_PreTransformVertices |
+                                 aiProcess_GenUVCoords |
+                                 // aiProcess_OptimizeGraph|
+                                 // aiProcess_ImproveCacheLocality|
+                                 // aiProcess_OptimizeMeshes|
+                                 // aiProcess_GenNormals|
+                                 // aiProcess_GenSmoothNormals|
+                                 // aiProcess_FixInfacingNormals |
+                                 0;
 
-const aiScene* load_aiscene(std::string path, const int* assimp_flags)
+const aiScene *load_aiscene(std::string path, const int *assimp_flags)
 {
   if (!assimp_flags)
     assimp_flags = &default_assimp_flags;
   path = BASE_MODEL_PATH + path;
-    int flags = *assimp_flags;
-    auto p = importer.ReadFile(path.c_str(), flags);
-    if (!p || p->mFlags == AI_SCENE_FLAGS_INCOMPLETE ||
-      !p->mRootNode)
-    {
-      set_message("ERROR::ASSIMP::", importer.GetErrorString());
-      ASSERT(0);
-    }
+  int flags = *assimp_flags;
+  auto p = importer.ReadFile(path.c_str(), flags);
+  if (!p || p->mFlags == AI_SCENE_FLAGS_INCOMPLETE || !p->mRootNode)
+  {
+    set_message("ERROR::ASSIMP::", importer.GetErrorString());
+    ASSERT(0);
+  }
   return p;
 }
-
 
 bool all_equal(int32 a, int32 b, int32 c) { return (a == b) && (a == c); }
 bool all_equal(int32 a, int32 b, int32 c, int32 d)
@@ -126,7 +124,7 @@ std::string copy(aiString str)
   result = str.C_Str();
   return result;
 }
-std::string copy(const aiString* str)
+std::string copy(const aiString *str)
 {
   ASSERT(str);
   std::string result;
@@ -157,11 +155,11 @@ std::string read_file(const char *path)
 
 Uint32 string_to_color(std::string color)
 {
-  //color(n,n,n,n)
+  // color(n,n,n,n)
   std::string a = color.substr(6);
-  //n,n,n,n)
+  // n,n,n,n)
   a.pop_back();
-  //n,n,n,n
+  // n,n,n,n
 
   std::string c;
   ivec4 r(0);
@@ -190,27 +188,28 @@ Uint32 string_to_color(std::string color)
   return result;
 }
 
-Uint64 dankhash(float32* data, uint32 size)
+Uint64 dankhash(float32 *data, uint32 size)
 {
   Uint64 h = 1631243561234777777;
   Uint64 acc = 0;
   for (uint32 i = 0; i < size; ++i)
   {
-    float64 c = data[i]*h;
+    float64 c = data[i] * h;
     Uint64 a = (Uint64)c;
     acc += a;
-    h = (h ^ a) * a * i; //idk what im doing
+    h = (h ^ a) * a * i; // idk what im doing
   }
   return h + acc;
 }
 
 void _check_gl_error(const char *file, uint32 line)
 {
-  set_message("Checking GL Error in file: ", std::string(file)+" Line: " + std::to_string(line));
+  set_message("Checking GL Error in file: ",
+              std::string(file) + " Line: " + std::to_string(line));
   glFlush();
   GLenum err = glGetError();
   glFlush();
-  if(err != GL_NO_ERROR)
+  if (err != GL_NO_ERROR)
   {
     std::string error;
     switch (err)
@@ -231,7 +230,9 @@ void _check_gl_error(const char *file, uint32 line)
         error = "INVALID_FRAMEBUFFER_OPERATION";
         break;
     }
-    set_message("GL ERROR", "GL_" + error + " - " + file + ":" + std::to_string(line) + "\n",1.0);
+    set_message(
+        "GL ERROR",
+        "GL_" + error + " - " + file + ":" + std::to_string(line) + "\n", 1.0);
     std::cout << get_messages();
     push_log_to_disk();
     throw;
@@ -242,32 +243,32 @@ void _check_gl_error()
 {
   glFlush();
   GLenum err = glGetError();
-  if(err != GL_NO_ERROR)
+  if (err != GL_NO_ERROR)
   {
     std::string error;
     switch (err)
     {
-    case GL_INVALID_OPERATION:
-      error = "INVALID_OPERATION";
-      break;
-    case GL_INVALID_ENUM:
-      error = "INVALID_ENUM";
-      break;
-    case GL_INVALID_VALUE:
-      error = "INVALID_VALUE";
-      break;
-    case GL_OUT_OF_MEMORY:
-      error = "OUT_OF_MEMORY";
-      break;
-    case GL_INVALID_FRAMEBUFFER_OPERATION:
-      error = "INVALID_FRAMEBUFFER_OPERATION";
-      break;
+      case GL_INVALID_OPERATION:
+        error = "INVALID_OPERATION";
+        break;
+      case GL_INVALID_ENUM:
+        error = "INVALID_ENUM";
+        break;
+      case GL_INVALID_VALUE:
+        error = "INVALID_VALUE";
+        break;
+      case GL_OUT_OF_MEMORY:
+        error = "OUT_OF_MEMORY";
+        break;
+      case GL_INVALID_FRAMEBUFFER_OPERATION:
+        error = "INVALID_FRAMEBUFFER_OPERATION";
+        break;
     }
     set_message("GL ERROR", "GL_" + error);
     push_log_to_disk();
     std::terminate();
   }
-} 
+}
 void checkSDLError(int32 line)
 {
 #ifdef DEBUG
@@ -307,11 +308,11 @@ static std::vector<Message> messages;
 static std::string message_log = "";
 
 void _set_message(std::string identifier, std::string message,
-                 float64 msg_duration, const char* file, uint32 line)
+                  float64 msg_duration, const char *file, uint32 line)
 {
   const float64 time = get_real_time();
   bool found = false;
-  for (auto& msg : messages)
+  for (auto &msg : messages)
   {
     if (msg.identifier == identifier)
     {
@@ -323,13 +324,16 @@ void _set_message(std::string identifier, std::string message,
   }
   if (!found)
   {
-    Message m = { identifier,message,time+msg_duration };
+    Message m = {identifier, message, time + msg_duration};
     messages.push_back(std::move(m));
   }
 #if INCLUDE_FILE_LINE_IN_LOG
-  message_log.append("Time: " + s(time) + " Event: " + identifier + " " + message + " File: " + file + ": "+ std::to_string(line)+ "\n\n");
+  message_log.append("Time: " + s(time) + " Event: " + identifier + " " +
+                     message + " File: " + file + ": " + std::to_string(line) +
+                     "\n\n");
 #else
-  message_log.append("Time: " + s(time) + " Event: " + identifier + " " + message+"\n");
+  message_log.append("Time: " + s(time) + " Event: " + identifier + " " +
+                     message + "\n");
 #endif
 }
 
@@ -357,10 +361,11 @@ void push_log_to_disk()
   static bool first = true;
   if (first)
   {
-    std::fstream file("warg_log.txt", std::ios::out|std::ios::trunc);
+    std::fstream file("warg_log.txt", std::ios::out | std::ios::trunc);
     first = false;
   }
-  std::fstream file("warg_log.txt", std::ios::in | std::ios::out | std::ios::app);
+  std::fstream file("warg_log.txt",
+                    std::ios::in | std::ios::out | std::ios::app);
   file.seekg(std::ios::end);
   file.write(message_log.c_str(), message_log.size());
   file.close();
@@ -369,7 +374,7 @@ void push_log_to_disk()
 std::string vtos(glm::vec2 v)
 {
   std::string result = "";
-  for(uint32 i = 0; i < 2; ++i)
+  for (uint32 i = 0; i < 2; ++i)
   {
     result += std::to_string(v[i]) + " ";
   }
@@ -378,7 +383,7 @@ std::string vtos(glm::vec2 v)
 std::string vtos(glm::vec3 v)
 {
   std::string result = "";
-  for(uint32 i = 0; i < 3; ++i)
+  for (uint32 i = 0; i < 3; ++i)
   {
     result += std::to_string(v[i]) + " ";
   }
@@ -387,7 +392,7 @@ std::string vtos(glm::vec3 v)
 std::string vtos(glm::vec4 v)
 {
   std::string result = "";
-  for(uint32 i = 0; i < 4; ++i)
+  for (uint32 i = 0; i < 4; ++i)
   {
     result += std::to_string(v[i]) + " ";
   }
@@ -397,27 +402,22 @@ std::string vtos(glm::vec4 v)
 std::string mtos(glm::mat4 m)
 {
   std::string result = "\n|";
-  for(uint32 i = 0; i < 4; ++i)
+  for (uint32 i = 0; i < 4; ++i)
   {
     result += "|" + vtos(m[i]) + "|\n";
   }
   return result;
 }
 
-template<>
-std::string s<const char*>(const char* value) 
+template <> std::string s<const char *>(const char *value)
 {
   return std::string(value);
 }
-template<>
-std::string s<std::string>(std::string value) 
-{
-  return value;
-}
+template <> std::string s<std::string>(std::string value) { return value; }
 
 //#define check_gl_error() _check_gl_error(__FILE__, __LINE__)
 #define check_gl_error() _check_gl_error()
-void gl_before_check(const glbinding::FunctionCall& f)
+void gl_before_check(const glbinding::FunctionCall &f)
 {
   std::string opengl_call = f.function->name();
   opengl_call += '(';
@@ -435,7 +435,7 @@ void gl_before_check(const glbinding::FunctionCall& f)
   set_message("BEFORE OPENGL call: ", opengl_call);
   check_gl_error();
 }
-void gl_after_check(const glbinding::FunctionCall& f)
+void gl_after_check(const glbinding::FunctionCall &f)
 {
   std::string opengl_call = f.function->name();
   opengl_call += '(';

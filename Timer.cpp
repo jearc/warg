@@ -8,7 +8,7 @@ template <typename T> void ASSERT(T t)
   }
 #endif
 }
- 
+
 Timer::Timer(uint32 samples)
 {
   times = std::vector<float64>(samples, -1.);
@@ -45,10 +45,7 @@ void Timer::stop()
   }
 }
 
-void Timer::cancel()
-{
-  stopped = true;
-}
+void Timer::cancel() { stopped = true; }
 
 void Timer::clear_all()
 {
@@ -83,10 +80,7 @@ float64 Timer::moving_average()
 
 uint32 Timer::sample_count() { return num_samples; }
 
-uint32 Timer::max_sample_count()
-{
-  return times.size();
-}
+uint32 Timer::max_sample_count() { return times.size(); }
 
 float64 Timer::longest()
 {
@@ -126,7 +120,7 @@ std::vector<float64> Timer::get_times()
 {
   std::vector<float64> result;
   result.reserve(num_samples);
-  for(auto& t : times)
+  for (auto &t : times)
   {
     if (t != -1)
       result.push_back(t);
@@ -134,12 +128,5 @@ std::vector<float64> Timer::get_times()
   return result;
 }
 
-uint64 Timer::get_begin()
-{
-  return begin;
-}
-uint64 Timer::get_end()
-{
-  return end;
-}
-
+uint64 Timer::get_begin() { return begin; }
+uint64 Timer::get_end() { return end; }

@@ -17,7 +17,7 @@ struct Shader
   void set_uniform(const char *name, vec3 &v);
   void set_uniform(const char *name, vec4 &v);
   void set_uniform(const char *name, const mat4 &m);
-   
+
   void use() const;
 
   struct Shader_Handle

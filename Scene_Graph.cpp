@@ -1,5 +1,5 @@
-#include "Globals.h"
 #include "Scene_Graph.h"
+#include "Globals.h"
 #include "Render.h"
 #include <array>
 #include <assimp/Importer.hpp>
@@ -8,7 +8,6 @@
 #include <assimp/types.h>
 #include <atomic>
 #include <thread>
-
 
 glm::mat4 copy(aiMatrix4x4 m)
 {
@@ -24,16 +23,21 @@ glm::mat4 copy(aiMatrix4x4 m)
   }
   return result;
 }
-Scene_Graph_Node::Scene_Graph_Node(std::string name, 
-                                   Node_Ptr parent, const mat4 *basis)
+Scene_Graph_Node::Scene_Graph_Node(std::string name, Node_Ptr parent,
+                                   const mat4 *basis)
     : parent(parent), name(name)
 {
   if (basis)
     import_basis = *basis;
 }
-Scene_Graph_Node::Scene_Graph_Node(std::string name, const aiNode *node, const 
-                                   Node_Ptr parent, const mat4 *import_basis_,
-                                   const aiScene *scene,std::string scene_file_path, Uint32* mesh_num, Material_Descriptor* material_override) :  parent(parent)
+Scene_Graph_Node::Scene_Graph_Node(std::string name, const aiNode *node,
+                                   const Node_Ptr parent,
+                                   const mat4 *import_basis_,
+                                   const aiScene *scene,
+                                   std::string scene_file_path,
+                                   Uint32 *mesh_num,
+                                   Material_Descriptor *material_override)
+    : parent(parent)
 {
   ASSERT(node);
   ASSERT(scene);
@@ -53,30 +57,32 @@ Scene_Graph_Node::Scene_Graph_Node(std::string name, const aiNode *node, const
     Mesh mesh(aimesh, unique_id);
     aiMaterial *ptr = scene->mMaterials[aimesh->mMaterialIndex];
     Material material(ptr, dir, material_override);
-    model.push_back({ mesh,material });
+    model.push_back({mesh, material});
   }
   children.reserve(node->mNumChildren);
 }
 
 Scene_Graph::Scene_Graph() : root(0)
 {
-  Scene_Graph_Node root(std::string("SCENE_GRAPH_ROOT"), Node_Ptr(0),
-                        nullptr);
-  
+  Scene_Graph_Node root(std::string("SCENE_GRAPH_ROOT"), Node_Ptr(0), nullptr);
+
   nodes.reserve(1000);
   nodes.push_back(root);
   nodes.back().children.reserve(1000);
 }
 void Scene_Graph::add_graph_node(const aiNode *node, Node_Ptr parent,
                                  const mat4 *import_basis,
-                                 const aiScene *aiscene,std::string scene_file_path,Uint32* mesh_num, Material_Descriptor* material_override)
+                                 const aiScene *aiscene,
+                                 std::string scene_file_path, Uint32 *mesh_num,
+                                 Material_Descriptor *material_override)
 {
   ASSERT(node_exists(parent));
   ASSERT(node);
   ASSERT(aiscene);
   std::string name = copy(&node->mName);
   // construct just this node in the main node array
-  Scene_Graph_Node node_obj(name, node,  parent, import_basis, aiscene, scene_file_path, mesh_num, material_override);
+  Scene_Graph_Node node_obj(name, node, parent, import_basis, aiscene,
+                            scene_file_path, mesh_num, material_override);
   nodes.push_back(node_obj);
 
   // give the parent node the pointer to that entity
@@ -89,33 +95,34 @@ void Scene_Graph::add_graph_node(const aiNode *node, Node_Ptr parent,
   for (uint32 i = 0; i < node->mNumChildren; ++i)
   {
     const aiNode *child = node->mChildren[i];
-    add_graph_node(child, new_node_ptr, import_basis, aiscene, scene_file_path, mesh_num, material_override);
+    add_graph_node(child, new_node_ptr, import_basis, aiscene, scene_file_path,
+                   mesh_num, material_override);
   }
 }
- 
-Node_Ptr Scene_Graph::add_mesh(Mesh_Data m, Material_Descriptor md, std::string name, Node_Ptr parent, const mat4* import_basis)
+
+Node_Ptr Scene_Graph::add_mesh(Mesh_Data m, Material_Descriptor md,
+                               std::string name, Node_Ptr parent,
+                               const mat4 *import_basis)
 {
   Scene_Graph_Node node(name, parent, import_basis);
   Node_Ptr node_ptr(nodes.size());
-  Mesh mesh(m);
+  Mesh mesh(m,name);
   Material material(md);
-  node.model.push_back({ mesh,material });
+  node.model.push_back({mesh, material});
   nodes.push_back(node);
-  if (parent)
-  {
-    Scene_Graph_Node* parent = get_node(parent);
-    parent->children.push_back(node_ptr);
-  }
-  return node;
+  Scene_Graph_Node *p = get_node(parent);
+  p->children.push_back(node_ptr);
+  return node_ptr;
 }
 void Scene_Graph::set_parent(Node_Ptr p, Node_Ptr desired_parent)
 {
-  Scene_Graph_Node* ptr = this->get_node(p);
-  Scene_Graph_Node* dptr = this->get_node(desired_parent);
+  Scene_Graph_Node *ptr = this->get_node(p);
+  Scene_Graph_Node *dptr = this->get_node(desired_parent);
 
-  Scene_Graph_Node* current_parent = this->get_node(ptr->parent);
+  Scene_Graph_Node *current_parent = this->get_node(ptr->parent);
 
-  for (auto i = current_parent->children.begin(); i != current_parent->children.end(); ++i)
+  for (auto i = current_parent->children.begin();
+       i != current_parent->children.end(); ++i)
   {
     if (i->i == p.i)
     {
@@ -126,32 +133,38 @@ void Scene_Graph::set_parent(Node_Ptr p, Node_Ptr desired_parent)
   dptr->children.push_back(p);
 }
 
-
-Node_Ptr Scene_Graph::add_aiscene(std::string scene_file_path, const mat4 *import_basis,
-  Node_Ptr parent, Material_Descriptor* material_override)
+Node_Ptr Scene_Graph::add_aiscene(std::string scene_file_path,
+                                  const mat4 *import_basis, Node_Ptr parent,
+                                  Material_Descriptor *material_override)
 {
-  return add_aiscene(load_aiscene(scene_file_path), scene_file_path, import_basis, parent, material_override);
+  return add_aiscene(load_aiscene(scene_file_path), scene_file_path,
+                     import_basis, parent, material_override);
 }
 
-Node_Ptr Scene_Graph::add_aiscene(std::string scene_file_path, Material_Descriptor* material_override)
+Node_Ptr Scene_Graph::add_aiscene(std::string scene_file_path,
+                                  Material_Descriptor *material_override)
 {
-  return add_aiscene(load_aiscene(scene_file_path), scene_file_path, nullptr, Node_Ptr(0), material_override);
+  return add_aiscene(load_aiscene(scene_file_path), scene_file_path, nullptr,
+                     Node_Ptr(0), material_override);
 }
 
-
-Node_Ptr Scene_Graph::add_aiscene(const aiScene* scene, std::string scene_file_path, const mat4 *import_basis,
-                                  Node_Ptr parent, Material_Descriptor* material_override)
+Node_Ptr Scene_Graph::add_aiscene(const aiScene *scene,
+                                  std::string scene_file_path,
+                                  const mat4 *import_basis, Node_Ptr parent,
+                                  Material_Descriptor *material_override)
 {
-  //accumulates as meshes are imported, used along with the scene file path
-  //to create a unique_id for the mesh
+  // accumulates as meshes are imported, used along with the scene file path
+  // to create a unique_id for the mesh
   Uint32 mesh_num = 0;
-  const aiNode *root = scene->mRootNode; 
-
+  const aiNode *root = scene->mRootNode;
 
   // create the root node for this scene
-  std::string name = std::string("ROOT FOR: ") + scene_file_path + " " + copy(&root->mName);
+  std::string name =
+      std::string("ROOT FOR: ") + scene_file_path + " " + copy(&root->mName);
   scene_file_path = BASE_MODEL_PATH + scene_file_path;
-  Scene_Graph_Node root_for_new_scene(name,root,parent,import_basis,scene, scene_file_path, &mesh_num, material_override);
+  Scene_Graph_Node root_for_new_scene(name, root, parent, import_basis, scene,
+                                      scene_file_path, &mesh_num,
+                                      material_override);
 
   // push root node to scene graph and parent
   nodes.push_back(root_for_new_scene);
@@ -165,7 +178,8 @@ Node_Ptr Scene_Graph::add_aiscene(const aiScene* scene, std::string scene_file_p
   for (uint32 i = 0; i < num_children; ++i)
   {
     const aiNode *node = scene->mRootNode->mChildren[i];
-    add_graph_node(node, root_for_new_scene_ptr, import_basis, scene, scene_file_path, &mesh_num, material_override);
+    add_graph_node(node, root_for_new_scene_ptr, import_basis, scene,
+                   scene_file_path, &mesh_num, material_override);
   }
   return root_for_new_scene_ptr;
 }
@@ -207,8 +221,8 @@ void Scene_Graph::visit_nodes(const Node_Ptr node_ptr, const mat4 &M,
   }
 }
 void Scene_Graph::visit_nodes_locked_accumulator(
-    Node_Ptr node_ptr, const mat4 &M,
-    std::vector<Render_Entity> *accumulator, std::atomic_flag *lock)
+    Node_Ptr node_ptr, const mat4 &M, std::vector<Render_Entity> *accumulator,
+    std::atomic_flag *lock)
 {
   Scene_Graph_Node *const entity = get_node(node_ptr);
 
@@ -253,7 +267,7 @@ void Scene_Graph::visit_root_node_base_index(
   ASSERT(entity->position == vec3(0));
   ASSERT(entity->orientation == quat());
   ASSERT(entity->import_basis == mat4(1));
-  
+
   for (uint32 i = node_index; i < node_index + count; ++i)
   {
     Node_Ptr child = entity->children[i];
@@ -344,10 +358,10 @@ bool Scene_Graph::node_exists(Node_Ptr ptr) const
   return ptr.i < nodes.size();
 }
 uint32 Scene_Graph::node_count() const { return nodes.size(); }
- 
+
 Node_Ptr Scene_Graph::add_primitive_mesh(Mesh_Primitive p, std::string name,
-                                      Material_Descriptor m, Node_Ptr parent,
-                                      const mat4 *import_basis)
+                                         Material_Descriptor m, Node_Ptr parent,
+                                         const mat4 *import_basis)
 {
   // create the meshes and materials for this node
   Mesh mesh(p, name);
@@ -355,7 +369,7 @@ Node_Ptr Scene_Graph::add_primitive_mesh(Mesh_Primitive p, std::string name,
 
   // create the node itself
   Scene_Graph_Node new_node(name, parent, import_basis);
-  new_node.model.push_back({ mesh, material });
+  new_node.model.push_back({mesh, material});
 
   // push the new node onto this graph
   // construct a ptr to it

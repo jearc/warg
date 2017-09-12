@@ -1,25 +1,26 @@
-#include "Globals.h"
 #include "State.h"
+#include "Globals.h"
 #include "Render.h"
 #include <atomic>
-#include <thread>
 #include <memory>
 #include <sstream>
- 
+#include <thread>
+
 using namespace glm;
 
 static bool intersects(vec3 pa, vec3 da, vec3 pb, vec3 db);
 static bool intersects(vec3 pa, Cylinder ca, vec3 pb, Cylinder cb);
 static bool intersects(vec3 pa, Cylinder ca, Wall w);
-static void invoke_spell_effect(SpellEffectInst &i, std::array<Character, 10> &chars,
-  std::vector<SpellObjectInst> &objs);
+static void invoke_spell_effect(SpellEffectInst &i,
+                                std::array<Character, 10> &chars,
+                                std::vector<SpellObjectInst> &objs);
 static void cast_spell(Character &caster, Character *target, Spell &spell,
-  std::array<Character, 10> &chars,
-  std::vector<SpellObjectInst> &objs);
+                       std::array<Character, 10> &chars,
+                       std::vector<SpellObjectInst> &objs);
 static void apply_char_mods(Character &c);
 static void release_spell(Character &caster, Character *target, Spell &spell,
-  std::array<Character, 10> &chars,
-  std::vector<SpellObjectInst> &objs);
+                          std::array<Character, 10> &chars,
+                          std::vector<SpellObjectInst> &objs);
 static void move_char(Character &c, vec3 v);
 
 static std::array<CharMod, 100> char_mods;
@@ -35,7 +36,6 @@ static int nspell_objects = 0;
 static int nspells = 0;
 static int nchars = 0;
 
-
 State::State(std::string name, SDL_Window *window, ivec2 window_size)
     : state_name(name), window(window), renderer(window, window_size)
 {
@@ -43,7 +43,8 @@ State::State(std::string name, SDL_Window *window, ivec2 window_size)
   reset_mouse_delta();
 }
 
-Game_State::Game_State(std::string name, SDL_Window *window, ivec2 window_size) :State(name, window, window_size)
+Game_State::Game_State(std::string name, SDL_Window *window, ivec2 window_size)
+    : State(name, window, window_size)
 {
   Material_Descriptor material;
   material.albedo = "pebbles_diffuse.png";
@@ -60,41 +61,41 @@ Game_State::Game_State(std::string name, SDL_Window *window, ivec2 window_size) 
   n->position = ground_pos;
   n->scale = ground_dim;
 
-  add_wall({ 0, 2, 0 }, { 3, 2 }, 5);
-  add_wall({ 3, 0, 0 }, { 3, 2 }, 5);
-  add_wall({ 3, 0, 0 }, { 5, 0 }, 5);
-  add_wall({ 5, 0, 0 }, { 5, 2 }, 5);
-  add_wall({ 5, 2, 0 }, { 8, 2 }, 5);
+  add_wall({0, 2, 0}, {3, 2}, 5);
+  add_wall({3, 0, 0}, {3, 2}, 5);
+  add_wall({3, 0, 0}, {5, 0}, 5);
+  add_wall({5, 0, 0}, {5, 2}, 5);
+  add_wall({5, 2, 0}, {8, 2}, 5);
 
-  add_wall({ 7, 2, 0 }, { 8, 3 }, 5);
+  add_wall({7, 2, 0}, {8, 3}, 5);
 
-  add_wall({ 8, 2, 0 }, { 8, 9 }, 5);
-  add_wall({ 8, 9, 0 }, { 5, 9 }, 5);
-  add_wall({ 5, 9, 0 }, { 5, 11 }, 5);
-  add_wall({ 5, 11, 0 }, { 3, 11 }, 5);
-  add_wall({ 3, 11, 0 }, { 3, 9 }, 5);
-  add_wall({ 3, 9, 0 }, { 0, 9 }, 5);
-  add_wall({ 0, 9, 0 }, { 0, 2 }, 5);
-  add_wall({ 1, 7, 0 }, { 1, 8 }, 5);
-  add_wall({ 1, 8, 0 }, { 2, 8 }, 5);
-  add_wall({ 2, 8, 0 }, { 2, 7 }, 5);
-  add_wall({ 2, 7, 0 }, { 1, 7 }, 5);
-  add_wall({ 6, 7, 0 }, { 6, 8 }, 5);
-  add_wall({ 6, 8, 0 }, { 7, 8 }, 5);
-  add_wall({ 7, 8, 0 }, { 7, 7 }, 5);
-  add_wall({ 7, 7, 0 }, { 6, 7 }, 5);
-  add_wall({ 6, 4, 0 }, { 7, 4 }, 5);
-  add_wall({ 7, 4, 0 }, { 7, 3 }, 5);
-  add_wall({ 7, 3, 0 }, { 6, 3 }, 5);
-  add_wall({ 6, 3, 0 }, { 6, 4 }, 5);
-  add_wall({ 2, 3, 0 }, { 2, 4 }, 5);
-  add_wall({ 2, 4, 0 }, { 1, 4 }, 5);
-  add_wall({ 1, 4, 0 }, { 1, 3 }, 5);
-  add_wall({ 1, 3, 0 }, { 2, 3 }, 5);
+  add_wall({8, 2, 0}, {8, 9}, 5);
+  add_wall({8, 9, 0}, {5, 9}, 5);
+  add_wall({5, 9, 0}, {5, 11}, 5);
+  add_wall({5, 11, 0}, {3, 11}, 5);
+  add_wall({3, 11, 0}, {3, 9}, 5);
+  add_wall({3, 9, 0}, {0, 9}, 5);
+  add_wall({0, 9, 0}, {0, 2}, 5);
+  add_wall({1, 7, 0}, {1, 8}, 5);
+  add_wall({1, 8, 0}, {2, 8}, 5);
+  add_wall({2, 8, 0}, {2, 7}, 5);
+  add_wall({2, 7, 0}, {1, 7}, 5);
+  add_wall({6, 7, 0}, {6, 8}, 5);
+  add_wall({6, 8, 0}, {7, 8}, 5);
+  add_wall({7, 8, 0}, {7, 7}, 5);
+  add_wall({7, 7, 0}, {6, 7}, 5);
+  add_wall({6, 4, 0}, {7, 4}, 5);
+  add_wall({7, 4, 0}, {7, 3}, 5);
+  add_wall({7, 3, 0}, {6, 3}, 5);
+  add_wall({6, 3, 0}, {6, 4}, 5);
+  add_wall({2, 3, 0}, {2, 4}, 5);
+  add_wall({2, 4, 0}, {1, 4}, 5);
+  add_wall({1, 4, 0}, {1, 3}, 5);
+  add_wall({1, 3, 0}, {2, 3}, 5);
 
   scene.lights.light_count = 1;
   Light *light = &scene.lights.lights[0];
-  light->position = vec3{ 0, 0, 10 };
+  light->position = vec3{0, 0, 10};
   light->color = 30.0f * vec3(1.0f, 0.93f, 0.92f);
   light->attenuation = vec3(1.0f, .045f, .0075f);
   light->ambient = 0.02f;
@@ -111,7 +112,7 @@ Game_State::Game_State(std::string name, SDL_Window *window, ivec2 window_size) 
 
   CharMod *ds_mod = &char_mods[nchar_mods++];
   ds_mod->type = CharModType::DamageTaken;
-  ds_mod->damage_taken = DamageTakenMod{ 0 };
+  ds_mod->damage_taken = DamageTakenMod{0};
 
   BuffDef *ds_buff = &buffs[nbuffs++];
   ds_buff->name = "DivineShieldBuff";
@@ -382,10 +383,10 @@ Game_State::Game_State(std::string name, SDL_Window *window, ivec2 window_size) 
 
   SDL_SetRelativeMouseMode(SDL_bool(true));
   reset_mouse_delta();
-
-  
 }
-Render_Test_State::Render_Test_State(std::string name, SDL_Window *window, ivec2 window_size) : State(name, window, window_size)
+Render_Test_State::Render_Test_State(std::string name, SDL_Window *window,
+                                     ivec2 window_size)
+    : State(name, window, window_size)
 {
   free_cam = true;
 
@@ -399,12 +400,11 @@ Render_Test_State::Render_Test_State(std::string name, SDL_Window *window, ivec2
   material.uv_scale = vec2(30);
   ground = scene.add_primitive_mesh(plane, "test_entity_plane", material);
   Scene_Graph_Node *n = scene.get_node(ground);
-  n->position = { 0.0f, 0.0f, 0.0f };
-  n->scale = { 40.0f, 40.0f, 1.0f };
+  n->position = {0.0f, 0.0f, 0.0f};
+  n->scale = {40.0f, 40.0f, 1.0f};
 
   material.uv_scale = vec2(4);
   sphere = scene.add_aiscene("sphere.obj", nullptr, Node_Ptr(0), &material);
-
 
   material.albedo = "crate_diffuse.png";
   material.emissive = "test_emissive.png";
@@ -414,14 +414,12 @@ Render_Test_State::Render_Test_State(std::string name, SDL_Window *window, ivec2
   material.frag_shader = "fragment_shader.frag";
   material.uv_scale = vec2(2);
 
-
   cube_star = scene.add_primitive_mesh(cube, "star", material);
   cube_planet = scene.add_primitive_mesh(cube, "planet", material, cube_star);
   cube_moon = scene.add_primitive_mesh(cube, "moon", material, cube_planet);
 
-
   cam.phi = .25;
-  cam.theta = -1.5f*half_pi<float32>();
+  cam.theta = -1.5f * half_pi<float32>();
   cam.pos = vec3(3.3, 2.3, 1.4);
 
   for (int y = -3; y < 3; ++y)
@@ -430,14 +428,14 @@ Render_Test_State::Render_Test_State(std::string name, SDL_Window *window, ivec2
     {
       mat4 t = translate(vec3(x, y, 0.0));
       mat4 s = scale(vec3(0.25));
-      mat4 basis = t*s;
+      mat4 basis = t * s;
       chests.push_back(scene.add_aiscene("Chest/Chest.obj", &basis));
     }
   }
 
   Material_Descriptor tiger_mat;
   tiger_mat.backface_culling = false;
-  tiger = scene.add_aiscene("tiger/tiger.obj",&tiger_mat);
+  tiger = scene.add_aiscene("tiger/tiger.obj", &tiger_mat);
 
   material.albedo = "color(255,255,255,255)";
   material.emissive = "color(255,255,255,255)";
@@ -478,8 +476,8 @@ void State::prepare_renderer(double t)
   renderer.clear_color = clear_color;
 }
 
-
-void Game_State::handle_input(State** current_state, std::vector<State*> available_states)
+void Game_State::handle_input(State **current_state,
+                              std::vector<State *> available_states)
 {
   auto is_pressed = [](int key) {
     const static Uint8 *keys = SDL_GetKeyboardState(NULL);
@@ -824,7 +822,8 @@ void Game_State::handle_input(State** current_state, std::vector<State*> availab
   previous_mouse_state = mouse_state;
 }
 
-void Render_Test_State::handle_input(State** current_state, std::vector<State*> available_states)
+void Render_Test_State::handle_input(State **current_state,
+                                     std::vector<State *> available_states)
 {
   auto is_pressed = [](int key) {
     const static Uint8 *keys = SDL_GetKeyboardState(NULL);
@@ -878,7 +877,7 @@ void Render_Test_State::handle_input(State** current_state, std::vector<State*> 
         // resize
       }
       else if (_e.window.event == SDL_WINDOWEVENT_FOCUS_GAINED ||
-        _e.window.event == SDL_WINDOWEVENT_ENTER)
+               _e.window.event == SDL_WINDOWEVENT_ENTER)
       { // dumping mouse delta prevents camera teleport on focus gain
 
         // required, else clicking the title bar itself to gain focus
@@ -893,7 +892,7 @@ void Render_Test_State::handle_input(State** current_state, std::vector<State*> 
   checkSDLError(__LINE__);
   // first person style camera control:
   const uint32 mouse_state =
-    SDL_GetMouseState(&mouse_position.x, &mouse_position.y);
+      SDL_GetMouseState(&mouse_position.x, &mouse_position.y);
 
   // note: SDL_SetRelativeMouseMode is being set by the constructor
   ivec2 mouse_delta;
@@ -948,7 +947,7 @@ void Render_Test_State::handle_input(State** current_state, std::vector<State*> 
   { // wow style camera
     vec4 cam_rel;
     if ((left_button_down || right_button_down) &&
-      (last_seen_lmb || last_seen_rmb))
+        (last_seen_lmb || last_seen_rmb))
     { // won't track mouse delta that happened when mouse button was not pressed
       cam.theta += mouse_delta.x * MOUSE_X_SENS;
       cam.phi += mouse_delta.y * MOUSE_Y_SENS;
@@ -1058,7 +1057,8 @@ void Game_State::update()
 
     m->position = c.pos;
     m->scale = vec3(1.0f);
-    m->orientation = angleAxis((float32)atan2(c.dir.y, c.dir.x), vec3(0.f, 0.f, 1.f));
+    m->orientation =
+        angleAxis((float32)atan2(c.dir.y, c.dir.x), vec3(0.f, 0.f, 1.f));
 
     if (c.target && !c.target->alive)
     {
@@ -1067,7 +1067,7 @@ void Game_State::update()
 
     c.atk_cd -= dt;
     if (c.target && c.target->alive && c.team != c.target->team &&
-      length(c.pos - c.target->pos) <= ATK_RANGE && c.atk_cd <= 0)
+        length(c.pos - c.target->pos) <= ATK_RANGE && c.atk_cd <= 0)
     {
       // int edamage = chars[c.target].take_damage({c.atk_dmg, false, false});
       // c.atk_cd = c.atk_speed;
@@ -1081,14 +1081,14 @@ void Game_State::update()
       BuffDef bdef = b.def;
       b.duration -= dt;
       if (!bdef.tick_effects.empty() &&
-        b.duration * bdef.tick_freq < b.ticks_left)
+          b.duration * bdef.tick_freq < b.ticks_left)
       {
         for (auto &e : bdef.tick_effects)
         {
           SpellEffectInst ei;
           ei.def = *e;
           ei.caster = nullptr;
-          ei.pos = { 0, 0, 0 };
+          ei.pos = {0, 0, 0};
           ei.target = &c;
           invoke_spell_effect(ei, chars, spell_objs);
         }
@@ -1120,14 +1120,14 @@ void Game_State::update()
       BuffDef ddef = d.def;
       d.duration -= dt;
       if (!ddef.tick_effects.empty() &&
-        d.duration * ddef.tick_freq < d.ticks_left)
+          d.duration * ddef.tick_freq < d.ticks_left)
       {
         for (auto &e : ddef.tick_effects)
         {
           SpellEffectInst ei;
           ei.def = *e;
           ei.caster = nullptr;
-          ei.pos = { 0, 0, 0 };
+          ei.pos = {0, 0, 0};
           ei.target = &c;
           invoke_spell_effect(ei, chars, spell_objs);
         }
@@ -1201,7 +1201,7 @@ void Game_State::update()
     if (d < 0.5)
     {
       std::cout << o.caster->name << "'s " << o.def.name.c_str() << " hit "
-        << o.target->name << std::endl;
+                << o.target->name << std::endl;
       for (auto &e : o.def.effects)
       {
         SpellEffectInst ei;
@@ -1211,8 +1211,6 @@ void Game_State::update()
         ei.target = o.target;
         invoke_spell_effect(ei, chars, spell_objs);
       }
-
-      
 
       spell_objs.erase(i--);
     }
@@ -1228,60 +1226,68 @@ void Game_State::update()
 }
 void Render_Test_State::update()
 {
-  
+
   auto star = scene.get_node(cube_star);
   auto planet = scene.get_node(cube_planet);
   auto moon = scene.get_node(cube_moon);
 
   const float32 height = 3.25;
 
-  star->scale = vec3(.85);// +0.65f*vec3(sin(current_time*.2));
-  star->position = vec3(10*cos(current_time/10.f), 0, height);
-  const float32 anglestar = wrap_to_range(pi<float32>()*sin(current_time/2), 0, 2 * pi<float32>());
-  //star->orientation = angleAxis(anglestar, normalize(vec3(cos(current_time*.2), sin(current_time*.2), 1)));
+  star->scale = vec3(.85); // +0.65f*vec3(sin(current_time*.2));
+  star->position = vec3(10 * cos(current_time / 10.f), 0, height);
+  const float32 anglestar = wrap_to_range(pi<float32>() * sin(current_time / 2),
+                                          0, 2 * pi<float32>());
+  // star->orientation = angleAxis(anglestar,
+  // normalize(vec3(cos(current_time*.2), sin(current_time*.2), 1)));
 
   const float32 planet_scale = 0.35;
   const float32 planet_distance = 4;
   const float32 planet_year = 5;
   const float32 planet_day = 1;
   planet->scale = vec3(planet_scale);
-  planet->position = planet_distance* vec3(cos(current_time/ planet_year), sin(current_time/ planet_year), 0);
+  planet->position = planet_distance * vec3(cos(current_time / planet_year),
+                                            sin(current_time / planet_year), 0);
   const float32 angle = wrap_to_range(current_time, 0, 2 * pi<float32>());
-  planet->orientation = angleAxis((float32)current_time/planet_day, vec3(0, 0, 1));
+  planet->orientation =
+      angleAxis((float32)current_time / planet_day, vec3(0, 0, 1));
 
   const float32 moon_scale = 0.25;
   const float32 moon_distance = 1.5;
   const float32 moon_year = .75;
   const float32 moon_day = .1;
   moon->scale = vec3(moon_scale);
-  moon->position = moon_distance*vec3(cos(current_time / moon_year), sin(current_time / moon_year), 0);
-  moon->orientation = angleAxis((float32)current_time/moon_day, vec3(0, 0, 1));
+  moon->position = moon_distance * vec3(cos(current_time / moon_year),
+                                        sin(current_time / moon_year), 0);
+  moon->orientation =
+      angleAxis((float32)current_time / moon_day, vec3(0, 0, 1));
 
   auto sphere_p = scene.get_node(sphere);
   sphere_p->position = vec3(-3, 3, 1.5);
   sphere_p->scale = vec3(0.4);
 
-  auto& lights = scene.lights.lights;
+  auto &lights = scene.lights.lights;
   scene.lights.light_count = 3;
 
   lights[0].position = star->position;
   lights[0].type = Light_Type::omnidirectional;
-  lights[0].color = 1.1f* vec3(0.1, 1, 0.1);
+  lights[0].color = 1.1f * vec3(0.1, 1, 0.1);
   lights[0].ambient = 0.015f;
   lights[0].attenuation = vec3(1.0, .22, .2);
 
-  lights[1].position = vec3(7 * cos(current_time*.72), 7 * sin(current_time*.72), 6.25);
+  lights[1].position =
+      vec3(7 * cos(current_time * .72), 7 * sin(current_time * .72), 6.25);
   lights[1].type = Light_Type::spot;
   lights[1].direction = vec3(0);
-  lights[1].color = 320.f*vec3(0.8, 1.0, 0.8);
+  lights[1].color = 320.f * vec3(0.8, 1.0, 0.8);
   lights[1].cone_angle = 0.11; //+ 0.14*sin(current_time);
   lights[1].ambient = 0.01;
   auto light_obj = scene.get_node(cone_light);
   light_obj->position = lights[1].position;
   light_obj->scale = vec3(0.2);
 
-  lights[2].position = vec3(3*cos(current_time*.12),3*sin(.03*current_time),0.5);
-  lights[2].color = 51.f*vec3(1, 0.05, 1.05);
+  lights[2].position =
+      vec3(3 * cos(current_time * .12), 3 * sin(.03 * current_time), 0.5);
+  lights[2].color = 51.f * vec3(1, 0.05, 1.05);
   lights[2].type = Light_Type::omnidirectional;
   lights[2].attenuation = vec3(1.0, .7, 1.8);
   lights[2].ambient = 0.0026f;
@@ -1296,7 +1302,7 @@ void Render_Test_State::update()
   t1 = (t1 / 2.0f) + 0.5f;
   clear_color = lerp(night, day, t1);
 
-  scene.lights.additional_ambient = t1*vec3(0.76);
+  scene.lights.additional_ambient = t1 * vec3(0.76);
 }
 
 void State::render(float64 t)
@@ -1304,7 +1310,6 @@ void State::render(float64 t)
   prepare_renderer(t);
   renderer.render(t);
 }
-
 
 void State::performance_output()
 {
@@ -1326,13 +1331,12 @@ void State::performance_output()
     s << PERF_TIMER.string_report();
     s << "FPS: " << current_frame_rate;
     s << "\nTotal FPS:" << (float64)frame_count / current_time;
-    s << "\nRender Scale: " <<renderer.get_render_scale();
+    s << "\nRender Scale: " << renderer.get_render_scale();
     s << "\nDraw calls: " << renderer.draw_calls_last_frame;
     set_message("Performance output: ", s.str(), report_delay / 2);
     std::cout << get_messages() << std::endl;
   }
 }
-
 
 void Game_State::add_wall(vec3 p1, vec2 p2, float32 h)
 {
@@ -1362,7 +1366,6 @@ void Game_State::add_wall(vec3 p1, vec2 p2, float32 h)
 
   walls.push_back(Wall{p1, p2, h});
 }
- 
 
 void Game_State::add_char(int team, std::string name)
 {

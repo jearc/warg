@@ -18,7 +18,7 @@ struct SpellObjectDef
   float32 speed;
   std::vector<SpellEffect *> effects;
 };
- 
+
 struct SpellObjectInst
 {
   SpellObjectDef def;
@@ -252,19 +252,19 @@ struct Character
   Character *cast_target = nullptr;
 };
 
-
-
 struct State
 {
-  State(std::string name,SDL_Window *window, ivec2 window_size);
+  State(std::string name, SDL_Window *window, ivec2 window_size);
 
   virtual void render(float64 t) final;
   virtual void update() = 0;
-  virtual void handle_input(State** current_state, std::vector<State*> available_states) = 0;
+  virtual void handle_input(State **current_state,
+                            std::vector<State *> available_states) = 0;
   float64 current_time = 0;
 
   bool paused = true;
-  float64 paused_time_accumulator = 0; //how far the sim is behind 'real' process time
+  float64 paused_time_accumulator =
+      0; // how far the sim is behind 'real' process time
   float64 last_output = 0;
   uint64 frames_at_last_tick = 0;
   void reset_mouse_delta();
@@ -281,19 +281,19 @@ protected:
   bool free_cam = false;
   Camera cam;
   vec3 clear_color = vec3(0);
+
 private:
   SDL_Window *window = nullptr;
 };
-
 
 struct Game_State : protected State
 {
   Game_State(std::string name, SDL_Window *window, ivec2 window_size);
   void update();
-  void handle_input(State** current_state, std::vector<State*> available_states);
+  void handle_input(State **current_state,
+                    std::vector<State *> available_states);
   vec3 player_pos = vec3(0, 0, 0.5);
   vec3 player_dir = vec3(0, 1, 0);
-
 
   void add_char(int team, std::string name);
 
@@ -321,12 +321,12 @@ struct Render_Test_State : protected State
 {
   Render_Test_State(std::string name, SDL_Window *window, ivec2 window_size);
   void update();
-  void handle_input(State** current_state, std::vector<State*> available_states);
-
+  void handle_input(State **current_state,
+                    std::vector<State *> available_states);
 
   vec3 player_pos = vec3(0, 0, 0.5);
   vec3 player_dir = vec3(0, 1, 0);
-  
+
   Node_Ptr ground;
   Node_Ptr cube_star;
   Node_Ptr cube_planet;
@@ -337,5 +337,4 @@ struct Render_Test_State : protected State
   Node_Ptr small_light;
 
   std::vector<Node_Ptr> chests;
-
 };

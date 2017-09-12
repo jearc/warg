@@ -13,8 +13,8 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/quaternion.hpp>
 #define GLM_ENABLE_EXPERIMENTAL
-#include <glm/gtx/quaternion.hpp>
 #include <glm/gtx/euler_angles.hpp>
+#include <glm/gtx/quaternion.hpp>
 #include <glm/gtx/transform.hpp>
 #include <memory>
 #include <string>
@@ -23,7 +23,7 @@
 
 void INIT_RENDERER();
 void CLEANUP_RENDERER();
- 
+
 using namespace glm;
 struct Texture_Handle
 {
@@ -35,6 +35,7 @@ struct Texture
 {
   Texture();
   Texture(std::string path);
+
 private:
   friend struct Render;
   friend struct Material;
@@ -68,13 +69,11 @@ struct Mesh
   GLuint get_indices_buffer() { return mesh->indices_buffer; }
   GLuint get_indices_buffer_size() { return mesh->indices_buffer_size; }
   std::string name = "NULL";
-  //private:
+  // private:
   std::string unique_identifier = "NULL";
-  std::shared_ptr<Mesh_Handle> upload_data(const Mesh_Data& data);
+  std::shared_ptr<Mesh_Handle> upload_data(const Mesh_Data &data);
   std::shared_ptr<Mesh_Handle> mesh;
 };
-
-
 
 struct Material_Descriptor
 {
@@ -91,23 +90,25 @@ struct Material_Descriptor
   vec2 uv_scale = vec2(1);
   bool backface_culling = true;
   bool has_transparency = false;
-  //when adding new things here, be sure to add them in the 
-  //material constructor override section
+  // when adding new things here, be sure to add them in the
+  // material constructor override section
 };
 
 struct Material
 {
   Material();
   Material(Material_Descriptor m);
-  Material(aiMaterial *ai_material, std::string working_directory, Material_Descriptor* material_override);
-  bool operator==(Material& rhs);
+  Material(aiMaterial *ai_material, std::string working_directory,
+           Material_Descriptor *material_override);
+  bool operator==(Material &rhs);
+
 private:
   friend struct Render;
   void load(Material_Descriptor m);
   void bind();
   void unbind_textures();
   Texture albedo;
-  //Texture specular_color;
+  // Texture specular_color;
   Texture normal;
   Texture emissive;
   Texture roughness;
@@ -171,10 +172,10 @@ struct Render
 {
   Render(SDL_Window *window, ivec2 window_size);
   void render(float64 state_time);
-  
+
   bool use_txaa = false;
   void resize_window(ivec2 window_size);
-  float32 get_render_scale()const { return render_scale; }
+  float32 get_render_scale() const { return render_scale; }
   float32 get_vfov() { return vfov; }
   void set_render_scale(float32 scale);
   void set_camera(vec3 camera_pos, vec3 dir);
@@ -184,8 +185,9 @@ struct Render
   void set_render_entities(std::vector<Render_Entity> entities);
   float64 target_frame_time = 1.0 / 60.0;
   uint64 frame_count = 0;
-  vec3 clear_color = vec3(1,0,0);
+  vec3 clear_color = vec3(1, 0, 0);
   uint32 draw_calls_last_frame = 0;
+
 private:
   std::vector<Render_Entity> previous_render_entities;
   std::vector<Render_Entity> render_entities;
@@ -195,8 +197,8 @@ private:
   void dynamic_framerate_target();
   mat4 get_next_TXAA_sample();
   float32 render_scale = 0.75f; // supersampling
-  ivec2 window_size;           // actual window size
-  ivec2 size;                  // render target size
+  ivec2 window_size;            // actual window size
+  ivec2 size;                   // render target size
   float32 vfov = 60;
   mat4 camera;
   mat4 projection;

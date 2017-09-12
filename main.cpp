@@ -2,13 +2,11 @@
 #include "Render.h"
 #include "State.h"
 #include "Timer.h"
-#include <SDL2/SDL.h> 
+#include <SDL2/SDL.h>
 #undef main
 #include <iostream>
-#include <stdlib.h>
 #include <sstream>
-
-
+#include <stdlib.h>
 
 int main(int argc, char *argv[])
 {
@@ -26,8 +24,8 @@ int main(int argc, char *argv[])
     {
       SDL_GetDisplayMode(i, j, &mode);
       s << "Supported resolution: " << mode.w << "x" << mode.h << " "
-                << mode.refresh_rate << "hz  "
-                << SDL_GetPixelFormatName(mode.format) << "\n";
+        << mode.refresh_rate << "hz  " << SDL_GetPixelFormatName(mode.format)
+        << "\n";
     }
   }
   set_message(s.str());
@@ -47,7 +45,8 @@ int main(int argc, char *argv[])
   int32 major, minor;
   SDL_GL_GetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, &major);
   SDL_GL_GetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, &minor);
-  set_message("OpenGL Version.", std::to_string(major) + " " + std::to_string(minor));
+  set_message("OpenGL Version.",
+              std::to_string(major) + " " + std::to_string(minor));
   if (major <= 3)
   {
     if (major < 3 || minor < 1)
@@ -58,18 +57,17 @@ int main(int argc, char *argv[])
     }
   }
   // 1 vsync, 0 no vsync, -1 late-swap
-  int32 swap = SDL_GL_SetSwapInterval(1); 
+  int32 swap = SDL_GL_SetSwapInterval(1);
   if (swap == -1)
   {
     swap = SDL_GL_SetSwapInterval(1);
-  }  
+  }
 
   glbinding::Binding::initialize();
-  //glbinding::setCallbackMaskExcept(glbinding::CallbackMask::After | glbinding::CallbackMask::ParametersAndReturnValue, { "glGetError", "glFlush" });
-  //glbinding::setBeforeCallback(gl_before_check);
- // glbinding::setAfterCallback(gl_after_check);
-
-
+  // glbinding::setCallbackMaskExcept(glbinding::CallbackMask::After |
+  // glbinding::CallbackMask::ParametersAndReturnValue, { "glGetError", "glFlush"
+  // });  glbinding::setBeforeCallback(gl_before_check);
+  // glbinding::setAfterCallback(gl_after_check);
 
   glClearColor(0, 0, 0, 1);
   checkSDLError(__LINE__);
@@ -79,20 +77,22 @@ int main(int argc, char *argv[])
   float64 elapsed_time = 0.0;
   INIT_RENDERER();
 
-  std::vector<State*> states;
+  std::vector<State *> states;
   Game_State game_state("Game State", window, window_size);
-  states.push_back((State*)&game_state);
+  states.push_back((State *)&game_state);
   Render_Test_State render_test_state("Render Test State", window, window_size);
-  states.push_back((State*)&render_test_state);
-  State* current_state = &*states[0];
+  states.push_back((State *)&render_test_state);
+  State *current_state = &*states[0];
   while (current_state->running)
   {
     const float64 real_time = get_real_time();
     if (current_state->paused)
     {
       float64 past_accum = current_state->paused_time_accumulator;
-      float64 real_time_of_last_update = current_state->current_time + past_accum;
-      float64 real_time_since_last_update = real_time - real_time_of_last_update;
+      float64 real_time_of_last_update =
+          current_state->current_time + past_accum;
+      float64 real_time_since_last_update =
+          real_time - real_time_of_last_update;
       current_state->paused_time_accumulator += real_time_since_last_update;
       current_state->paused = false;
       continue;
@@ -106,14 +106,15 @@ int main(int argc, char *argv[])
 
     while (current_state->current_time + dt < last_time + elapsed_time)
     {
-      State* s = current_state;
+      State *s = current_state;
       s->current_time += dt;
       current_state->handle_input(&current_state, states);
       s->update();
       if (s != current_state)
       {
         s->paused = true;
-        current_state->renderer.set_render_scale(current_state->renderer.get_render_scale());
+        current_state->renderer.set_render_scale(
+            current_state->renderer.get_render_scale());
         break;
       }
     }
@@ -124,4 +125,4 @@ int main(int argc, char *argv[])
   CLEANUP_RENDERER();
   SDL_Quit();
   return 0;
-} 
+}
