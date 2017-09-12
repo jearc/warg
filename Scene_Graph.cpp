@@ -92,7 +92,22 @@ void Scene_Graph::add_graph_node(const aiNode *node, Node_Ptr parent,
     add_graph_node(child, new_node_ptr, import_basis, aiscene, scene_file_path, mesh_num, material_override);
   }
 }
-
+ 
+Node_Ptr Scene_Graph::add_mesh(Mesh_Data m, Material_Descriptor md, std::string name, Node_Ptr parent, const mat4* import_basis)
+{
+  Scene_Graph_Node node(name, parent, import_basis);
+  Node_Ptr node_ptr(nodes.size());
+  Mesh mesh(m);
+  Material material(md);
+  node.model.push_back({ mesh,material });
+  nodes.push_back(node);
+  if (parent)
+  {
+    Scene_Graph_Node* parent = get_node(parent);
+    parent->children.push_back(node_ptr);
+  }
+  return node;
+}
 void Scene_Graph::set_parent(Node_Ptr p, Node_Ptr desired_parent)
 {
   Scene_Graph_Node* ptr = this->get_node(p);

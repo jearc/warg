@@ -66,13 +66,19 @@ struct Scene_Graph
   Node_Ptr add_aiscene(const aiScene* scene, std::string asset_path, const mat4 *import_basis = nullptr,
                        Node_Ptr parent = Node_Ptr(0), Material_Descriptor* material_override = nullptr);
 
-
+   
   // construct a node using the load_mesh function in Mesh_Loader
   // does not yet check for nor cache duplicate meshes/materials
   // Node_Ptr will stay valid for as long as the Scene_Graph is alive
   Node_Ptr add_primitive_mesh(Mesh_Primitive p, std::string name,
     Material_Descriptor m, Node_Ptr parent = Node_Ptr(0),
     const mat4 *import_basis = nullptr);
+
+  Node_Ptr add_mesh(Mesh_Data m, Material_Descriptor md, std::string name, Node_Ptr parent = Node_Ptr(0), const mat4* import_basis = nullptr);
+
+
+
+
 
   // traverse the entire graph, computing the final transformation matrices
   // for each entity, and return all entities flatted into a vector
