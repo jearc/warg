@@ -39,11 +39,6 @@ Scene_Graph_Node::Scene_Graph_Node(string name, const mat4 *basis)
     this->import_basis = *basis;
 }
 
-
-
-
-
-
 Scene_Graph_Node::Scene_Graph_Node(string name, const aiNode *node,
                                    const mat4 *import_basis_,
                                    const aiScene *scene, string scene_file_path,
@@ -75,7 +70,7 @@ Scene_Graph_Node::Scene_Graph_Node(string name, const aiNode *node,
 
 Scene_Graph::Scene_Graph()
 {
-  root = make_shared<Scene_Graph_Node>("SCENE_GRAPH_ROOT",nullptr);
+  root = make_shared<Scene_Graph_Node>("SCENE_GRAPH_ROOT", nullptr);
 }
 void Scene_Graph::add_graph_node(const aiNode *node,
                                  weak_ptr<Scene_Graph_Node> parent,
@@ -88,9 +83,8 @@ void Scene_Graph::add_graph_node(const aiNode *node,
   ASSERT(aiscene);
   string name = copy(&node->mName);
   // construct just this node in the main node array
-  auto thing = Scene_Graph_Node(
-    name, node, import_basis, aiscene, scene_file_path, mesh_num,
-    material_override);
+  auto thing = Scene_Graph_Node(name, node, import_basis, aiscene,
+                                scene_file_path, mesh_num, material_override);
 
   shared_ptr<Scene_Graph_Node> new_node = make_shared<Scene_Graph_Node>(
       name, node, import_basis, aiscene, scene_file_path, mesh_num,
@@ -127,9 +121,9 @@ void Scene_Graph::set_parent(weak_ptr<Scene_Graph_Node> p,
   if (current_parent_ptr)
   {
     for (auto i = current_parent_ptr->children.begin();
-      i != current_parent_ptr->children.end(); ++i)
+         i != current_parent_ptr->children.end(); ++i)
     {
-      if (i->lock() == p.lock())
+      if (*i == p.lock())
       {
         current_parent_ptr->children.erase(i);
         break;
@@ -140,12 +134,12 @@ void Scene_Graph::set_parent(weak_ptr<Scene_Graph_Node> p,
   if (desired_parent_ptr)
   {
     p.lock()->parent = desired_parent;
-    desired_parent_ptr->children.push_back(p);
+    desired_parent_ptr->children.push_back(Node_Ptr(p));
   }
   else
   {
     p.lock()->parent = root;
-    root->children.push_back(p);
+    root->children.push_back(Node_Ptr(p));
   }
 }
 
@@ -180,7 +174,7 @@ shared_ptr<Scene_Graph_Node> Scene_Graph::add_aiscene(
       string("ROOT FOR: ") + scene_file_path + " " + copy(&root->mName);
   scene_file_path = BASE_MODEL_PATH + scene_file_path;
   shared_ptr<Scene_Graph_Node> new_node = make_shared<Scene_Graph_Node>(
-      name, root,  import_basis, scene, scene_file_path, &mesh_num,
+      name, root, import_basis, scene, scene_file_path, &mesh_num,
       material_override);
 
   set_parent(new_node, parent);
@@ -226,9 +220,10 @@ void Scene_Graph::visit_nodes(const weak_ptr<Scene_Graph_Node> node_ptr,
     accumulator.emplace_back(mesh_ptr, material_ptr, affected_lights, FINAL);
   }
   const uint32 size = entity->children.size();
-  for (uint32 i = 0; i < size; ++i)
+  for (auto i = entity->children.begin(); i != entity->children.end(); ++i)
   {
-    weak_ptr<Scene_Graph_Node> child = entity->children[i];
+    weak_ptr<Scene_Graph_Node> child = *i;
+
     visit_nodes(child, STACK, accumulator);
   }
 }
@@ -365,7 +360,7 @@ shared_ptr<Scene_Graph_Node> Scene_Graph::add_primitive_mesh(
   Mesh mesh(p, name);
   Material material(m);
   shared_ptr<Scene_Graph_Node> new_node =
-      make_shared<Scene_Graph_Node>(name,  import_basis);
+      make_shared<Scene_Graph_Node>(name, import_basis);
   new_node->model.push_back({mesh, material});
   set_parent(new_node, parent);
   return new_node;

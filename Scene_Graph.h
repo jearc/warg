@@ -24,7 +24,6 @@ struct Scene_Graph_Node
   quat orientation;
   vec3 scale = {1, 1, 1};
   vec3 velocity = {0, 0, 0};
-
   std::vector<std::pair<Mesh, Material>> model;
 
 
@@ -46,7 +45,7 @@ private:
 
   std::weak_ptr<Scene_Graph_Node> parent;
 
-  std::vector<std::weak_ptr<Scene_Graph_Node>> children;
+  std::vector<std::shared_ptr<Scene_Graph_Node>> children;
 };
 
 struct Scene_Graph
