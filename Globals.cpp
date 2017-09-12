@@ -1,6 +1,5 @@
 #include "Globals.h"
-#include <GL/glew.h>
-#include <SDL.h>
+#include <SDL2/SDL.h>
 #include <assimp/Importer.hpp>
 #include <assimp/postprocess.h>
 #include <assimp/scene.h>
@@ -191,13 +190,13 @@ Uint32 string_to_color(std::string color)
   return result;
 }
 
-Uint64 hash(float* data, uint32 size)
+Uint64 dankhash(float32* data, uint32 size)
 {
   Uint64 h = 1631243561234777777;
   Uint64 acc = 0;
-  for (int i = 0; i < size; ++i)
+  for (uint32 i = 0; i < size; ++i)
   {
-    float c = data[i];
+    float64 c = data[i]*h;
     Uint64 a = (Uint64)c;
     acc += a;
     h = (h ^ a) * a * i; //idk what im doing
@@ -207,10 +206,11 @@ Uint64 hash(float* data, uint32 size)
 
 void _check_gl_error(const char *file, uint32 line)
 {
+  set_message("Checking GL Error in file: ", std::string(file)+" Line: " + std::to_string(line));
   glFlush();
-  GLenum err(glGetError());
+  GLenum err = glGetError();
   glFlush();
-  while (err != GL_NO_ERROR)
+  if(err != GL_NO_ERROR)
   {
     std::string error;
     switch (err)
@@ -219,7 +219,7 @@ void _check_gl_error(const char *file, uint32 line)
         error = "INVALID_OPERATION";
         break;
       case GL_INVALID_ENUM:
-        error = "INVALID_ENUM";
+        error = "fileINVALID_ENUM";
         break;
       case GL_INVALID_VALUE:
         error = "INVALID_VALUE";
@@ -236,16 +236,48 @@ void _check_gl_error(const char *file, uint32 line)
     push_log_to_disk();
     throw;
   }
+  set_message("No GL Error found.", "");
 }
+void _check_gl_error()
+{
+  glFlush();
+  GLenum err = glGetError();
+  if(err != GL_NO_ERROR)
+  {
+    std::string error;
+    switch (err)
+    {
+    case GL_INVALID_OPERATION:
+      error = "INVALID_OPERATION";
+      break;
+    case GL_INVALID_ENUM:
+      error = "INVALID_ENUM";
+      break;
+    case GL_INVALID_VALUE:
+      error = "INVALID_VALUE";
+      break;
+    case GL_OUT_OF_MEMORY:
+      error = "OUT_OF_MEMORY";
+      break;
+    case GL_INVALID_FRAMEBUFFER_OPERATION:
+      error = "INVALID_FRAMEBUFFER_OPERATION";
+      break;
+    }
+    set_message("GL ERROR", "GL_" + error);
+    push_log_to_disk();
+    std::terminate();
+  }
+} 
 void checkSDLError(int32 line)
 {
 #ifdef DEBUG
   const char *error = SDL_GetError();
   if (*error != '\0')
   {
-    printf("SDL Error: %s\n", error);
+    std::string err = error;
+    set_message("SDL Error:", err);
     if (line != -1)
-      printf(" + line: %i\n", line);
+      set_message("SDL Error line: ", std::to_string(line));
     SDL_ClearError();
   }
 #endif
@@ -273,8 +305,9 @@ struct Message
 };
 static std::vector<Message> messages;
 static std::string message_log = "";
-void set_message(std::string identifier, std::string message,
-                 float64 msg_duration)
+
+void _set_message(std::string identifier, std::string message,
+                 float64 msg_duration, const char* file, uint32 line)
 {
   const float64 time = get_real_time();
   bool found = false;
@@ -293,9 +326,13 @@ void set_message(std::string identifier, std::string message,
     Message m = { identifier,message,time+msg_duration };
     messages.push_back(std::move(m));
   }
-
-  message_log.append("time: " + std::to_string(time) + "--- " + identifier + " " + message + "\n\n");
+#if INCLUDE_FILE_LINE_IN_LOG
+  message_log.append("Time: " + s(time) + " Event: " + identifier + " " + message + " File: " + file + ": "+ std::to_string(line)+ "\n\n");
+#else
+  message_log.append("Time: " + s(time) + " Event: " + identifier + " " + message+"\n");
+#endif
 }
+
 std::string get_messages()
 {
   std::string result;
@@ -314,6 +351,7 @@ std::string get_messages()
   }
   return result;
 }
+
 void push_log_to_disk()
 {
   static bool first = true;
@@ -322,8 +360,96 @@ void push_log_to_disk()
     std::fstream file("warg_log.txt", std::ios::out|std::ios::trunc);
     first = false;
   }
-  std::fstream file("warg_log.txt", std::ios::in | std::ios::out);
+  std::fstream file("warg_log.txt", std::ios::in | std::ios::out | std::ios::app);
   file.seekg(std::ios::end);
   file.write(message_log.c_str(), message_log.size());
+  file.close();
   message_log.clear();
+}
+std::string vtos(glm::vec2 v)
+{
+  std::string result = "";
+  for(uint32 i = 0; i < 2; ++i)
+  {
+    result += std::to_string(v[i]) + " ";
+  }
+  return result;
+}
+std::string vtos(glm::vec3 v)
+{
+  std::string result = "";
+  for(uint32 i = 0; i < 3; ++i)
+  {
+    result += std::to_string(v[i]) + " ";
+  }
+  return result;
+}
+std::string vtos(glm::vec4 v)
+{
+  std::string result = "";
+  for(uint32 i = 0; i < 4; ++i)
+  {
+    result += std::to_string(v[i]) + " ";
+  }
+  return result;
+}
+
+std::string mtos(glm::mat4 m)
+{
+  std::string result = "\n|";
+  for(uint32 i = 0; i < 4; ++i)
+  {
+    result += "|" + vtos(m[i]) + "|\n";
+  }
+  return result;
+}
+
+template<>
+std::string s<const char*>(const char* value) 
+{
+  return std::string(value);
+}
+template<>
+std::string s<std::string>(std::string value) 
+{
+  return value;
+}
+
+//#define check_gl_error() _check_gl_error(__FILE__, __LINE__)
+#define check_gl_error() _check_gl_error()
+void gl_before_check(const glbinding::FunctionCall& f)
+{
+  std::string opengl_call = f.function->name();
+  opengl_call += '(';
+  for (size_t i = 0; i < f.parameters.size(); ++i)
+  {
+    opengl_call += f.parameters[i]->asString();
+    if (i < f.parameters.size() - 1)
+      opengl_call += ", ";
+  }
+  opengl_call += ")";
+
+  if (f.returnValue)
+    opengl_call += " Returned: " + f.returnValue->asString();
+
+  set_message("BEFORE OPENGL call: ", opengl_call);
+  check_gl_error();
+}
+void gl_after_check(const glbinding::FunctionCall& f)
+{
+  std::string opengl_call = f.function->name();
+  opengl_call += '(';
+  for (size_t i = 0; i < f.parameters.size(); ++i)
+  {
+    opengl_call += f.parameters[i]->asString();
+    if (i < f.parameters.size() - 1)
+      opengl_call += ", ";
+  }
+  opengl_call += ")";
+
+  if (f.returnValue)
+    opengl_call += " Returned: " + f.returnValue->asString();
+
+  set_message("", opengl_call);
+  check_gl_error();
 }

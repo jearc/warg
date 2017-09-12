@@ -2,8 +2,7 @@
 #include "Render.h"
 #include "State.h"
 #include "Timer.h"
-#include <GL/glew.h>
-#include <SDL.h> 
+#include <SDL2/SDL.h> 
 #undef main
 #include <iostream>
 #include <stdlib.h>
@@ -37,7 +36,9 @@ int main(int argc, char *argv[])
   int32 flags = SDL_WINDOW_OPENGL;
   // SDL_GL_SetAttribute(SDL_GL_CONTEXT_FLAGS, SDL_GL_CONTEXT_DEBUG_FLAG);
   SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
-  SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 1);
+  SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 3);
+  SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
+
   SDL_Window *window =
       SDL_CreateWindow("title", 100, 130, window_size.x, window_size.y, flags);
 
@@ -61,20 +62,18 @@ int main(int argc, char *argv[])
   if (swap == -1)
   {
     swap = SDL_GL_SetSwapInterval(1);
-  }
-  
-  glewExperimental = GL_TRUE;
-  GLenum err = glewInit();
+  }  
+
+  glbinding::Binding::initialize();
+  //glbinding::setCallbackMaskExcept(glbinding::CallbackMask::After | glbinding::CallbackMask::ParametersAndReturnValue, { "glGetError", "glFlush" });
+  //glbinding::setBeforeCallback(gl_before_check);
+ // glbinding::setAfterCallback(gl_after_check);
+
+
+
   glClearColor(0, 0, 0, 1);
-  if (err != GLEW_OK)
-  {
-    std::cout << "Glew error: " << glewGetErrorString(err);
-    ASSERT(0);
-  }
   checkSDLError(__LINE__);
-  while (glGetError())
-  {
-  }
+
   SDL_ClearError();
   float64 last_time = 0.0;
   float64 elapsed_time = 0.0;
@@ -88,7 +87,6 @@ int main(int argc, char *argv[])
   State* current_state = &*states[0];
   while (current_state->running)
   {
-
     const float64 real_time = get_real_time();
     if (current_state->paused)
     {
@@ -115,7 +113,7 @@ int main(int argc, char *argv[])
       if (s != current_state)
       {
         s->paused = true;
-        current_state->renderer.set_render_scale(1);
+        current_state->renderer.set_render_scale(current_state->renderer.get_render_scale());
         break;
       }
     }
@@ -126,4 +124,4 @@ int main(int argc, char *argv[])
   CLEANUP_RENDERER();
   SDL_Quit();
   return 0;
-}
+} 

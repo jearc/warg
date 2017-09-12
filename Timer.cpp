@@ -8,7 +8,7 @@ template <typename T> void ASSERT(T t)
   }
 #endif
 }
-
+ 
 Timer::Timer(uint32 samples)
 {
   times = std::vector<float64>(samples, -1.);

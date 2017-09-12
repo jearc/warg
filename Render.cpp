@@ -1,5 +1,6 @@
-#include <GL/glew.h>
-#include <SDL.h>
+#include "Globals.h"
+#include <SDL2/SDL.h>
+#include <SDL_image.h>
 #include <assimp/Importer.hpp>
 #include <assimp/postprocess.h>
 #include <assimp/scene.h>
@@ -8,7 +9,7 @@
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
 #undef STB_IMAGE_IMPLEMENTATION
-#include "Globals.h"
+
 #include "Mesh_Loader.h"
 #include "Render.h"
 #include "Shader.h"
@@ -22,7 +23,6 @@
 #include <memory>
 #include <unordered_map>
 #include <vector>
-
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <time.h>
@@ -54,16 +54,39 @@ static Shader PASSTHROUGH;
 static bool INIT = false;
 static std::unordered_map<std::string, std::weak_ptr<Mesh_Handle>> MESH_CACHE;
 static std::unordered_map<std::string, std::weak_ptr<Texture_Handle>> TEXTURE_CACHE;
+
+
+
+
 void INIT_RENDERER()
 {
-  if (INIT) return;
+  set_message("INIT_RENDERER()");
+  if (INIT)
+  {
+    set_message("Renderer already initialized");
+    return;
+  }
   INIT = true;
+  set_message("Initializing renderer...");
+  set_message("Creating renderer QUAD");
 
-  QUAD = Mesh(Mesh_Primitive::plane, "Renderer's plane");
+
+  //the uid for the renderer's quad must be different than the
+  //planes used in the game world because that plane
+  //will have its instance attributes enabled when it gets bound in the renderer loop and
+  //the passthrough shader doesn't have attribute slots for them
+
+  //alternatively enable/disable the attributes every frame as needed
+  Mesh_Data quad_data = load_mesh_plane();
+  quad_data.unique_identifier = "RENDERER's PLANE";
+  QUAD = Mesh(quad_data, "RENDERER's PLANE");
+
+  set_message("Creating TXAA and PASSTHROUGH shaders");
   TEMPORALAA = Shader("passthrough.vert", "TemporalAA.frag");
   PASSTHROUGH = Shader("passthrough.vert", "passthrough.frag");
 
 
+  set_message("Initializing instance buffers");
   // instancing MVP Matrix buffer init
   const GLuint mat4_size = sizeof(GLfloat) * 4 * 4;
   const GLuint instance_buffer_size = MAX_INSTANCE_COUNT * mat4_size;
@@ -81,15 +104,20 @@ void INIT_RENDERER()
 
   glBindBuffer(GL_ARRAY_BUFFER, 0);
 
-
+  set_message("Renderer init finished");
 
 
 }
 void CLEANUP_RENDERER()
 {
+  set_message("CLEANUP_RENDERER()");
   QUAD = Mesh();
   TEMPORALAA = Shader();
   PASSTHROUGH = Shader();
+
+  set_message("Deleting FBO, 3 textures, 2 instance buffers:", s(TARGET_FRAMEBUFFER," ",
+    COLOR_TARGET_TEXTURE," ",PREV_COLOR_TARGET," ",DEPTH_TARGET_TEXTURE," ",
+    INSTANCE_MVP_BUFFER," ",INSTANCE_MODEL_BUFFER));
 
   glDeleteFramebuffers(1, &TARGET_FRAMEBUFFER);
   glDeleteTextures(1, &COLOR_TARGET_TEXTURE);
@@ -124,6 +152,99 @@ void check_and_clear_expired_textures()
   }
 }
 
+void save_and_log_screen()
+{
+  static uint64 i = 0;
+  ++i;
+
+  GLint viewport[4];
+  glGetIntegerv(GL_VIEWPORT, viewport);
+  GLint width = viewport[2];
+  GLint height = viewport[3];
+
+  SDL_Surface* surface = SDL_CreateRGBSurface(0, width, height, 32, 0xff000000, 0x00ff0000, 0x0000ff00, 0x000000ff);
+  if(surface)
+  {
+    std::string name = s("screen_",i,".png");
+    set_message("Saving Screenshot: ", " With name: " + name);
+    glPixelStorei(GL_PACK_ALIGNMENT, 1);
+    glReadPixels(0, 0, width, height, GL_RGBA, GL_UNSIGNED_BYTE, surface->pixels);
+    IMG_SavePNG(surface, name.c_str());
+    SDL_FreeSurface(surface);
+  }
+  else
+  {
+    set_message("surface creation failed in save_and_log_screen()");
+  }
+
+}
+
+void save_and_log_texture(GLuint texture)
+{
+  static uint64 i = 0;
+  ++i;
+
+  glBindTexture(GL_TEXTURE_2D,texture);
+
+  GLint width = 0;
+  GLint height = 0;
+  glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_WIDTH, &width);
+  glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_HEIGHT, &height);
+
+  SDL_Surface* surface = SDL_CreateRGBSurface(0, width, height, 32, 0xff000000, 0x00ff0000, 0x0000ff00, 0x000000ff);
+  if(surface)
+  {
+    std::string name = s("Texture object ",texture," #",i,".png");
+    set_message("Saving Texture: ", s(texture," With name: ",name));
+    glPixelStorei(GL_PACK_ALIGNMENT, 1);
+    glGetTexImage(GL_TEXTURE_2D, 0, GL_RGBA, GL_UNSIGNED_BYTE, surface->pixels);
+    IMG_SavePNG(surface, name.c_str());
+    SDL_FreeSurface(surface);
+  }
+  else
+  {
+    set_message("surface creation failed in save_and_log_texture()");
+  }
+}
+
+void dump_gl_float32_buffer(GLenum target, GLuint buffer, uint32 parse_stride)
+{
+  set_message("Dumping buffer: ", s(buffer));
+  glBindBuffer(target,buffer);
+  GLint size = 0;
+  glGetBufferParameteriv(target, GL_BUFFER_SIZE,&size);//bytes
+  set_message("size in bytes: ", s(size));
+  uint8* data = new uint8[size];
+  glGetBufferSubData(target,0,size,data);
+
+  float32* fp = (float32*)data;
+  uint32 count = size/sizeof(float32);
+
+  std::string result = "\n";
+  for(uint32 i = 0; i < count;)
+  {
+    if(i+parse_stride > count)
+    {
+      set_message("warning: stride likely wrong in dump buffer: size mismatch. missing data in this dump");
+      break;
+    }
+    result += "(";
+    for(uint32 j = 0; j < parse_stride; ++j)
+    {
+      float32 f = fp[i+j];
+      result += s(f);
+      if(j != parse_stride-1)
+      {
+        result += ",";
+      }
+    }
+    result += ")";
+    i+= parse_stride;
+  }
+
+  set_message("GL buffer dump: ", result);
+}
+
 enum Texture_Location
 {
   albedo,
@@ -136,6 +257,7 @@ enum Texture_Location
 Texture::Texture() { file_path = ERROR_TEXTURE_PATH; }
 Texture_Handle::~Texture_Handle()
 {
+  set_message("Deleting texture: ", s(texture));
   glDeleteTextures(1, &texture);
   texture = 0;
 }
@@ -241,7 +363,7 @@ void Texture::load()
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER,
                   GL_LINEAR_MIPMAP_LINEAR);
-  glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAX_ANISOTROPY_EXT, 8);
+  glTexParameterf(GL_TEXTURE_2D, gl::GL_TEXTURE_MAX_ANISOTROPY_EXT, 8);
   glGenerateMipmap(GL_TEXTURE_2D);
   stbi_image_free(data);
   glBindTexture(GL_TEXTURE_2D, 0);
@@ -253,7 +375,7 @@ void Texture::bind(const char *name, GLuint binding, Shader &shader)
   load();
 #endif
   GLuint u = glGetUniformLocation(shader.program->program, name);
-
+  //ASSERT(u != -1);
   glUniform1i(u, binding);
   glActiveTexture(GL_TEXTURE0 + (GLuint)binding);
   glBindTexture(GL_TEXTURE_2D, texture ? texture->texture : 0);
@@ -275,6 +397,7 @@ Mesh::Mesh(Mesh_Primitive p, std::string mesh_name) : name(mesh_name)
     mesh = ptr;
     return;
   }
+  set_message("caching mesh with uid: ", unique_identifier);
   MESH_CACHE[unique_identifier] = mesh = upload_data(load_mesh(p));
 }
 Mesh::Mesh(Mesh_Data data, std::string mesh_name)
@@ -288,6 +411,7 @@ Mesh::Mesh(Mesh_Data data, std::string mesh_name)
     mesh = ptr;
     return;
   }
+  set_message("caching mesh with uid: ", unique_identifier);
   MESH_CACHE[unique_identifier] = mesh = upload_data(data);
 }
 Mesh::Mesh(const aiMesh *aimesh,std::string unique_identifier)
@@ -301,135 +425,74 @@ Mesh::Mesh(const aiMesh *aimesh,std::string unique_identifier)
     mesh = ptr;
     return;
   }
+  set_message("caching mesh with uid: ", unique_identifier);
   MESH_CACHE[unique_identifier] = mesh = upload_data(load_mesh(aimesh, unique_identifier));
 }
 
-
-void Mesh::assign_instance_buffers(GLuint instance_MVP_Buffer,
-                                   GLuint instance_Model_Buffer, Shader &shader)
-{
-
-  if (!instance_buffers_set)
-  {
-    instance_buffers_set = true;
-    GLint current_vao;
-    glGetIntegerv(GL_VERTEX_ARRAY_BINDING, &current_vao);
-    ASSERT(mesh);
-    ASSERT(current_vao == mesh->vao);
-    const GLuint mat4_size = sizeof(GLfloat) * 4 * 4;
-    // shader attribute locations
-    // 4 locations for mat4
-    int32 loc = glGetAttribLocation(shader.program->program, "instanced_MVP");
-    if (loc != -1)
-    {
-      GLuint loc1 = loc + 0;
-      GLuint loc2 = loc + 1;
-      GLuint loc3 = loc + 2;
-      GLuint loc4 = loc + 3;
-      glEnableVertexAttribArray(loc1);
-      glEnableVertexAttribArray(loc2);
-      glEnableVertexAttribArray(loc3);
-      glEnableVertexAttribArray(loc4);
-      glBindBuffer(GL_ARRAY_BUFFER, instance_MVP_Buffer);
-      glVertexAttribPointer(loc1, 4, GL_FLOAT, GL_FALSE, mat4_size,
-                            (void *)(0));
-      glVertexAttribPointer(loc2, 4, GL_FLOAT, GL_FALSE, mat4_size,
-                            (void *)(sizeof(GLfloat) * 4));
-      glVertexAttribPointer(loc3, 4, GL_FLOAT, GL_FALSE, mat4_size,
-                            (void *)(sizeof(GLfloat) * 8));
-      glVertexAttribPointer(loc4, 4, GL_FLOAT, GL_FALSE, mat4_size,
-                            (void *)(sizeof(GLfloat) * 12));
-      glVertexAttribDivisor(loc1, 1);
-      glVertexAttribDivisor(loc2, 1);
-      glVertexAttribDivisor(loc3, 1);
-      glVertexAttribDivisor(loc4, 1);
-    }
-
-    loc = glGetAttribLocation(shader.program->program, "instanced_model");
-    if (loc != -1)
-    {
-      GLuint loc_1 = loc + 0;
-      GLuint loc_2 = loc + 1;
-      GLuint loc_3 = loc + 2;
-      GLuint loc_4 = loc + 3;
-      glEnableVertexAttribArray(loc_1);
-      glEnableVertexAttribArray(loc_2);
-      glEnableVertexAttribArray(loc_3);
-      glEnableVertexAttribArray(loc_4);
-      glBindBuffer(GL_ARRAY_BUFFER, instance_Model_Buffer);
-      glVertexAttribPointer(loc_1, 4, GL_FLOAT, GL_FALSE, mat4_size,
-                            (void *)(0));
-      glVertexAttribPointer(loc_2, 4, GL_FLOAT, GL_FALSE, mat4_size,
-                            (void *)(sizeof(GLfloat) * 4));
-      glVertexAttribPointer(loc_3, 4, GL_FLOAT, GL_FALSE, mat4_size,
-                            (void *)(sizeof(GLfloat) * 8));
-      glVertexAttribPointer(loc_4, 4, GL_FLOAT, GL_FALSE, mat4_size,
-                            (void *)(sizeof(GLfloat) * 12));
-      glVertexAttribDivisor(loc_1, 1);
-      glVertexAttribDivisor(loc_2, 1);
-      glVertexAttribDivisor(loc_3, 1);
-      glVertexAttribDivisor(loc_4, 1);
-    }
-  }
-}
-
+ 
 
 void Mesh::bind_to_shader(Shader &shader)
 {
+  GLint current_vao;
+  glGetIntegerv(GL_VERTEX_ARRAY_BINDING, &current_vao);
+  GLint current_shader;
+  glGetIntegerv(GL_CURRENT_PROGRAM, &current_shader);
   ASSERT(mesh);
-  int32 loc = glGetAttribLocation(shader.program->program, "position");
-  if (loc != -1)
-  {
-    glBindBuffer(GL_ARRAY_BUFFER, mesh->position_buffer);
-    glVertexAttribPointer(loc, 3, GL_FLOAT, GL_FALSE, sizeof(float32) * 3, 0);
-    glEnableVertexAttribArray(loc);
-  }
-  loc = glGetAttribLocation(shader.program->program, "normal");
-  if (loc != -1)
-  {
-    glBindBuffer(GL_ARRAY_BUFFER, mesh->normal_buffer);
-    glVertexAttribPointer(loc, 3, GL_FLOAT, GL_FALSE, sizeof(float32) * 3, 0);
-    glEnableVertexAttribArray(loc);
-  }
-  loc = glGetAttribLocation(shader.program->program, "uv");
-  if (loc != -1)
-  {
-    glBindBuffer(GL_ARRAY_BUFFER, mesh->uv_buffer);
-    glVertexAttribPointer(loc, 2, GL_FLOAT, GL_FALSE, sizeof(float32) * 2, 0);
-    glEnableVertexAttribArray(loc);
-  }
-  loc = glGetAttribLocation(shader.program->program, "tangent");
-  if (loc != -1)
-  {
-    glBindBuffer(GL_ARRAY_BUFFER, mesh->tangents_buffer);
-    glVertexAttribPointer(loc, 3, GL_FLOAT, GL_FALSE, sizeof(float32) * 3, 0);
-    glEnableVertexAttribArray(loc);
-  }
-  loc = glGetAttribLocation(shader.program->program, "bitangent");
-  if (loc != -1)
-  {
-    glBindBuffer(GL_ARRAY_BUFFER, mesh->bitangents_buffer);
-    glVertexAttribPointer(loc, 3, GL_FLOAT, GL_FALSE, sizeof(float32) * 3, 0);
-    glEnableVertexAttribArray(loc);
-  }
+  ASSERT(current_vao == mesh->vao);
+  ASSERT(current_shader = shader.program->program);
+
+  //int32 loc = glGetAttribLocation(shader.program->program, "position");
+  //ASSERT(loc != -1);
+  uint32 loc = 0;
+  glEnableVertexAttribArray(loc);
+  glBindBuffer(GL_ARRAY_BUFFER, mesh->position_buffer);
+  glVertexAttribPointer(loc, 3, GL_FLOAT, GL_FALSE, sizeof(float32) * 3, 0);
+
+ // loc = glGetAttribLocation(shader.program->program, "normal");
+ // ASSERT(loc != -1);
+  loc = 1;
+  glEnableVertexAttribArray(loc);
+  glBindBuffer(GL_ARRAY_BUFFER, mesh->normal_buffer);
+  glVertexAttribPointer(loc, 3, GL_FLOAT, GL_FALSE, sizeof(float32) * 3, 0);
+
+ // loc = glGetAttribLocation(shader.program->program, "uv");
+  //ASSERT(loc != -1);
+  loc = 2;
+  glEnableVertexAttribArray(loc);
+  glBindBuffer(GL_ARRAY_BUFFER, mesh->uv_buffer);
+  glVertexAttribPointer(loc, 2, GL_FLOAT, GL_FALSE, sizeof(float32) * 2, 0);
+
+ // loc = glGetAttribLocation(shader.program->program, "tangent");
+ // ASSERT(loc != -1);
+  loc = 3;
+  glEnableVertexAttribArray(loc);
+  glBindBuffer(GL_ARRAY_BUFFER, mesh->tangents_buffer);
+  glVertexAttribPointer(loc, 3, GL_FLOAT, GL_FALSE, sizeof(float32) * 3, 0);
+
+ // loc = glGetAttribLocation(shader.program->program, "bitangent");
+ // ASSERT(loc != -1);
+  loc = 4;
+  glEnableVertexAttribArray(loc);
+  glBindBuffer(GL_ARRAY_BUFFER, mesh->bitangents_buffer);
+  glVertexAttribPointer(loc, 3, GL_FLOAT, GL_FALSE, sizeof(float32) * 3, 0);
 }
 
-std::shared_ptr<Mesh_Handle> Mesh::upload_data(const Mesh_Data& mesh_data)
+std::shared_ptr<Mesh_Handle> Mesh::upload_data(const Mesh_Data &mesh_data)
 {
   std::shared_ptr<Mesh_Handle> mesh = std::make_shared<Mesh_Handle>();
   mesh->data = mesh_data;
 
   if (sizeof(decltype(mesh_data.indices)::value_type) != sizeof(uint32))
   {
-    set_message("Mesh::upload_data error: render() assumes index type to be 32 bits");
+    set_message(
+        "Mesh::upload_data error: render() assumes index type to be 32 bits");
     ASSERT(0);
   }
 
-  check_gl_error();
   mesh->indices_buffer_size = mesh_data.indices.size();
   glGenVertexArrays(1, &mesh->vao);
   glBindVertexArray(mesh->vao);
-  set_message("create_vao", "created vao: " + std::to_string(mesh->vao), 1);
+  set_message("uploading mesh data...", s("created vao: ", mesh->vao), 1);
   glGenBuffers(1, &mesh->position_buffer);
   glGenBuffers(1, &mesh->normal_buffer);
   glGenBuffers(1, &mesh->indices_buffer);
@@ -492,211 +555,203 @@ std::shared_ptr<Mesh_Handle> Mesh::upload_data(const Mesh_Data& mesh_data)
   glBindBuffer(GL_ARRAY_BUFFER, 0);
   glBindVertexArray(0);
   return mesh;
-}
-
-Material::Material() {}
-Material::Material(Material_Descriptor m) 
-{ 
-  load(m);
-}
-Material::Material(aiMaterial *ai_material, std::string working_directory, Material_Descriptor* material_override)
-{
-  ASSERT(ai_material);
-  const int albedo_n = ai_material->GetTextureCount(aiTextureType_DIFFUSE);
-  const int specular_n = ai_material->GetTextureCount(aiTextureType_SPECULAR);
-  const int emissive_n = ai_material->GetTextureCount(aiTextureType_EMISSIVE);
-  const int normal_n = ai_material->GetTextureCount(aiTextureType_NORMALS);
-  const int roughness_n = ai_material->GetTextureCount(aiTextureType_SHININESS);
-
-  // unused:
-  aiTextureType_HEIGHT;
-  aiTextureType_OPACITY;
-  aiTextureType_DISPLACEMENT;
-  aiTextureType_AMBIENT;
-  aiTextureType_LIGHTMAP;
-
-  Material_Descriptor m;
-  aiString name;
-  ai_material->GetTexture(aiTextureType_DIFFUSE, 0, &name);
-  m.albedo = copy(&name);
-  name.Clear();
-  ai_material->GetTexture(aiTextureType_SPECULAR, 0, &name);
-  m.specular = copy(&name);
-  name.Clear();
-  ai_material->GetTexture(aiTextureType_EMISSIVE, 0, &name);
-  m.emissive = copy(&name);
-  name.Clear();
-  ai_material->GetTexture(aiTextureType_NORMALS, 0, &name);
-  m.normal = copy(&name);
-  name.Clear();
-  ai_material->GetTexture(aiTextureType_LIGHTMAP, 0, &name);
-  m.ambient_occlusion = copy(&name);
-  name.Clear();
-  ai_material->GetTexture(aiTextureType_SHININESS, 0, &name);
-  m.roughness = copy(&name);
-  name.Clear();
-
-  if (albedo_n)
-    m.albedo = working_directory + m.albedo;
-  if (specular_n)
-    m.specular = working_directory + m.specular;
-  if (emissive_n)
-    m.emissive = working_directory + m.emissive;
-  if (normal_n)
-    m.normal = working_directory + m.normal;
-  if (roughness_n)
-    m.roughness = working_directory + m.roughness;  
-
-  if (material_override)
-  {
-    if (material_override->albedo != "")
-      m.albedo = material_override->albedo;
-    if (material_override->roughness != "")
-      m.roughness = material_override->roughness;
-    if (material_override->specular != "")
-      m.specular = material_override->specular;
-    if (material_override->metalness != "")
-      m.metalness = material_override->metalness;
-    if (material_override->tangent != "")
-      m.tangent = material_override->tangent;
-    if (material_override->normal != "")
-      m.normal = material_override->normal;
-    if (material_override->ambient_occlusion != "")
-      m.ambient_occlusion = material_override->ambient_occlusion;
-    if (material_override->emissive != "")
-      m.emissive = material_override->emissive;
-    m.vertex_shader = material_override->vertex_shader;
-    m.frag_shader = material_override->frag_shader;
-    m.backface_culling = material_override->backface_culling;
-    m.has_transparency = material_override->has_transparency;
-    m.uv_scale = material_override->uv_scale;
   }
-  load(m);
-}
-void Material::load(Material_Descriptor m)
-{
-  this->m = m;
-  albedo = Texture(m.albedo);
-  specular_color = Texture(m.specular);
-  normal = Texture(m.normal);
-  emissive = Texture(m.emissive);
-  roughness = Texture(m.roughness);
-  shader = Shader(m.vertex_shader, m.frag_shader);
-  uv_scale = m.uv_scale;
-}
-void Material::bind()
-{
-  if (m.backface_culling)
-    glEnable(GL_CULL_FACE);
-  else
-    glDisable(GL_CULL_FACE);
 
-  albedo.bind("albedo", 0, shader);
-  specular_color.bind("specular_color", 1, shader);
-  normal.bind("normal", 2, shader);
-  emissive.bind("emissive", 3, shader);
-  roughness.bind("roughness", 4, shader);
-}
-void Material::unbind_textures()
-{
-  glActiveTexture(GL_TEXTURE0 + Texture_Location::albedo);
-  glBindTexture(GL_TEXTURE_2D, 0);
-  glActiveTexture(GL_TEXTURE0 + Texture_Location::specular);
-  glBindTexture(GL_TEXTURE_2D, 0);
-  glActiveTexture(GL_TEXTURE0 + Texture_Location::normal);
-  glBindTexture(GL_TEXTURE_2D, 0);
-  glActiveTexture(GL_TEXTURE0 + Texture_Location::emissive);
-  glBindTexture(GL_TEXTURE_2D, 0);
-  glActiveTexture(GL_TEXTURE0 + Texture_Location::roughness);
-  glBindTexture(GL_TEXTURE_2D, 0);
-}
-
-bool Light::operator==(const Light &rhs) const
-{
-  bool b1 = position == rhs.position;
-  bool b2 = direction == rhs.direction;
-  bool b3 = color == rhs.color;
-  bool b4 = attenuation == rhs.attenuation;
-  bool b5 = ambient == rhs.ambient;
-  bool b6 = cone_angle == rhs.cone_angle;
-  bool b7 = type == rhs.type;
-  return b1 & b2 & b3 & b4 & b5 & b6 & b7;
-}
-
-bool Light_Array::operator==(const Light_Array &rhs)
-{
-  if (light_count != rhs.light_count)
-    return false;
-  if (lights != rhs.lights)
+  Material::Material() {}
+  Material::Material(Material_Descriptor m) { load(m); }
+  Material::Material(aiMaterial * ai_material, std::string working_directory,
+                     Material_Descriptor * material_override)
   {
-    return false;
+    ASSERT(ai_material);
+    const int albedo_n = ai_material->GetTextureCount(aiTextureType_DIFFUSE);
+    const int specular_n = ai_material->GetTextureCount(aiTextureType_SPECULAR);
+    const int emissive_n = ai_material->GetTextureCount(aiTextureType_EMISSIVE);
+    const int normal_n = ai_material->GetTextureCount(aiTextureType_NORMALS);
+    const int roughness_n =
+        ai_material->GetTextureCount(aiTextureType_SHININESS);
+
+    // unused:
+    aiTextureType_HEIGHT;
+    aiTextureType_OPACITY;
+    aiTextureType_DISPLACEMENT;
+    aiTextureType_AMBIENT;
+    aiTextureType_LIGHTMAP;
+
+    Material_Descriptor m;
+    aiString name;
+    ai_material->GetTexture(aiTextureType_DIFFUSE, 0, &name);
+    m.albedo = copy(&name);
+    name.Clear();
+    ai_material->GetTexture(aiTextureType_SPECULAR, 0, &name);
+    m.specular = copy(&name);
+    name.Clear();
+    ai_material->GetTexture(aiTextureType_EMISSIVE, 0, &name);
+    m.emissive = copy(&name);
+    name.Clear();
+    ai_material->GetTexture(aiTextureType_NORMALS, 0, &name);
+    m.normal = copy(&name);
+    name.Clear();
+    ai_material->GetTexture(aiTextureType_LIGHTMAP, 0, &name);
+    m.ambient_occlusion = copy(&name);
+    name.Clear();
+    ai_material->GetTexture(aiTextureType_SHININESS, 0, &name);
+    m.roughness = copy(&name);
+    name.Clear();
+
+    if (albedo_n)
+      m.albedo = working_directory + m.albedo;
+    if (specular_n)
+      m.specular = working_directory + m.specular;
+    if (emissive_n)
+      m.emissive = working_directory + m.emissive;
+    if (normal_n)
+      m.normal = working_directory + m.normal;
+    if (roughness_n)
+      m.roughness = working_directory + m.roughness;
+
+    if (material_override)
+    {
+      if (material_override->albedo != "")
+        m.albedo = material_override->albedo;
+      if (material_override->roughness != "")
+        m.roughness = material_override->roughness;
+      if (material_override->specular != "")
+        m.specular = material_override->specular;
+      if (material_override->metalness != "")
+        m.metalness = material_override->metalness;
+      if (material_override->tangent != "")
+        m.tangent = material_override->tangent;
+      if (material_override->normal != "")
+        m.normal = material_override->normal;
+      if (material_override->ambient_occlusion != "")
+        m.ambient_occlusion = material_override->ambient_occlusion;
+      if (material_override->emissive != "")
+        m.emissive = material_override->emissive;
+      m.vertex_shader = material_override->vertex_shader;
+      m.frag_shader = material_override->frag_shader;
+      m.backface_culling = material_override->backface_culling;
+      m.has_transparency = material_override->has_transparency;
+      m.uv_scale = material_override->uv_scale;
+    }
+    load(m);
   }
-  if (additional_ambient != rhs.additional_ambient)
+  void Material::load(Material_Descriptor m)
   {
-    return false;
+    this->m = m;
+    albedo = Texture(m.albedo);
+    //specular_color = Texture(m.specular);
+    normal = Texture(m.normal);
+    emissive = Texture(m.emissive);
+    roughness = Texture(m.roughness);
+    shader = Shader(m.vertex_shader, m.frag_shader);
+    uv_scale = m.uv_scale;
   }
-  return true;
-}
-
-Render_Entity::Render_Entity(Mesh *mesh, Material *material, Light_Array lights,
-                             mat4 world_to_model)
-    : mesh(mesh), material(material), lights(lights),
-      transformation(world_to_model)
-{
-  ASSERT(mesh);
-  ASSERT(material);
-}
- 
-
-Render::Render(SDL_Window *window, ivec2 window_size)
-{
-  this->window = window;
-  this->window_size = window_size;
-  SDL_DisplayMode current;
-  SDL_GetCurrentDisplayMode(0, &current);
-  target_frame_time = 1.0f / (float32)current.refresh_rate;
-  set_vfov(vfov);
-  init_render_targets();
-  FRAME_TIMER.start();
-}
-
-
-void set_uniform_lights(Shader &shader, Light_Array &lights)
-{
-  ASSERT(lights.lights.size() == MAX_LIGHTS);
-  uint32 location = -1;
-// todo: this is horrible. do something much better than this - precompute
-// all these godawful strings and just select them
-#define s std::string
-#define ts std::to_string
-
-  for (int i = 0; i < MAX_LIGHTS; ++i)
+  void Material::bind()
   {
-    shader.set_uniform((s("lights[") + ts(i) + s("].position")).c_str(),
-                       lights.lights[i].position);
-    shader.set_uniform((s("lights[") + ts(i) + s("].direction")).c_str(),
-                       lights.lights[i].direction);
-    shader.set_uniform((s("lights[") + ts(i) + s("].color")).c_str(),
-                       lights.lights[i].color);
-    shader.set_uniform((s("lights[") + ts(i) + s("].attenuation")).c_str(),
-                       lights.lights[i].attenuation);
-    vec3 ambient = lights.lights[i].ambient * lights.lights[i].color;
-    shader.set_uniform((s("lights[") + ts(i) + s("].ambient")).c_str(),
-      ambient);
-    shader.set_uniform((s("lights[") + ts(i) + s("].cone_angle")).c_str(),
-                       lights.lights[i].cone_angle);
-    shader.set_uniform((s("lights[") + ts(i) + s("].type")).c_str(),
-                       (int32)lights.lights[i].type);
+    if (m.backface_culling)
+      glEnable(GL_CULL_FACE);
+    else
+      glDisable(GL_CULL_FACE);
+
+    albedo.bind("albedo", 0, shader);
+    //specular_color.bind("specular", 1, shader);
+    normal.bind("normal", 2, shader);
+    emissive.bind("emissive", 3, shader);
+    roughness.bind("roughness", 4, shader);
   }
-  shader.set_uniform("number_of_lights", (int32)lights.light_count);
-  shader.set_uniform("additional_ambient", lights.additional_ambient);
+  void Material::unbind_textures()
+  {
+    glActiveTexture(GL_TEXTURE0 + Texture_Location::albedo);
+    glBindTexture(GL_TEXTURE_2D, 0);
+    glActiveTexture(GL_TEXTURE0 + Texture_Location::specular);
+    glBindTexture(GL_TEXTURE_2D, 0);
+    glActiveTexture(GL_TEXTURE0 + Texture_Location::normal);
+    glBindTexture(GL_TEXTURE_2D, 0);
+    glActiveTexture(GL_TEXTURE0 + Texture_Location::emissive);
+    glBindTexture(GL_TEXTURE_2D, 0);
+    glActiveTexture(GL_TEXTURE0 + Texture_Location::roughness);
+    glBindTexture(GL_TEXTURE_2D, 0);
+  }
 
-#undef s
-#undef ts
-}
+  bool Light::operator==(const Light &rhs) const
+  {
+    bool b1 = position == rhs.position;
+    bool b2 = direction == rhs.direction;
+    bool b3 = color == rhs.color;
+    bool b4 = attenuation == rhs.attenuation;
+    bool b5 = ambient == rhs.ambient;
+    bool b6 = cone_angle == rhs.cone_angle;
+    bool b7 = type == rhs.type;
+    return b1 & b2 & b3 & b4 & b5 & b6 & b7;
+  }
 
-void Render::render(float64 state_time)
-{
+  bool Light_Array::operator==(const Light_Array &rhs)
+  {
+    if (light_count != rhs.light_count)
+      return false;
+    if (lights != rhs.lights)
+    {
+      return false;
+    }
+    if (additional_ambient != rhs.additional_ambient)
+    {
+      return false;
+    }
+    return true;
+  }
+
+  Render_Entity::Render_Entity(Mesh * mesh, Material * material,
+                               Light_Array lights, mat4 world_to_model)
+      : mesh(mesh), material(material), lights(lights),
+        transformation(world_to_model)
+  {
+    ASSERT(mesh);
+    ASSERT(material);
+  }
+
+  Render::Render(SDL_Window * window, ivec2 window_size)
+  {
+    set_message("Render constructor");
+    this->window = window;
+    this->window_size = window_size;
+    SDL_DisplayMode current;
+    SDL_GetCurrentDisplayMode(0, &current);
+    target_frame_time = 1.0f / (float32)current.refresh_rate;
+    set_vfov(vfov);
+    init_render_targets();
+    FRAME_TIMER.start();
+  }
+
+  void set_uniform_lights(Shader & shader, Light_Array & lights)
+  {
+    ASSERT(lights.lights.size() == MAX_LIGHTS);
+    uint32 location = -1;
+    // todo: this is horrible. do something much better than this - precompute
+    // all these godawful strings and just select them
+
+    for (int i = 0; i < MAX_LIGHTS; ++i)
+    {
+      shader.set_uniform((s("lights[", i, "].position")).c_str(),
+                         lights.lights[i].position);
+      shader.set_uniform((s("lights[", i, "].direction")).c_str(),
+                         lights.lights[i].direction);
+      shader.set_uniform((s("lights[", i, "].color")).c_str(),
+                         lights.lights[i].color);
+      shader.set_uniform((s("lights[", i, "].attenuation")).c_str(),
+                         lights.lights[i].attenuation);
+      vec3 ambient = lights.lights[i].ambient * lights.lights[i].color;
+      shader.set_uniform((s("lights[", i, "].ambient")).c_str(), ambient);
+      shader.set_uniform((s("lights[", i, "].cone_angle")).c_str(),
+                         lights.lights[i].cone_angle);
+      shader.set_uniform((s("lights[", i, "].type")).c_str(),
+                         (int32)lights.lights[i].type);
+    }
+    shader.set_uniform("number_of_lights", (int32)lights.light_count);
+    shader.set_uniform("additional_ambient", lights.additional_ambient);
+  }
+
+  void Render::render(float64 state_time)
+  {
 #if DYNAMIC_FRAMERATE_TARGET
   dynamic_framerate_target();
 #endif
@@ -717,16 +772,36 @@ void Render::render(float64 state_time)
   glCullFace(GL_BACK);
   glEnable(GL_DEPTH_TEST);
   glDepthFunc(GL_LESS);
-  for (auto &entity : render_instances)
+
+  for (Render_Entity& entity : render_entities)
   {
-    check_gl_error();
+    ASSERT(entity.mesh);
+    int vao = entity.mesh->get_vao();
+    glBindVertexArray(vao);
     Shader &shader = entity.material->shader;
     shader.use();
     entity.material->bind();
+    entity.mesh->bind_to_shader(shader);
+    shader.set_uniform("time", time);
+    shader.set_uniform("txaa_jitter", txaa_jitter);
+    shader.set_uniform("camera_position", camera_position);
+    shader.set_uniform("uv_scale", entity.material->uv_scale);
+    shader.set_uniform("MVP", projection*camera*entity.transformation);
+    shader.set_uniform("Model", entity.transformation);
+    set_uniform_lights(shader, entity.lights);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, entity.mesh->get_indices_buffer());
+    glDrawElements(GL_TRIANGLES, entity.mesh->get_indices_buffer_size(), GL_UNSIGNED_INT, nullptr);
+  }
+  for (auto &entity : render_instances)
+  {
+    ASSERT(0);//untested
     ASSERT(entity.mesh);
     int vao = entity.mesh->get_vao();
-    set_message("vao bind", "binding vao:" + std::to_string(vao), 1);
     glBindVertexArray(vao); 
+    Shader &shader = entity.material->shader;
+    ASSERT(shader.vs == "instance.vert");
+    shader.use();
+    entity.material->bind();
     entity.mesh->bind_to_shader(shader);
     shader.set_uniform("time", time);
     shader.set_uniform("txaa_jitter", txaa_jitter);
@@ -744,8 +819,8 @@ void Render::render(float64 state_time)
 
     uint32 num_instances = entity.MVP_Matrices.size();
     uint32 buffer_size = num_instances * sizeof(mat4);
-    entity.mesh->assign_instance_buffers(INSTANCE_MVP_BUFFER,
-                                         INSTANCE_MODEL_BUFFER, shader);
+
+    
     glBindBuffer(GL_ARRAY_BUFFER, INSTANCE_MVP_BUFFER);
     glBufferSubData(GL_ARRAY_BUFFER, 0, buffer_size,
                     &entity.MVP_Matrices[0][0][0]);
@@ -753,20 +828,77 @@ void Render::render(float64 state_time)
     glBufferSubData(GL_ARRAY_BUFFER, 0, buffer_size,
                     &entity.Model_Matrices[0][0][0]);
 
+    const GLuint mat4_size = sizeof(GLfloat) * 4 * 4;
+    // shader attribute locations
+    // 4 locations for mat4
+    int32 loc = glGetAttribLocation(shader.program->program, "instanced_MVP");
+    ASSERT(loc != -1);
+
+    GLuint loc1 = loc + 0;
+    GLuint loc2 = loc + 1;
+    GLuint loc3 = loc + 2;
+    GLuint loc4 = loc + 3;
+    glEnableVertexAttribArray(loc1);
+    glEnableVertexAttribArray(loc2);
+    glEnableVertexAttribArray(loc3);
+    glEnableVertexAttribArray(loc4);
+    glBindBuffer(GL_ARRAY_BUFFER, INSTANCE_MVP_BUFFER);
+    glVertexAttribPointer(loc1, 4, GL_FLOAT, GL_FALSE, mat4_size, (void *)(0));
+    glVertexAttribPointer(loc2, 4, GL_FLOAT, GL_FALSE, mat4_size,
+      (void *)(sizeof(GLfloat) * 4));
+    glVertexAttribPointer(loc3, 4, GL_FLOAT, GL_FALSE, mat4_size,
+      (void *)(sizeof(GLfloat) * 8));
+    glVertexAttribPointer(loc4, 4, GL_FLOAT, GL_FALSE, mat4_size,
+      (void *)(sizeof(GLfloat) * 12));
+    glVertexAttribDivisor(loc1, 1);
+    glVertexAttribDivisor(loc2, 1);
+    glVertexAttribDivisor(loc3, 1);
+    glVertexAttribDivisor(loc4, 1);
+
+    loc = glGetAttribLocation(shader.program->program, "instanced_model");
+    ASSERT(loc != -1);
+
+    GLuint loc_1 = loc + 0;
+    GLuint loc_2 = loc + 1;
+    GLuint loc_3 = loc + 2;
+    GLuint loc_4 = loc + 3;
+    glEnableVertexAttribArray(loc_1);
+    glEnableVertexAttribArray(loc_2);
+    glEnableVertexAttribArray(loc_3);
+    glEnableVertexAttribArray(loc_4);
+    glBindBuffer(GL_ARRAY_BUFFER, INSTANCE_MODEL_BUFFER);
+    glVertexAttribPointer(loc_1, 4, GL_FLOAT, GL_FALSE, mat4_size, (void *)(0));
+    glVertexAttribPointer(loc_2, 4, GL_FLOAT, GL_FALSE, mat4_size,
+      (void *)(sizeof(GLfloat) * 4));
+    glVertexAttribPointer(loc_3, 4, GL_FLOAT, GL_FALSE, mat4_size,
+      (void *)(sizeof(GLfloat) * 8));
+    glVertexAttribPointer(loc_4, 4, GL_FLOAT, GL_FALSE, mat4_size,
+      (void *)(sizeof(GLfloat) * 12));
+    glVertexAttribDivisor(loc_1, 1);
+    glVertexAttribDivisor(loc_2, 1);
+    glVertexAttribDivisor(loc_3, 1);
+    glVertexAttribDivisor(loc_4, 1);
+     
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, entity.mesh->get_indices_buffer());  
     glDrawElementsInstanced(GL_TRIANGLES, entity.mesh->get_indices_buffer_size(),
                             GL_UNSIGNED_INT, (void *)0, num_instances);
 
     entity.material->unbind_textures();
+    glDisableVertexAttribArray(loc1);
+    glDisableVertexAttribArray(loc2);
+    glDisableVertexAttribArray(loc3);
+    glDisableVertexAttribArray(loc4);
+    glDisableVertexAttribArray(loc_1);
+    glDisableVertexAttribArray(loc_2);
+    glDisableVertexAttribArray(loc_3);
+    glDisableVertexAttribArray(loc_4);
   }
-  check_gl_error();
-
+  draw_calls_last_frame = render_instances.size() + render_entities.size();
   mat4 o =
       ortho(0.0f, (float32)window_size.x, 0.0f, (float32)window_size.y, 0.1f,
             100.0f) *
       translate(vec3(vec2(0.5f * window_size.x, 0.5f * window_size.y), -1)) *
       scale(vec3(window_size, 1));
-
   if (use_txaa)
   {
     // TODO: implement motion vector vertex attribute
@@ -775,7 +907,6 @@ void Render::render(float64 state_time)
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
     glViewport(0, 0, window_size.x, window_size.y);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
     TEMPORALAA.use();
     QUAD.bind_to_shader(TEMPORALAA);
     GLuint u = glGetUniformLocation(TEMPORALAA.program->program, "current");
@@ -836,12 +967,23 @@ void Render::render(float64 state_time)
     glViewport(0, 0, window_size.x, window_size.y);
     glClearColor(1, 0, 0, 1);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    glBindVertexArray(QUAD.get_vao());
     PASSTHROUGH.use();
-    QUAD.bind_to_shader(PASSTHROUGH);
-    GLuint u = glGetUniformLocation(PASSTHROUGH.program->program, "albedo");
-    glUniform1i(u, Texture_Location::albedo);
+
+    glEnableVertexAttribArray(0);
+    glBindBuffer(GL_ARRAY_BUFFER, QUAD.mesh->position_buffer);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(float32) * 3, 0);
+
+    glEnableVertexAttribArray(1);
+    glBindBuffer(GL_ARRAY_BUFFER, QUAD.mesh->uv_buffer);
+    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(float32) * 2, 0);
+
+    GLuint loc = glGetUniformLocation(PASSTHROUGH.program->program, "albedo");
+    ASSERT(loc != -1);
+    glUniform1i(loc, Texture_Location::albedo);
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, COLOR_TARGET_TEXTURE);
+
     PASSTHROUGH.set_uniform("transform", o);
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, QUAD.get_indices_buffer());
     glDrawElements(GL_TRIANGLES, QUAD.get_indices_buffer_size(), GL_UNSIGNED_INT,
@@ -855,6 +997,9 @@ void Render::render(float64 state_time)
     glFinish();
     SWAP_TIMER.stop();
     FRAME_TIMER.start();
+    glBindVertexArray(0);
+    //set_message("Swap complete... Saving default framebuffer");
+    //save_and_log_screen();
   }
   frame_count += 1;
 }
@@ -901,58 +1046,61 @@ void Render::set_vfov(float32 vfov)
 
 void Render::set_render_entities(std::vector<Render_Entity> render_entities)
 {
-  // todo: save previous update's entities
-  // give each entity a unique ID, sort by ID, compare
-  // extrapolate positions for current frame with
-  // lerp(current, current + (current-prev), t)
-  render_instances.clear();
-  render_instances.reserve(render_entities.size());
+  this->previous_render_entities = std::move(this->render_entities);
+  this->render_entities = render_entities;
+}
 
-  for (uint32 i = 0; i < render_entities.size(); ++i)
+
+void check_FBO_status()
+{
+  auto result = glCheckFramebufferStatus(GL_FRAMEBUFFER);
+  std::string str;
+  switch (result)
   {
-    Render_Entity *entity = &render_entities[i];
-    bool found = false;
-    for (uint32 j = 0; j < render_instances.size(); ++j)
-    { // check every instance for a match
-      Render_Instance *instance = &render_instances[j];
-      if ((instance->mesh == entity->mesh) &&
-          (instance->material == entity->material))
-      {
-        ASSERT(instance->lights.lights == entity->lights.lights);
-        ASSERT(instance->lights.light_count == entity->lights.light_count);
-        // varying lights for an instance not (yet?) supported
+    case GL_FRAMEBUFFER_UNDEFINED:
+      str = "GL_FRAMEBUFFER_UNDEFINED";
+      break;
+    case GL_FRAMEBUFFER_INCOMPLETE_ATTACHMENT:
+      str = "GL_FRAMEBUFFER_INCOMPLETE_ATTACHMENT";
+      break;
+    case GL_FRAMEBUFFER_INCOMPLETE_MISSING_ATTACHMENT:
+      str = "GL_FRAMEBUFFER_INCOMPLETE_MISSING_ATTACHMENT";
+      break;
+    case GL_FRAMEBUFFER_INCOMPLETE_DRAW_BUFFER:
+      str = "GL_FRAMEBUFFER_INCOMPLETE_DRAW_BUFFER";
+      break;
+    case GL_FRAMEBUFFER_INCOMPLETE_READ_BUFFER:
+      str = "GL_FRAMEBUFFER_INCOMPLETE_READ_BUFFER";
+      break;
+    case GL_FRAMEBUFFER_UNSUPPORTED:
+      str = "GL_FRAMEBUFFER_UNSUPPORTED";
+      break;
+    case GL_FRAMEBUFFER_INCOMPLETE_MULTISAMPLE:
+      str = "GL_FRAMEBUFFER_INCOMPLETE_MULTISAMPLE";
+      break;
+    case GL_FRAMEBUFFER_INCOMPLETE_LAYER_TARGETS:
+      str = "GL_FRAMEBUFFER_INCOMPLETE_LAYER_TARGETS";
+      break;
+    case GL_FRAMEBUFFER_COMPLETE:
+      str = "GL_FRAMEBUFFER_COMPLETE";
+      break;
+  }
 
-        // we actually found an object that is drawn more than once
-        // odds are, an instanced mesh will have more than just a few instances
-        instance->MVP_Matrices.reserve(MAX_INSTANCE_COUNT);
-        instance->Model_Matrices.reserve(MAX_INSTANCE_COUNT);
-        // TODO: pack these together in one buffer
-        // with a stride for cache locality
-         mat4 mvp = projection * camera * entity->transformation;
-        instance->MVP_Matrices.push_back(mvp);
-        instance->Model_Matrices.push_back(entity->transformation);
-        ASSERT(instance->MVP_Matrices.size() <= MAX_INSTANCE_COUNT);
-        ASSERT(instance->Model_Matrices.size() <= MAX_INSTANCE_COUNT);
-        found = true;
-        break;
-      }
-    }
-    if (!found)
-    { // add a new instance
-      render_instances.emplace_back();
-      Render_Instance *new_instance = &render_instances.back();
-      new_instance->lights = entity->lights;
-      new_instance->mesh = entity->mesh;
-      new_instance->material = entity->material;
-      mat4 mvp = projection * camera * entity->transformation;
-      new_instance->MVP_Matrices.push_back(mvp);
-      new_instance->Model_Matrices.push_back(entity->transformation);
-    }
+  if(str != "GL_FRAMEBUFFER_COMPLETE")
+  {
+    set_message("FBO_ERROR",str);
+    ASSERT(0);
   }
 }
 
 void Render::init_render_targets()
 {
+  set_message("init_render_targets()");
+  set_message("Deleting FBO", std::to_string(TARGET_FRAMEBUFFER));
+  set_message("Deleting Textures", std::to_string(COLOR_TARGET_TEXTURE) +
+  " "+ std::to_string(PREV_COLOR_TARGET) + 
+  " " + std::to_string(DEPTH_TARGET_TEXTURE));
+  
   glBindFramebuffer(GL_FRAMEBUFFER, 0);
   glDeleteFramebuffers(1, &TARGET_FRAMEBUFFER);
   glDeleteTextures(1, &COLOR_TARGET_TEXTURE);
@@ -967,8 +1115,8 @@ void Render::init_render_targets()
   glBindTexture(GL_TEXTURE_2D, COLOR_TARGET_TEXTURE);
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-  glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-  glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
   glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, size.x, size.y, 0, GL_RGBA,
                GL_UNSIGNED_BYTE, 0);
 
@@ -976,8 +1124,8 @@ void Render::init_render_targets()
   glBindTexture(GL_TEXTURE_2D, PREV_COLOR_TARGET);
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-  glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-  glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
   glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, size.x, size.y, 0, GL_RGBA,
                GL_UNSIGNED_BYTE, 0);
 
@@ -991,9 +1139,14 @@ void Render::init_render_targets()
 
   PREV_COLOR_TARGET_MISSING = true;
 
-  set_message("Init render targets: ", std::to_string(TARGET_FRAMEBUFFER) + " " +
-    std::to_string(PREV_COLOR_TARGET) + " " +
-    std::to_string(DEPTH_TARGET_TEXTURE));
+
+  set_message("Init FBO", s(TARGET_FRAMEBUFFER));
+  set_message("Init Textures", s(COLOR_TARGET_TEXTURE) + " "+ s(PREV_COLOR_TARGET));
+  set_message("Init renderbuffers", s(DEPTH_TARGET_TEXTURE));
+  
+  check_FBO_status();
+
+
   glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }
 
@@ -1089,9 +1242,14 @@ mat4 Render::get_next_TXAA_sample()
   jitter_switch = !jitter_switch;
   return result;
 }
-
+ 
 Mesh_Handle::~Mesh_Handle()
 {
+  if (position_buffer == 27)
+  {
+    int a = 3;
+  }
+  set_message("Deleting mesh: ", s(vao, " ", position_buffer));
   glDeleteBuffers(1, &position_buffer);
   glDeleteBuffers(1, &normal_buffer);
   glDeleteBuffers(1, &uv_buffer);
@@ -1109,39 +1267,3 @@ Mesh_Handle::~Mesh_Handle()
   indices_buffer_size = 0;
 }
 
-void printFrameBufferStatus()
-{
-  auto result = glCheckFramebufferStatus(GL_FRAMEBUFFER);
-  std::string str;
-  switch (result)
-  {
-    case GL_FRAMEBUFFER_UNDEFINED:
-      str = "GL_FRAMEBUFFER_UNDEFINED";
-      break;
-    case GL_FRAMEBUFFER_INCOMPLETE_ATTACHMENT:
-      str = "GL_FRAMEBUFFER_INCOMPLETE_ATTACHMENT";
-      break;
-    case GL_FRAMEBUFFER_INCOMPLETE_MISSING_ATTACHMENT:
-      str = "GL_FRAMEBUFFER_INCOMPLETE_MISSING_ATTACHMENT";
-      break;
-    case GL_FRAMEBUFFER_INCOMPLETE_DRAW_BUFFER:
-      str = "GL_FRAMEBUFFER_INCOMPLETE_DRAW_BUFFER";
-      break;
-    case GL_FRAMEBUFFER_INCOMPLETE_READ_BUFFER:
-      str = "GL_FRAMEBUFFER_INCOMPLETE_READ_BUFFER";
-      break;
-    case GL_FRAMEBUFFER_UNSUPPORTED:
-      str = "GL_FRAMEBUFFER_UNSUPPORTED";
-      break;
-    case GL_FRAMEBUFFER_INCOMPLETE_MULTISAMPLE:
-      str = "GL_FRAMEBUFFER_INCOMPLETE_MULTISAMPLE";
-      break;
-    case GL_FRAMEBUFFER_INCOMPLETE_LAYER_TARGETS:
-      str = "GL_FRAMEBUFFER_INCOMPLETE_LAYER_TARGETS";
-      break;
-    case GL_FRAMEBUFFER_COMPLETE:
-      str = "GL_FRAMEBUFFER_COMPLETE";
-      break;
-  }
-  std::cout << "Framebuffer status: " << str << std::endl;
-}

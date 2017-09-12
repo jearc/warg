@@ -26,10 +26,8 @@ struct Light
 uniform Light lights[MAX_LIGHTS];
 uniform uint number_of_lights;
 
-out vec4 frag_world_position;
-out mat3 frag_TBN;
-out vec2 frag_uv;
 
+layout(location = 0) out vec4 ALBEDO;
 #define gamma 2.2
 
 float linearize_depth(float depth)
@@ -57,5 +55,5 @@ void main()
     color = world_position / 12;
   }
 
-  gl_FragColor = vec4(to_srgb(color), 1);
+  ALBEDO = vec4(to_srgb(color), 1);
 }

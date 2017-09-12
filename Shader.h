@@ -1,5 +1,5 @@
 #pragma once
-#include <GL/glew.h>
+#include "Globals.h"
 #include <glm/glm.hpp>
 #include <memory>
 #include <string>
@@ -17,7 +17,7 @@ struct Shader
   void set_uniform(const char *name, vec3 &v);
   void set_uniform(const char *name, vec4 &v);
   void set_uniform(const char *name, const mat4 &m);
-
+   
   void use() const;
 
   struct Shader_Handle
@@ -27,7 +27,8 @@ struct Shader
     GLuint program = 0;
   };
   std::shared_ptr<Shader_Handle> program;
-  std::string name;
+  std::string vs;
+  std::string fs;
 
 private:
   void check_err(GLint loc, const char *name);

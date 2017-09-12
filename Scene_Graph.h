@@ -19,7 +19,7 @@ struct Node_Ptr
   Node_Ptr() {};
   uint32 i= -1;
 };
-
+ 
 struct Scene_Graph_Node
 {
   uint32 ID = 0;

@@ -1,11 +1,11 @@
-#include "State.h"
 #include "Globals.h"
+#include "State.h"
 #include "Render.h"
 #include <atomic>
 #include <thread>
 #include <memory>
 #include <sstream>
-
+ 
 using namespace glm;
 
 static bool intersects(vec3 pa, vec3 da, vec3 pb, vec3 db);
@@ -41,7 +41,6 @@ State::State(std::string name, SDL_Window *window, ivec2 window_size)
 {
   SDL_SetRelativeMouseMode(SDL_bool(true));
   reset_mouse_delta();
-  check_gl_error();
 }
 
 Game_State::Game_State(std::string name, SDL_Window *window, ivec2 window_size) :State(name, window, window_size)
@@ -383,7 +382,6 @@ Game_State::Game_State(std::string name, SDL_Window *window, ivec2 window_size) 
 
   SDL_SetRelativeMouseMode(SDL_bool(true));
   reset_mouse_delta();
-  check_gl_error();
 
   
 }
@@ -476,7 +474,6 @@ void State::prepare_renderer(double t)
 
   // Traverse graph nodes and submit to renderer for packing:
   auto render_entities = scene.visit_nodes_st_start();
-  auto render_entities2 = scene.visit_nodes_async_start();
   renderer.set_render_entities(render_entities);
   renderer.clear_color = clear_color;
 }
@@ -1304,7 +1301,6 @@ void Render_Test_State::update()
 
 void State::render(float64 t)
 {
-  check_gl_error();
   prepare_renderer(t);
   renderer.render(t);
 }
@@ -1328,21 +1324,14 @@ void State::performance_output()
     last_output = current_time;
     Uint64 current_frame_rate = (1.0 / report_delay) * frames_since_last_tick;
     s << PERF_TIMER.string_report();
-    s << "FPS: " << current_frame_rate << "\n";
-    s << "Total FPS:" << (float64)frame_count / current_time;
+    s << "FPS: " << current_frame_rate;
+    s << "\nTotal FPS:" << (float64)frame_count / current_time;
     s << "\nRender Scale: " <<renderer.get_render_scale();
-    s << "\nDraw calls: " << renderer.render_instances.size();
+    s << "\nDraw calls: " << renderer.draw_calls_last_frame;
     set_message("Performance output: ", s.str(), report_delay / 2);
     std::cout << get_messages() << std::endl;
   }
 }
-#include "State.h"
-#include "Globals.h"
-#include "Render.h"
-#include <atomic>
-#include <thread>
-
-using namespace glm;
 
 
 void Game_State::add_wall(vec3 p1, vec2 p2, float32 h)
@@ -1437,11 +1426,6 @@ void Game_State::add_char(int team, std::string name)
   chars[nchars++] = c;
 }
 
-
-
- 
-
-
 bool intersects(vec3 pa, vec3 da, vec3 pb, vec3 db)
 {
   float32 axn, axm, ayn, aym, azn, azm, bxn, bxm, byn, bym, bzn, bzm;
@@ -1526,21 +1510,21 @@ void invoke_spell_effect(SpellEffectInst &i, std::array<Character, 10> &chars,
       }
 
       int effective = h.n;
-      int overkill = 0;
+      int overheal = 0;
 
       c->hp += effective;
 
       if (c->hp > c->hp_max)
       {
-        overkill = c->hp - c->hp_max;
-        effective -= overkill;
+        overheal = c->hp - c->hp_max;
+        effective -= overheal;
         c->hp = c->hp_max;
       }
 
-      if (overkill > 0)
+      if (overheal > 0)
       {
         std::cout << e.name << " healed " << i.target->name << " for "
-                  << effective << " (" << overkill << " overkill)" << std::endl;
+                  << effective << " (" << overheal << " overheal)" << std::endl;
       }
       else
       {

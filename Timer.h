@@ -1,5 +1,5 @@
 #pragma once
-#include <SDL.h>
+#include <SDL2/SDL.h>
 #include <glm/glm.hpp>
 #include <string>
 #include <vector>
@@ -14,7 +14,7 @@ struct Timer
 
   // begin a new sample at begin time t rather than now
   void start(uint64 t);
-
+   
   // stop and record time of current sample, does not resume the timer
   void stop();
 

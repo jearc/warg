@@ -3,8 +3,7 @@
 #include "Mesh_Loader.h"
 #include "Shader.h"
 #include "stb_image.h"
-#include <GL/glew.h>
-#include <SDL.h>
+#include <SDL2/SDL.h>
 #include <array>
 #include <assimp/Importer.hpp>
 #include <assimp/postprocess.h>
@@ -24,7 +23,7 @@
 
 void INIT_RENDERER();
 void CLEANUP_RENDERER();
-
+ 
 using namespace glm;
 struct Texture_Handle
 {
@@ -64,20 +63,18 @@ struct Mesh
   Mesh(Mesh_Primitive p, std::string mesh_name);
   Mesh(Mesh_Data mesh_data, std::string mesh_name);
   Mesh(const aiMesh *aimesh, std::string unique_identifier);
-
-  void assign_instance_buffers(GLuint instance_MVP_Buffer,
-    GLuint instance_Model_Buffer, Shader &shader);
   void bind_to_shader(Shader &shader);
   GLuint get_vao() { return mesh->vao; }
   GLuint get_indices_buffer() { return mesh->indices_buffer; }
   GLuint get_indices_buffer_size() { return mesh->indices_buffer_size; }
   std::string name = "NULL";
-private:
+  //private:
   std::string unique_identifier = "NULL";
   std::shared_ptr<Mesh_Handle> upload_data(const Mesh_Data& data);
   std::shared_ptr<Mesh_Handle> mesh;
-  bool instance_buffers_set = false;
 };
+
+
 
 struct Material_Descriptor
 {
@@ -103,14 +100,14 @@ struct Material
   Material();
   Material(Material_Descriptor m);
   Material(aiMaterial *ai_material, std::string working_directory, Material_Descriptor* material_override);
-
+  bool operator==(Material& rhs);
 private:
   friend struct Render;
   void load(Material_Descriptor m);
   void bind();
   void unbind_textures();
   Texture albedo;
-  Texture specular_color;
+  //Texture specular_color;
   Texture normal;
   Texture emissive;
   Texture roughness;
@@ -169,13 +166,12 @@ struct Render_Instance
   Light_Array lights;
   std::vector<mat4> MVP_Matrices;
   std::vector<mat4> Model_Matrices;
-  std::vector<uint32> IDs;
 };
 struct Render
 {
   Render(SDL_Window *window, ivec2 window_size);
   void render(float64 state_time);
-  std::vector<Render_Instance> render_instances;
+  
   bool use_txaa = false;
   void resize_window(ivec2 window_size);
   float32 get_render_scale()const { return render_scale; }
@@ -188,15 +184,17 @@ struct Render
   void set_render_entities(std::vector<Render_Entity> entities);
   float64 target_frame_time = 1.0 / 60.0;
   uint64 frame_count = 0;
-  vec3 clear_color = vec3(0);
-
+  vec3 clear_color = vec3(1,0,0);
+  uint32 draw_calls_last_frame = 0;
 private:
+  std::vector<Render_Entity> previous_render_entities;
+  std::vector<Render_Entity> render_entities;
+  std::vector<Render_Instance> render_instances;
   float64 time_of_last_scale_change = 0.;
   void init_render_targets();
   void dynamic_framerate_target();
-  std::vector<Render_Entity> previous_render_entities;
   mat4 get_next_TXAA_sample();
-  float32 render_scale = 2.0f; // supersampling
+  float32 render_scale = 0.75f; // supersampling
   ivec2 window_size;           // actual window size
   ivec2 size;                  // render target size
   float32 vfov = 60;
@@ -207,5 +205,3 @@ private:
   bool jitter_switch = false;
   mat4 txaa_jitter = mat4(1);
 };
-
-void printFrameBufferStatus();

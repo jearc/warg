@@ -31,17 +31,14 @@ in vec3 frag_world_position;
 in mat3 frag_TBN;
 in vec2 frag_uv;
 
-#define ALBEDO_TARGET gl_FragData[0]
-#define NORMAL_TARGET gl_FragData[1]
-#define POSITION_TARGET gl_FragData[2]
+layout(location = 0) out vec4 ALBEDO;
+
 
 const float PI = 3.14159265358979f;
 const float gamma = 2.2;
-
 vec3 to_linear(in vec3 srgb) { return pow(srgb, vec3(gamma)); }
 float to_linear(in float srgb) { return pow(srgb, gamma); }
 vec3 to_srgb(in vec3 linear) { return pow(linear, vec3(1 / gamma)); }
-
 float linearize_depth(float z)
 {
   float near = 0.1;
@@ -49,7 +46,6 @@ float linearize_depth(float z)
   float depth = z * 2.0 - 1.0;
   return (2.0 * near * far) / (far + near - depth * (far - near));
 }
-
 struct Material
 {
   vec3 albedo;
@@ -128,6 +124,6 @@ else
     result = debug;
 
  //result = vec3(texture2D(roughness, frag_uv).r);
-
-  ALBEDO_TARGET = vec4(to_srgb(result), 1);
+ //  ALBEDO = vec4(m.normal,1);
+ ALBEDO = vec4(to_srgb(result), 1);
 }

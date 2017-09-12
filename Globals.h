@@ -1,5 +1,6 @@
 #pragma once
-#define GLM_FORCE_SWIZZLE
+#include <glbinding/gl33core/gl.h>
+#include <glbinding/Binding.h>
 #include "Timer.h"
 #include <fstream>
 #include <glm/glm.hpp>
@@ -11,6 +12,7 @@
 #include <assimp/scene.h>
 #include <assimp/types.h>
 using namespace glm;
+using namespace gl33core;
 struct aiString;
 
 #define MAX_INSTANCE_COUNT 100
@@ -21,6 +23,7 @@ struct aiString;
 #define DYNAMIC_FRAMERATE_TARGET 0
 #define DEBUG 1
 #define ENABLE_ASSERTS 1 
+#define INCLUDE_FILE_LINE_IN_LOG 0
 
 struct Game_State;
 struct Render_Test_State;
@@ -71,12 +74,14 @@ std::string read_file(const char *path);
 #define ASSERT(x) _errr(x,__FILE__,__LINE__)
 
 Uint32 string_to_color(std::string color);
-Uint64 hash(float* data, uint32 size);
+Uint64 dankhash(float32* data, uint32 size);
 
 
 
-#define check_gl_error() _check_gl_error(__FILE__, __LINE__)
-void _check_gl_error(const char *file, uint32 line);
+
+void gl_before_check(const glbinding::FunctionCall& f);
+void gl_after_check(const glbinding::FunctionCall& f);
+
 
 void checkSDLError(int32 line = -1);
 uint32 new_ID();
@@ -90,9 +95,25 @@ float64 get_real_time();
 // overwrite the older message when retrieved with get_message_log()
 // but ALL messages will be logged to disk with push_log_to_disk()
 // a duration of 0 will not show up in the console, but will be logged
-void set_message(std::string identifier, std::string message = "",
-                 float64 msg_duration = 0.0);
 
+
+#define CREATE_3(x, y, z) _set_message(x, y, z,__FILE__,__LINE__)
+#define CREATE_2(x, y) CREATE_3(x, y, 0.0)
+#define CREATE_1(x) CREATE_2(x, "")
+#define CREATE_0() CREATE_1("")
+
+#define FUNC_CHOOSER(_f1, _f2, _f3, _f4, ...) _f4
+#define FUNC_RECOMPOSER(argsWithParentheses) FUNC_CHOOSER argsWithParentheses
+#define CHOOSE_FROM_ARG_COUNT(...) FUNC_RECOMPOSER((__VA_ARGS__, CREATE_3, CREATE_2, CREATE_1, ))
+#define NO_ARG_EXPANDER() ,,CREATE_0
+#define MACRO_CHOOSER(...) CHOOSE_FROM_ARG_COUNT(NO_ARG_EXPANDER __VA_ARGS__ ())
+#define set_message(...) MACRO_CHOOSER(__VA_ARGS__)(__VA_ARGS__)
+
+void _set_message(std::string identifier, std::string message,
+  float64 msg_duration, const char*, uint32);
+
+
+ 
 // returns messages set with set_message()
 // as string(identifier+" "+message)
 // for all messages with unique identifier
@@ -115,3 +136,34 @@ template <typename T> void _errr(T t,const char* file, uint32 line)
   }
 #endif
 }
+
+template<typename T>
+std::string vtos(std::vector<T> v)
+{
+  std::string result = "";
+  for(auto& e : v)
+  {
+    result += std::to_string(e) + " ";
+  }
+  return result;
+}
+std::string vtos(glm::vec2 v);
+std::string vtos(glm::vec3 v);
+std::string vtos(glm::vec4 v);
+std::string mtos(glm::mat4 m);
+
+
+
+template<typename T>
+std::string s(T value) 
+{
+  return std::to_string(value);
+}
+
+template<typename T, typename... Args>
+std::string s(T first, Args... args) 
+{
+  return s(first) + s(args...);
+}
+template<> std::string s<const char*>(const char* value);
+template<> std::string s<std::string>(std::string value);

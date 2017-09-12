@@ -1,7 +1,6 @@
 #include "Shader.h"
 #include "Globals.h"
-#include <GL/glew.h>
-#include <SDL.h>
+#include <SDL2/SDL.h>
 #include <assimp/types.h>
 #include <iostream>
 #include <memory>
@@ -19,61 +18,63 @@ static GLuint load_shader(const std::string &vertex_path,
   std::string fs = read_file(full_fragment_path.c_str());
   const char *vert = vs.c_str();
   const char *frag = fs.c_str();
-  GLint result = GL_FALSE;
+  GLint result = 0;
   int logLength;
   bool success = true;
-  std::cout << "Compiling vertex shader: " << vertex_path << "..." << std::endl;
+
+
+  set_message("Compiling vertex shader: ", vertex_path);
+  set_message("Vertex Shader Source: \n", vs);
   glShaderSource(vert_shader, 1, &vert, NULL);
   glCompileShader(vert_shader);
-
   glGetShaderiv(vert_shader, GL_COMPILE_STATUS, &result);
   if (!result)
     success = false;
   glGetShaderiv(vert_shader, GL_INFO_LOG_LENGTH, &logLength);
   std::vector<GLchar> vertShaderError((logLength > 1) ? logLength : 1);
   glGetShaderInfoLog(vert_shader, logLength, NULL, &vertShaderError[0]);
-  std::cout << &vertShaderError[0] << std::endl;
+  set_message("Vertex shader compilation result: ", &vertShaderError[0]);
 
-  std::cout << "Compiling fragment shader..." << fragment_path << std::endl;
+
+  set_message("Compiling fragment shader: ", fragment_path);
+  set_message("Fragment Shader Source: \n", fs);
   glShaderSource(frag_shader, 1, &frag, NULL);
   glCompileShader(frag_shader);
-
   glGetShaderiv(frag_shader, GL_COMPILE_STATUS, &result);
   if (!result)
     success = false;
   glGetShaderiv(frag_shader, GL_INFO_LOG_LENGTH, &logLength);
   std::vector<GLchar> fragShaderError((logLength > 1) ? logLength : 1);
   glGetShaderInfoLog(frag_shader, logLength, NULL, &fragShaderError[0]);
-  std::cout << &fragShaderError[0] << std::endl;
+  set_message("Fragment shader compilation result: ", &fragShaderError[0]);
 
-  std::cout << "Linking..." << std::endl;
+
+  set_message("Linking shaders", "");
   GLuint program = glCreateProgram();
   glAttachShader(program, vert_shader);
   glAttachShader(program, frag_shader);
   glLinkProgram(program);
-
   glGetProgramiv(program, GL_LINK_STATUS, &result);
   if (!result)
     success = false;
   glGetProgramiv(program, GL_INFO_LOG_LENGTH, &logLength);
   std::vector<char> err((logLength > 1) ? logLength : 1);
   glGetProgramInfoLog(program, logLength, NULL, &err[0]);
-  std::cout << &err[0] << std::endl;
-
+  set_message("GL Shader linker output: ", &err[0]);
   glDeleteShader(vert_shader);
   glDeleteShader(frag_shader);
 
   if (!success)
   {
-    check_gl_error();
-    ASSERT(success);
+    set_message("GL Shader failed.","");
+    ASSERT(0);
   }
-  std::cout << "Done." << program << std::endl;
+  set_message("Shader linked successfully","");
   return program;
 }
-
+ 
 Shader::Shader_Handle::Shader_Handle(GLuint i) { program = i; }
-Shader::Shader_Handle::~Shader_Handle() { glDeleteShader(program); }
+Shader::Shader_Handle::~Shader_Handle() { glDeleteProgram(program); }
 Shader::Shader() {}
 Shader::Shader(const std::string &vertex, const std::string &fragment)
 {
@@ -93,12 +94,12 @@ void Shader::load(const std::string &vertex, const std::string &fragment)
     cache[key] = ptr;
   }
   program = ptr;
-  name = std::string(vertex) + std::string(fragment);
+  vs = std::string(vertex);
+  fs = std::string(fragment);
 }
 
 void Shader::set_uniform(const char *name, float32 f)
 {
-  use();
   GLint location = glGetUniformLocation(program->program, name);
   check_err(location, name);
   glUniform1fv(location, 1, &f);
@@ -106,14 +107,12 @@ void Shader::set_uniform(const char *name, float32 f)
 
 void Shader::set_uniform(const char *name, uint32 i)
 {
-  use();
   GLint location = glGetUniformLocation(program->program, name);
   check_err(location, name);
   glUniform1ui(location, i);
 }
 void Shader::set_uniform(const char *name, int32 i)
 {
-  use();
   GLint location = glGetUniformLocation(program->program, name);
   check_err(location, name);
   glUniform1i(location, i);
@@ -121,7 +120,6 @@ void Shader::set_uniform(const char *name, int32 i)
 
 void Shader::set_uniform(const char *name, glm::vec2 v)
 {
-  use();
   GLint location = glGetUniformLocation(program->program, name);
   check_err(location, name);
   glUniform2fv(location, 1, &v[0]);
@@ -129,21 +127,18 @@ void Shader::set_uniform(const char *name, glm::vec2 v)
 
 void Shader::set_uniform(const char *name, glm::vec3 &v)
 {
-  use();
   GLint location = glGetUniformLocation(program->program, name);
   check_err(location, name);
   glUniform3fv(location, 1, &v[0]);
 }
 void Shader::set_uniform(const char *name, glm::vec4 &v)
 {
-  use();
   GLint location = glGetUniformLocation(program->program, name);
   check_err(location, name);
   glUniform4fv(location, 1, &v[0]);
 }
 void Shader::set_uniform(const char *name, const glm::mat4 &m)
 {
-  use();
   GLint location = glGetUniformLocation(program->program, name);
   check_err(location, name);
   glUniformMatrix4fv(location, 1, GL_FALSE, &m[0][0]);
@@ -161,15 +156,8 @@ static double get_time()
 }
 void Shader::check_err(GLint loc, const char *name)
 {
-  float64 time = get_real_time();
-  static float64 last_report_time = -99.;
-
   if (loc == -1)
   {
-    if (last_report_time < time + 0.1)
-      return;
-    last_report_time = time;
-    std::cout << "Warning: " << this->name
-              << " is missing uniform name: " << name << "\n";
+    set_message("Shader invalid uniform: ", name);
   }
 }

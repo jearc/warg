@@ -24,10 +24,11 @@ enum Mesh_Primitive
 {
   plane,
   cube
-};
+}; 
 // expects clockwise abcd vertices for front-facing side
 void add_quad(vec3 a, vec3 b, vec3 c, vec3 d, Mesh_Data &mesh);
 Mesh_Data load_mesh(Mesh_Primitive p);
+Mesh_Data load_mesh_plane();
 std::string identifier_for_primitive(Mesh_Primitive p);
 void copy_mesh_data(std::vector<vec3> &dst, aiVector3D *src, uint32 length);
 void copy_mesh_data(std::vector<vec2> &dst, aiVector3D *src, uint32 length);

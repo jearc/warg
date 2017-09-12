@@ -1,6 +1,6 @@
+#include "Globals.h"
 #include "Scene_Graph.h"
 #include "Render.h"
-#include "Globals.h"
 #include <array>
 #include <assimp/Importer.hpp>
 #include <assimp/postprocess.h>
@@ -329,7 +329,7 @@ bool Scene_Graph::node_exists(Node_Ptr ptr) const
   return ptr.i < nodes.size();
 }
 uint32 Scene_Graph::node_count() const { return nodes.size(); }
-
+ 
 Node_Ptr Scene_Graph::add_primitive_mesh(Mesh_Primitive p, std::string name,
                                       Material_Descriptor m, Node_Ptr parent,
                                       const mat4 *import_basis)

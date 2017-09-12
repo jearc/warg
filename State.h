@@ -18,7 +18,7 @@ struct SpellObjectDef
   float32 speed;
   std::vector<SpellEffect *> effects;
 };
-
+ 
 struct SpellObjectInst
 {
   SpellObjectDef def;
@@ -238,7 +238,7 @@ struct Character
 
   std::vector<Buff> buffs, debuffs;
 
-  float32 hp, hp_max;
+  uint32 hp, hp_max;
   float32 mana, mana_max;
   bool alive = true;
 

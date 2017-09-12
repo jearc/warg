@@ -1,14 +1,13 @@
+#include "Globals.h"
 #include <vector>
 #include <glm/glm.hpp>
-#include "Globals.h"
 #include "Mesh_Loader.h"
 #include "Render.h"
 #include <assimp/types.h>
 #include <assimp/Importer.hpp>
 #include <assimp/scene.h>
 #include <assimp/postprocess.h>
-#include <GL/glew.h>
-
+ 
 
 void add_quad(vec3 a, vec3 b, vec3 c, vec3 d,
 	Mesh_Data& mesh)
@@ -124,6 +123,7 @@ Mesh_Data load_mesh_cube()
 
 Mesh_Data load_mesh_plane()
 {
+  set_message("building plane mesh_data");
 	Mesh_Data mesh;
   mesh.name = "plane";
   mesh.unique_identifier = identifier_for_primitive(Mesh_Primitive::plane);
@@ -186,6 +186,7 @@ std::string identifier_for_primitive(Mesh_Primitive p)
   {
     ASSERT(0);
   }
+  return "";
 }
 
 void copy_mesh_data(std::vector<vec3>& dst, aiVector3D* src, uint32 length)
