@@ -307,19 +307,22 @@ struct Message
 static std::vector<Message> messages;
 static std::string message_log = "";
 
-void _set_message(std::string identifier, std::string message,
+void __set_message(std::string identifier, std::string message,
                   float64 msg_duration, const char *file, uint32 line)
 {
   const float64 time = get_real_time();
   bool found = false;
-  for (auto &msg : messages)
+  if (identifier != "")
   {
-    if (msg.identifier == identifier)
+    for (auto &msg : messages)
     {
-      msg.message = message;
-      msg.time_of_expiry = time + msg_duration;
-      found = true;
-      break;
+      if (msg.identifier == identifier)
+      {
+        msg.message = message;
+        msg.time_of_expiry = time + msg_duration;
+        found = true;
+        break;
+      }
     }
   }
   if (!found)

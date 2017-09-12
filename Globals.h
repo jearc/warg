@@ -85,13 +85,9 @@ uint32 new_ID();
 // don't use for game simulation
 float64 get_real_time();
 
-// adds a message to a container that is retrieved by get_messages()
-// subsequent calls to this function with identical identifiers will
-// overwrite the older message when retrieved with get_message_log()
-// but ALL messages will be logged to disk with push_log_to_disk()
-// a duration of 0 will not show up in the console, but will be logged
-
-#define CREATE_3(x, y, z) _set_message(x, y, z, __FILE__, __LINE__)
+void __set_message(std::string identifier, std::string message,
+  float64 msg_duration, const char *, uint32);
+#define CREATE_3(x, y, z) __set_message(x, y, z, __FILE__, __LINE__)
 #define CREATE_2(x, y) CREATE_3(x, y, 0.0)
 #define CREATE_1(x) CREATE_2(x, "")
 #define CREATE_0() CREATE_1("")
@@ -102,14 +98,21 @@ float64 get_real_time();
   FUNC_RECOMPOSER((__VA_ARGS__, CREATE_3, CREATE_2, CREATE_1, ))
 #define NO_ARG_EXPANDER() , , CREATE_0
 #define MACRO_CHOOSER(...) CHOOSE_FROM_ARG_COUNT(NO_ARG_EXPANDER __VA_ARGS__())
-#define set_message(...) MACRO_CHOOSER(__VA_ARGS__)(__VA_ARGS__)
 
-void _set_message(std::string identifier, std::string message,
-                  float64 msg_duration, const char *, uint32);
+
+// adds a message to a container that is retrieved by get_messages()
+// subsequent calls to this function with identical identifiers will
+// overwrite the older message when retrieved with get_message_log()
+// but ALL messages will be logged to disk with push_log_to_disk()
+// a duration of 0 will not show up in the console, but will be logged
+// if identifier == "", then all of those messages will pass through to
+// the get_message_log(), and console report
+#define set_message(...) MACRO_CHOOSER(__VA_ARGS__)(__VA_ARGS__)
 
 // returns messages set with set_message()
 // as string(identifier+" "+message)
 // for all messages with unique identifier
+// and all instances of identifier == ""
 std::string get_messages();
 
 // appends all messages to disk that have been set

@@ -203,7 +203,7 @@ struct Buff
 {
   BuffDef def;
   float64 duration;
-  int ticks_left = 0;
+  uint32 ticks_left = 0;
   bool dynamic = false;
 };
 
@@ -311,7 +311,6 @@ struct Game_State : protected State
   vec3 ground_dim = vec3(16, 22, 0.05);
   vec3 ground_dir = vec3(0, 1, 0);
   Node_Ptr ground_mesh;
-
   float32 map_scale = 2.0;
   void add_wall(vec3 p1, vec2 p2, float32 h);
   std::vector<Wall> walls;
