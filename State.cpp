@@ -1322,12 +1322,28 @@ void Game_State::add_wall(vec3 p1, vec2 p2, float32 h)
   material.frag_shader = "fragment_shader.frag";
   material.backface_culling = false;
 
-  // nice memes
-  auto mesh = scene.add_primitive_mesh(plane, "add_wall", material);
-  mesh->position = {p1.x + (p2.x - p1.x) / 2, p1.y + (p2.y - p1.y) / 2,
-                 p1.z + h / 2};
-  mesh->scale = {distance(vec2{p1.x, p1.y}, vec2{p2.x, p2.y}), 0.05, h};
-  mesh->orientation = toQuat(orientate3(vec3(0.5, 0.5, 0)));
+  //// nice memes
+  //auto mesh = scene.add_primitive_mesh(plane, "add_wall", material);
+  //mesh->position = { p1.x + (p2.x - p1.x) / 2, p1.y + (p2.y - p1.y) / 2,0.0 };
+  //               //p1.z + h / 2};
+  //mesh->scale = {distance(vec2{p1.x, p1.y}, vec2{p2.x, p2.y}), 0.05, h};
+  //mesh->orientation = toQuat(orientate3(vec3(0.5, 0, 0)));
+
+  Mesh_Data data;
+  vec3 a, b, c, d;
+  a = p1;
+  b = p1 + vec3(0,0,h);
+  c = p1 + vec3(p2.x, p2.y, h);
+  d = p1 + vec3(p2.x, p2.y, 0);
+
+  a = p1;
+  b = vec3(p2.x, p2.y, 0);
+  c = vec3(p2.x, p2.y, h);
+  d = vec3(p1.x, p1.y, h);
+
+
+  add_quad(a, b, c, d, data);
+  auto mesh = scene.add_mesh(data, material, "some wall");
 
   walls.push_back(Wall{p1, p2, h});
   wall_meshes.push_back(mesh);

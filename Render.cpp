@@ -402,6 +402,11 @@ Mesh::Mesh(Mesh_Primitive p, std::string mesh_name) : name(mesh_name)
 Mesh::Mesh(Mesh_Data data, std::string mesh_name) : name(mesh_name)
 {
   unique_identifier = data.unique_identifier;
+  if (unique_identifier == "NULL")
+  {//lets not cache custom meshes thx
+    mesh = upload_data(data);
+    return;
+  }
   auto ptr = MESH_CACHE[unique_identifier].lock();
   if (ptr)
   {
