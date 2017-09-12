@@ -223,7 +223,7 @@ struct CharStats
 struct Character
 {
   Cylinder body;
-  Node_Ptr mesh = Node_Ptr(-1);
+  Node_Ptr mesh;
 
   vec3 pos;
   vec3 dir;
@@ -313,6 +313,7 @@ struct Game_State : protected State
   Node_Ptr ground_mesh;
   void add_wall(vec3 p1, vec2 p2, float32 h);
   std::vector<Wall> walls;
+  std::vector<Node_Ptr> wall_meshes;
 };
 
 struct Render_Test_State : protected State

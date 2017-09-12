@@ -55,11 +55,8 @@ Game_State::Game_State(std::string name, SDL_Window *window, ivec2 window_size)
   material.frag_shader = "world_origin_distance.frag";
 
   ground_mesh = scene.add_primitive_mesh(plane, "ground_plane", material);
-
-  Scene_Graph_Node *n = scene.get_node(ground_mesh);
-  ASSERT(n);
-  n->position = ground_pos;
-  n->scale = ground_dim;
+  ground_mesh->position = ground_pos;
+  ground_mesh->scale = ground_dim;
 
   add_wall({0, 2, 0}, {3, 2}, 5);
   add_wall({3, 0, 0}, {3, 2}, 5);
@@ -399,9 +396,8 @@ Render_Test_State::Render_Test_State(std::string name, SDL_Window *window,
   material.frag_shader = "fragment_shader.frag";
   material.uv_scale = vec2(30);
   ground = scene.add_primitive_mesh(plane, "test_entity_plane", material);
-  Scene_Graph_Node *n = scene.get_node(ground);
-  n->position = {0.0f, 0.0f, 0.0f};
-  n->scale = {40.0f, 40.0f, 1.0f};
+  ground->position = {0.0f, 0.0f, 0.0f};
+  ground->scale = {40.0f, 40.0f, 1.0f};
 
   material.uv_scale = vec2(4);
   sphere = scene.add_aiscene("sphere.obj", nullptr, Node_Ptr(0), &material);
@@ -1045,13 +1041,11 @@ void Game_State::update()
   for (int i = 0; i < nchars; i++)
   {
     Character *c = &chars[i];
+     
 
-    Scene_Graph_Node *m = scene.get_node(c->mesh);
-    ASSERT(m);
-
-    m->position = c->pos;
-    m->scale = vec3(1.0f);
-    m->orientation =
+    c->mesh->position = c->pos;
+    c->mesh->scale = vec3(1.0f);
+    c->mesh->orientation =
         angleAxis((float32)atan2(c->dir.y, c->dir.x), vec3(0.f, 0.f, 1.f));
 
     if (c->target && !c->target->alive)
@@ -1212,15 +1206,11 @@ void Game_State::update()
 }
 void Render_Test_State::update()
 {
-
-  auto star = scene.get_node(cube_star);
-  auto planet = scene.get_node(cube_planet);
-  auto moon = scene.get_node(cube_moon);
-
+   
   const float32 height = 3.25;
 
-  star->scale = vec3(.85); // +0.65f*vec3(sin(current_time*.2));
-  star->position = vec3(10 * cos(current_time / 10.f), 0, height);
+  cube_star->scale = vec3(.85); // +0.65f*vec3(sin(current_time*.2));
+  cube_star->position = vec3(10 * cos(current_time / 10.f), 0, height);
   const float32 anglestar = wrap_to_range(pi<float32>() * sin(current_time / 2),
                                           0, 2 * pi<float32>());
   // star->orientation = angleAxis(anglestar,
@@ -1230,31 +1220,30 @@ void Render_Test_State::update()
   const float32 planet_distance = 4;
   const float32 planet_year = 5;
   const float32 planet_day = 1;
-  planet->scale = vec3(planet_scale);
-  planet->position = planet_distance * vec3(cos(current_time / planet_year),
+  cube_planet->scale = vec3(planet_scale);
+  cube_planet->position = planet_distance * vec3(cos(current_time / planet_year),
                                             sin(current_time / planet_year), 0);
   const float32 angle = wrap_to_range(current_time, 0, 2 * pi<float32>());
-  planet->orientation =
+  cube_planet->orientation =
       angleAxis((float32)current_time / planet_day, vec3(0, 0, 1));
 
   const float32 moon_scale = 0.25;
   const float32 moon_distance = 1.5;
   const float32 moon_year = .75;
   const float32 moon_day = .1;
-  moon->scale = vec3(moon_scale);
-  moon->position = moon_distance * vec3(cos(current_time / moon_year),
+  cube_moon->scale = vec3(moon_scale);
+  cube_moon->position = moon_distance * vec3(cos(current_time / moon_year),
                                         sin(current_time / moon_year), 0);
-  moon->orientation =
+  cube_moon->orientation =
       angleAxis((float32)current_time / moon_day, vec3(0, 0, 1));
-
-  auto sphere_p = scene.get_node(sphere);
-  sphere_p->position = vec3(-3, 3, 1.5);
-  sphere_p->scale = vec3(0.4);
+   
+  sphere->position = vec3(-3, 3, 1.5);
+  sphere->scale = vec3(0.4);
 
   auto &lights = scene.lights.lights;
   scene.lights.light_count = 3;
 
-  lights[0].position = star->position;
+  lights[0].position = sphere->position;
   lights[0].type = Light_Type::omnidirectional;
   lights[0].color = 1.1f * vec3(0.1, 1, 0.1);
   lights[0].ambient = 0.015f;
@@ -1266,20 +1255,18 @@ void Render_Test_State::update()
   lights[1].direction = vec3(0);
   lights[1].color = 320.f * vec3(0.8, 1.0, 0.8);
   lights[1].cone_angle = 0.11; //+ 0.14*sin(current_time);
-  lights[1].ambient = 0.01;
-  auto light_obj = scene.get_node(cone_light);
-  light_obj->position = lights[1].position;
-  light_obj->scale = vec3(0.2);
+  lights[1].ambient = 0.01; 
+  cone_light->position = lights[1].position;
+  cone_light->scale = vec3(0.2);
 
   lights[2].position =
       vec3(3 * cos(current_time * .12), 3 * sin(.03 * current_time), 0.5);
   lights[2].color = 51.f * vec3(1, 0.05, 1.05);
   lights[2].type = Light_Type::omnidirectional;
   lights[2].attenuation = vec3(1.0, .7, 1.8);
-  lights[2].ambient = 0.0026f;
-  auto light_obj2 = scene.get_node(small_light);
-  light_obj2->position = lights[2].position;
-  light_obj2->scale = vec3(0.1);
+  lights[2].ambient = 0.0026f; 
+  small_light->position = lights[2].position;
+  small_light->scale = vec3(0.1);
 
   const vec3 night = vec3(0.05f);
   const vec3 day = vec3(94. / 255., 155. / 255., 1.);
@@ -1337,14 +1324,13 @@ void Game_State::add_wall(vec3 p1, vec2 p2, float32 h)
 
   // nice memes
   auto mesh = scene.add_primitive_mesh(plane, "add_wall", material);
-  Scene_Graph_Node *n = scene.get_node(mesh);
-  ASSERT(n);
-  n->position = {p1.x + (p2.x - p1.x) / 2, p1.y + (p2.y - p1.y) / 2,
+  mesh->position = {p1.x + (p2.x - p1.x) / 2, p1.y + (p2.y - p1.y) / 2,
                  p1.z + h / 2};
-  n->scale = {distance(vec2{p1.x, p1.y}, vec2{p2.x, p2.y}), 0.05, h};
-  n->orientation = toQuat(orientate3(vec3(0.5, 0.5, 0)));
+  mesh->scale = {distance(vec2{p1.x, p1.y}, vec2{p2.x, p2.y}), 0.05, h};
+  mesh->orientation = toQuat(orientate3(vec3(0.5, 0.5, 0)));
 
   walls.push_back(Wall{p1, p2, h});
+  wall_meshes.push_back(mesh);
 }
 
 void Game_State::add_char(int team, std::string name)
@@ -1371,7 +1357,6 @@ void Game_State::add_char(int team, std::string name)
   material.roughness = "crate_roughness.png";
   material.vertex_shader = "vertex_shader.vert";
   material.frag_shader = "fragment_shader.frag";
-  auto mesh = scene.add_primitive_mesh(cube, "test_entity_cube", material);
 
   Character c;
   c.team = team;
@@ -1379,7 +1364,7 @@ void Game_State::add_char(int team, std::string name)
   c.pos = pos;
   c.dir = dir;
   c.body = {1.f, 0.3f};
-  c.mesh = mesh;
+  c.mesh = scene.add_primitive_mesh(cube, "player_cube", material);
   c.hp_max = 100;
   c.hp = c.hp_max;
   c.mana_max = 500;

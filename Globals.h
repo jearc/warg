@@ -79,7 +79,7 @@ void gl_before_check(const glbinding::FunctionCall &f);
 void gl_after_check(const glbinding::FunctionCall &f);
 
 void checkSDLError(int32 line = -1);
-uint32 new_ID();
+
 
 // actual program time
 // don't use for game simulation

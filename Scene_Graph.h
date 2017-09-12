@@ -11,18 +11,14 @@
 struct Material;
 struct Material_Descriptor;
 struct Scene_Graph;
-struct Material_Assigned_Meshes;
+struct Scene_Graph_Node;
 
-struct Node_Ptr
-{
-  explicit Node_Ptr(uint32 i) : i(i) {}
-  Node_Ptr(){};
-  uint32 i = -1;
-};
+
+typedef std::shared_ptr<Scene_Graph_Node> Node_Ptr;
 
 struct Scene_Graph_Node
 {
-  uint32 ID = 0;
+  Scene_Graph_Node(){}
   std::string name;
   vec3 position = {0, 0, 0};
   quat orientation;
@@ -31,14 +27,14 @@ struct Scene_Graph_Node
 
   std::vector<std::pair<Mesh, Material>> model;
 
-private:
-  friend struct Scene_Graph;
-  Scene_Graph_Node(std::string name, Node_Ptr parent, const mat4 *import_basis);
-  Scene_Graph_Node(std::string name, const aiNode *node, Node_Ptr parent,
-                   const mat4 *import_basis_, const aiScene *scene,
-                   std::string scene_path, Uint32 *mesh_num,
-                   Material_Descriptor *material_override);
 
+  Scene_Graph_Node(std::string name, const mat4 *import_basis = nullptr);
+  Scene_Graph_Node(std::string name, const aiNode *node,
+    const mat4 *import_basis_, const aiScene *scene,
+    std::string scene_path, Uint32 *mesh_num,
+    Material_Descriptor *material_override);
+private:
+  friend Scene_Graph;
   // assimp's import mtransformation, propagates to children
   mat4 basis = mat4(1);
 
@@ -48,39 +44,39 @@ private:
   // should be the same for every node that was part of the same import
   mat4 import_basis = mat4(1);
 
-  const Node_Ptr parent;
+  std::weak_ptr<Scene_Graph_Node> parent;
 
-  std::vector<Node_Ptr> children; // index into scene_graph.nodes
+  std::vector<std::weak_ptr<Scene_Graph_Node>> children;
 };
 
 struct Scene_Graph
 {
   Scene_Graph();
 
-  void set_parent(Node_Ptr p, Node_Ptr desired_parent);
+  void set_parent(std::weak_ptr<Scene_Graph_Node> p, std::weak_ptr<Scene_Graph_Node> desired_parent);
 
-  Node_Ptr add_aiscene(std::string scene_file_path,
+  std::shared_ptr<Scene_Graph_Node> add_aiscene(std::string scene_file_path,
                        Material_Descriptor *material_override = nullptr);
 
-  Node_Ptr add_aiscene(std::string scene_file_path, const mat4 *import_basis,
-                       Node_Ptr parent = Node_Ptr(0),
+  std::shared_ptr<Scene_Graph_Node> add_aiscene(std::string scene_file_path, const mat4 *import_basis,
+    std::weak_ptr<Scene_Graph_Node> parent = std::weak_ptr<Scene_Graph_Node>(),
                        Material_Descriptor *material_override = nullptr);
 
-  Node_Ptr add_aiscene(const aiScene *scene, std::string asset_path,
+  std::shared_ptr<Scene_Graph_Node> add_aiscene(const aiScene *scene, std::string asset_path,
                        const mat4 *import_basis = nullptr,
-                       Node_Ptr parent = Node_Ptr(0),
+    std::weak_ptr<Scene_Graph_Node> parent = std::weak_ptr<Scene_Graph_Node>(),
                        Material_Descriptor *material_override = nullptr);
 
   // construct a node using the load_mesh function in Mesh_Loader
   // does not yet check for nor cache duplicate meshes/materials
   // Node_Ptr will stay valid for as long as the Scene_Graph is alive
-  Node_Ptr add_primitive_mesh(Mesh_Primitive p, std::string name,
+  std::shared_ptr<Scene_Graph_Node> add_primitive_mesh(Mesh_Primitive p, std::string name,
                               Material_Descriptor m,
-                              Node_Ptr parent = Node_Ptr(0),
+    std::weak_ptr<Scene_Graph_Node> parent = std::weak_ptr<Scene_Graph_Node>(),
                               const mat4 *import_basis = nullptr);
 
-  Node_Ptr add_mesh(Mesh_Data m, Material_Descriptor md, std::string name,
-                    Node_Ptr parent = Node_Ptr(0),
+  std::shared_ptr<Scene_Graph_Node> add_mesh(Mesh_Data m, Material_Descriptor md, std::string name,
+    std::weak_ptr<Scene_Graph_Node> parent = std::weak_ptr<Scene_Graph_Node>(),
                     const mat4 *import_basis = nullptr);
 
   // traverse the entire graph, computing the final transformation matrices
@@ -96,23 +92,12 @@ struct Scene_Graph
   Light_Array lights;
 
   // root node for entire scene graph
-  Node_Ptr root;
-
-  // get graph node pointer from Node_Ptr
-  // note: these raw pointers are INVALID after any call to any function that
-  // adds scene_graph_nodes
-  Scene_Graph_Node *get_node(Node_Ptr ptr);
-
-  // returns true if a Node_Ptr exists
-  bool node_exists(Node_Ptr ptr) const;
-
-  // returns the total node count for the entire scene
-  uint32 node_count() const;
+  std::shared_ptr<Scene_Graph_Node> root;
 
 private:
   // add a Scene_Graph_Node to the Scene_Graph using an aiNode, aiScene, and
   // parent Node_Ptr
-  void add_graph_node(const aiNode *node, Node_Ptr parent,
+  void add_graph_node(const aiNode *node, std::weak_ptr<Scene_Graph_Node> parent,
                       const mat4 *import_basis, const aiScene *aiscene,
                       std::string path, Uint32 *mesh_num,
                       Material_Descriptor *material_override);
@@ -120,9 +105,9 @@ private:
   uint32 last_accumulator_size = 0;
 
   // various node traversal algorithms
-  void visit_nodes(Node_Ptr node_ptr, const mat4 &M,
+  void visit_nodes(std::weak_ptr<Scene_Graph_Node> node_ptr, const mat4 &M,
                    std::vector<Render_Entity> &accumulator);
-  void visit_nodes_locked_accumulator(Node_Ptr node_ptr, const mat4 &M,
+  void visit_nodes_locked_accumulator(std::weak_ptr<Scene_Graph_Node> node_ptr, const mat4 &M,
                                       std::vector<Render_Entity> *accumulator,
                                       std::atomic_flag *lock);
   void visit_root_node_base_index(uint32 node_index, uint32 count,
@@ -132,5 +117,4 @@ private:
                                       std::vector<Render_Entity> *accumulator,
                                       std::atomic_flag *lock);
 
-  std::vector<Scene_Graph_Node> nodes;
 };

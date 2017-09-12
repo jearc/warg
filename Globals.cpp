@@ -283,11 +283,7 @@ void checkSDLError(int32 line)
   }
 #endif
 }
-uint32 new_ID()
-{
-  static uint32 last = 0;
-  return last += 1;
-}
+
 
 float64 get_real_time()
 {
