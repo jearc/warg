@@ -44,23 +44,17 @@ float epsilon = 0.00001;
 void main()
 {   
   bool tile_light = (mod(frag_world_position.x+epsilon, 1) < 0.5) ^^ (mod(frag_world_position.y+epsilon, 1) < 0.5)^^ (mod(frag_world_position.z+epsilon, 1) < 0.5);
-  float tile_color = float(tile_light);
-  float fade = length(frag_world_position / 40);
-  fade = pow(fade, 2);
-  tile_color -= fade;
-
-  vec3 color = vec3(tile_color);
+  vec3 color = vec3(0);
   if (tile_light)
   {
-    color = frag_world_position / 12;
+   color = frag_world_position / 12;
   }
+  float dist = length(frag_world_position);
 
-  float dist = length(frag_world_position);  
   if(dist < 1)
   {
     color += 0.5f*vec3(1.000f+sin(time*10)*dist);
   }
-    
 
   ALBEDO = vec4(to_srgb(color), 1);
 }
