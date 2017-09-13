@@ -1,6 +1,8 @@
 #include "Globals.h"
 #include "Render.h"
 #include "State.h"
+#include "Warg_State.h"
+#include "Render_Test_State.h"
 #include "Timer.h"
 #include <SDL2/SDL.h>
 #undef main
@@ -78,7 +80,7 @@ int main(int argc, char *argv[])
   INIT_RENDERER();
 
   std::vector<State *> states;
-  Game_State game_state("Game State", window, window_size);
+  Warg_State game_state("Game State", window, window_size);
   states.push_back((State *)&game_state);
   Render_Test_State render_test_state("Render Test State", window, window_size);
   states.push_back((State *)&render_test_state);

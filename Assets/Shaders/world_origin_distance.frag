@@ -40,11 +40,11 @@ float linearize_depth(float depth)
 }
 vec3 to_srgb(in vec3 linear) { return pow(linear, vec3(1 / gamma)); }
 
+float epsilon = 0.00001;
 void main()
-{
-  vec2 scale = vec2(25, 25);
-  bool tile_light = (mod(scale.x * frag_uv.x, 1) < 0.5) ^^ (mod(scale.y * frag_uv.y, 1) < 0.5);
-  float tile_color = 0.0f + 1.0f * float(tile_light);
+{   
+  bool tile_light = (mod(frag_world_position.x+epsilon, 1) < 0.5) ^^ (mod(frag_world_position.y+epsilon, 1) < 0.5)^^ (mod(frag_world_position.z+epsilon, 1) < 0.5);
+  float tile_color = float(tile_light);
   float fade = length(frag_world_position / 40);
   fade = pow(fade, 2);
   tile_color -= fade;
@@ -55,11 +55,11 @@ void main()
     color = frag_world_position / 12;
   }
 
-    float dist = length(frag_world_position);  
-    if(dist < 1)
-    {
-      color += 0.5f*vec3(1.000f+sin(time*10)*dist);
-    }
+  float dist = length(frag_world_position);  
+  if(dist < 1)
+  {
+    color += 0.5f*vec3(1.000f+sin(time*10)*dist);
+  }
     
 
   ALBEDO = vec4(to_srgb(color), 1);

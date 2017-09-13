@@ -25,7 +25,7 @@ struct aiString;
 #define ENABLE_ASSERTS 1
 #define INCLUDE_FILE_LINE_IN_LOG 0
 
-struct Game_State;
+struct Warg_State;
 struct Render_Test_State;
 
 extern std::mt19937 generator;

@@ -155,6 +155,6 @@ void Shader::check_err(GLint loc, const char *name)
 {
   if (loc == -1)
   {
-    set_message("Shader invalid uniform: ", name);
+   // set_message("Shader invalid uniform: ", name);
   }
 }
