@@ -90,7 +90,7 @@ void Scene_Graph::add_graph_node(const aiNode *node,
       name, node, import_basis, aiscene, scene_file_path, mesh_num,
       material_override);
 
-  set_parent(new_node, parent,true);
+  set_parent(new_node, parent, true);
 
   // construct all the new node's children, because its constructor doesn't
   for (uint32 i = 0; i < node->mNumChildren; ++i)
@@ -101,9 +101,10 @@ void Scene_Graph::add_graph_node(const aiNode *node,
   }
 }
 
-shared_ptr<Scene_Graph_Node>
-Scene_Graph::add_mesh(Mesh_Data m, Material_Descriptor md, string name,
-                      const mat4 *import_basis)
+shared_ptr<Scene_Graph_Node> Scene_Graph::add_mesh(Mesh_Data m,
+                                                   Material_Descriptor md,
+                                                   string name,
+                                                   const mat4 *import_basis)
 {
   shared_ptr<Scene_Graph_Node> node =
       make_shared<Scene_Graph_Node>(name, import_basis);
@@ -114,7 +115,8 @@ Scene_Graph::add_mesh(Mesh_Data m, Material_Descriptor md, string name,
   return node;
 }
 void Scene_Graph::set_parent(weak_ptr<Scene_Graph_Node> p,
-                             weak_ptr<Scene_Graph_Node> desired_parent,bool parent_owned)
+                             weak_ptr<Scene_Graph_Node> desired_parent,
+                             bool parent_owned)
 {
   shared_ptr<Scene_Graph_Node> child = p.lock();
   shared_ptr<Scene_Graph_Node> current_parent_ptr = child->parent.lock();
@@ -131,7 +133,7 @@ void Scene_Graph::set_parent(weak_ptr<Scene_Graph_Node> p,
       }
     }
     for (auto i = current_parent_ptr->unowned_children.begin();
-      i != current_parent_ptr->unowned_children.end(); ++i)
+         i != current_parent_ptr->unowned_children.end(); ++i)
     {
       if (i->lock() == p.lock())
       {
@@ -166,18 +168,21 @@ Scene_Graph::add_aiscene(string scene_file_path, const mat4 *import_basis,
                          Material_Descriptor *material_override)
 {
   return add_aiscene(load_aiscene(scene_file_path), scene_file_path,
-                     import_basis,  material_override);
+                     import_basis, material_override);
 }
 
 shared_ptr<Scene_Graph_Node>
 Scene_Graph::add_aiscene(string scene_file_path,
                          Material_Descriptor *material_override)
 {
-  return add_aiscene(load_aiscene(scene_file_path), scene_file_path, nullptr,material_override);
+  return add_aiscene(load_aiscene(scene_file_path), scene_file_path, nullptr,
+                     material_override);
 }
 
-shared_ptr<Scene_Graph_Node> Scene_Graph::add_aiscene(
-    const aiScene *scene, string scene_file_path, const mat4 *import_basis, Material_Descriptor *material_override)
+shared_ptr<Scene_Graph_Node>
+Scene_Graph::add_aiscene(const aiScene *scene, string scene_file_path,
+                         const mat4 *import_basis,
+                         Material_Descriptor *material_override)
 {
   // accumulates as meshes are imported, used along with the scene file path
   // to create a unique_id for the mesh
@@ -229,10 +234,11 @@ void Scene_Graph::visit_nodes(const weak_ptr<Scene_Graph_Node> node_ptr,
     Mesh *mesh_ptr = &entity->model[i].first;
     Material *material_ptr = &entity->model[i].second;
 
-    if(entity->visible)
-    accumulator.emplace_back(mesh_ptr, material_ptr, affected_lights, FINAL);
+    if (entity->visible)
+      accumulator.emplace_back(mesh_ptr, material_ptr, affected_lights, FINAL);
   }
-  for (auto i = entity->unowned_children.begin(); i != entity->unowned_children.end();)
+  for (auto i = entity->unowned_children.begin();
+       i != entity->unowned_children.end();)
   {
     weak_ptr<Scene_Graph_Node> child = *i;
     if (!child.lock())
@@ -245,7 +251,8 @@ void Scene_Graph::visit_nodes(const weak_ptr<Scene_Graph_Node> node_ptr,
       ++i;
     }
   }
-  for (auto i = entity->owned_children.begin(); i != entity->owned_children.end();++i)
+  for (auto i = entity->owned_children.begin();
+       i != entity->owned_children.end(); ++i)
   {
     weak_ptr<Scene_Graph_Node> child = *i;
     visit_nodes(child, STACK, accumulator);
@@ -279,13 +286,14 @@ void Scene_Graph::visit_nodes_locked_accumulator(
     while (lock->test_and_set())
     { /*spin*/
     }
-    if(entity->visible)
-    accumulator->emplace_back(mesh_ptr, material_ptr, affected_lights, FINAL);
+    if (entity->visible)
+      accumulator->emplace_back(mesh_ptr, material_ptr, affected_lights, FINAL);
 
     lock->clear();
   }
 
-  for (auto i = entity->unowned_children.begin(); i != entity->unowned_children.end();)
+  for (auto i = entity->unowned_children.begin();
+       i != entity->unowned_children.end();)
   {
     weak_ptr<Scene_Graph_Node> child = *i;
     if (!child.lock())
@@ -298,7 +306,8 @@ void Scene_Graph::visit_nodes_locked_accumulator(
       ++i;
     }
   }
-  for (auto i = entity->owned_children.begin(); i != entity->owned_children.end(); ++i)
+  for (auto i = entity->owned_children.begin();
+       i != entity->owned_children.end(); ++i)
   {
     weak_ptr<Scene_Graph_Node> child = *i;
     visit_nodes_locked_accumulator(child, STACK, accumulator, lock);
@@ -369,8 +378,9 @@ vector<Render_Entity> Scene_Graph::visit_nodes_st_start()
   return accumulator;
 }
 
-shared_ptr<Scene_Graph_Node> Scene_Graph::add_primitive_mesh(
-    Mesh_Primitive p, string name, Material_Descriptor m, const mat4 *import_basis)
+shared_ptr<Scene_Graph_Node>
+Scene_Graph::add_primitive_mesh(Mesh_Primitive p, string name,
+                                Material_Descriptor m, const mat4 *import_basis)
 {
   Mesh mesh(p, name);
   Material material(m);

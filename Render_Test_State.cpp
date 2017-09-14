@@ -1,7 +1,7 @@
-#include "State.h"
 #include "Render_Test_State.h"
 #include "Globals.h"
 #include "Render.h"
+#include "State.h"
 #include <atomic>
 #include <memory>
 #include <sstream>
@@ -9,8 +9,8 @@
 using namespace glm;
 
 Render_Test_State::Render_Test_State(std::string name, SDL_Window *window,
-  ivec2 window_size)
-  : State(name, window, window_size)
+                                     ivec2 window_size)
+    : State(name, window, window_size)
 {
   free_cam = true;
 
@@ -23,8 +23,8 @@ Render_Test_State::Render_Test_State(std::string name, SDL_Window *window,
   material.frag_shader = "fragment_shader.frag";
   material.uv_scale = vec2(30);
   ground = scene.add_primitive_mesh(plane, "test_entity_plane", material);
-  ground->position = { 0.0f, 0.0f, 0.0f };
-  ground->scale = { 40.0f, 40.0f, 1.0f };
+  ground->position = {0.0f, 0.0f, 0.0f};
+  ground->scale = {40.0f, 40.0f, 1.0f};
 
   material.uv_scale = vec2(4);
   sphere = scene.add_aiscene("sphere.obj", nullptr, &material);
@@ -71,7 +71,7 @@ Render_Test_State::Render_Test_State(std::string name, SDL_Window *window,
 }
 
 void Render_Test_State::handle_input(State **current_state,
-  std::vector<State *> available_states)
+                                     std::vector<State *> available_states)
 {
   auto is_pressed = [](int key) {
     const static Uint8 *keys = SDL_GetKeyboardState(NULL);
@@ -125,7 +125,7 @@ void Render_Test_State::handle_input(State **current_state,
         // resize
       }
       else if (_e.window.event == SDL_WINDOWEVENT_FOCUS_GAINED ||
-        _e.window.event == SDL_WINDOWEVENT_ENTER)
+               _e.window.event == SDL_WINDOWEVENT_ENTER)
       { // dumping mouse delta prevents camera teleport on focus gain
 
         // required, else clicking the title bar itself to gain focus
@@ -140,7 +140,7 @@ void Render_Test_State::handle_input(State **current_state,
   checkSDLError(__LINE__);
   // first person style camera control:
   const uint32 mouse_state =
-    SDL_GetMouseState(&mouse_position.x, &mouse_position.y);
+      SDL_GetMouseState(&mouse_position.x, &mouse_position.y);
 
   // note: SDL_SetRelativeMouseMode is being set by the constructor
   ivec2 mouse_delta;
@@ -195,7 +195,7 @@ void Render_Test_State::handle_input(State **current_state,
   { // wow style camera
     vec4 cam_rel;
     if ((left_button_down || right_button_down) &&
-      (last_seen_lmb || last_seen_rmb))
+        (last_seen_lmb || last_seen_rmb))
     { // won't track mouse delta that happened when mouse button was not pressed
       cam.theta += mouse_delta.x * MOUSE_X_SENS;
       cam.phi += mouse_delta.y * MOUSE_Y_SENS;
@@ -274,8 +274,8 @@ void Render_Test_State::update()
   cube_star->scale = vec3(.85); // +0.65f*vec3(sin(current_time*.2));
   cube_star->position = vec3(10 * cos(current_time / 10.f), 0, height);
   const float32 anglestar = wrap_to_range(pi<float32>() * sin(current_time / 2),
-    0, 2 * pi<float32>());
-  cube_star->visible = sin(current_time*1.2) > -.25;
+                                          0, 2 * pi<float32>());
+  cube_star->visible = sin(current_time * 1.2) > -.25;
   cube_star->propagate_visibility = true;
   // star->orientation = angleAxis(anglestar,
   // normalize(vec3(cos(current_time*.2), sin(current_time*.2), 1)));
@@ -285,11 +285,12 @@ void Render_Test_State::update()
   const float32 planet_year = 5;
   const float32 planet_day = 1;
   cube_planet->scale = vec3(planet_scale);
-  cube_planet->position = planet_distance * vec3(cos(current_time / planet_year),
-    sin(current_time / planet_year), 0);
+  cube_planet->position =
+      planet_distance *
+      vec3(cos(current_time / planet_year), sin(current_time / planet_year), 0);
   const float32 angle = wrap_to_range(current_time, 0, 2 * pi<float32>());
   cube_planet->orientation =
-    angleAxis((float32)current_time / planet_day, vec3(0, 0, 1));
+      angleAxis((float32)current_time / planet_day, vec3(0, 0, 1));
   cube_planet->visible = sin(current_time * 6) > 0;
   cube_planet->propagate_visibility = false;
 
@@ -299,9 +300,9 @@ void Render_Test_State::update()
   const float32 moon_day = .1;
   cube_moon->scale = vec3(moon_scale);
   cube_moon->position = moon_distance * vec3(cos(current_time / moon_year),
-    sin(current_time / moon_year), 0);
+                                             sin(current_time / moon_year), 0);
   cube_moon->orientation =
-    angleAxis((float32)current_time / moon_day, vec3(0, 0, 1));
+      angleAxis((float32)current_time / moon_day, vec3(0, 0, 1));
 
   sphere->position = vec3(-3, 3, 1.5);
   sphere->scale = vec3(0.4);
@@ -316,7 +317,7 @@ void Render_Test_State::update()
   lights[0].attenuation = vec3(1.0, .22, .2);
 
   lights[1].position =
-    vec3(7 * cos(current_time * .72), 7 * sin(current_time * .72), 6.25);
+      vec3(7 * cos(current_time * .72), 7 * sin(current_time * .72), 6.25);
   lights[1].type = Light_Type::spot;
   lights[1].direction = vec3(0);
   lights[1].color = 320.f * vec3(0.8, 1.0, 0.8);
@@ -326,7 +327,7 @@ void Render_Test_State::update()
   cone_light->scale = vec3(0.2);
 
   lights[2].position =
-    vec3(3 * cos(current_time * .12), 3 * sin(.03 * current_time), 0.5);
+      vec3(3 * cos(current_time * .12), 3 * sin(.03 * current_time), 0.5);
   lights[2].color = 51.f * vec3(1, 0.05, 1.05);
   lights[2].type = Light_Type::omnidirectional;
   lights[2].attenuation = vec3(1.0, .7, 1.8);

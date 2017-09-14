@@ -8,7 +8,6 @@
 
 using namespace glm;
 
-
 State::State(std::string name, SDL_Window *window, ivec2 window_size)
     : state_name(name), window(window), renderer(window, window_size)
 {
@@ -85,4 +84,3 @@ void State::performance_output()
     std::cout << get_messages() << std::endl;
   }
 }
-

@@ -403,7 +403,7 @@ Mesh::Mesh(Mesh_Data data, std::string mesh_name) : name(mesh_name)
 {
   unique_identifier = data.unique_identifier;
   if (unique_identifier == "NULL")
-  {//lets not cache custom meshes thx
+  { // lets not cache custom meshes thx
     mesh = upload_data(data);
     return;
   }
