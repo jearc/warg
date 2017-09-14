@@ -65,7 +65,7 @@ Scene_Graph_Node::Scene_Graph_Node(string name, const aiNode *node,
     Material material(ptr, dir, material_override);
     model.push_back({mesh, material});
   }
-  children.reserve(node->mNumChildren);
+  owned_children.reserve(node->mNumChildren);
 }
 
 Scene_Graph::Scene_Graph()
@@ -90,7 +90,7 @@ void Scene_Graph::add_graph_node(const aiNode *node,
       name, node, import_basis, aiscene, scene_file_path, mesh_num,
       material_override);
 
-  set_parent(new_node, parent);
+  set_parent(new_node, parent,true);
 
   // construct all the new node's children, because its constructor doesn't
   for (uint32 i = 0; i < node->mNumChildren; ++i)
@@ -103,7 +103,6 @@ void Scene_Graph::add_graph_node(const aiNode *node,
 
 shared_ptr<Scene_Graph_Node>
 Scene_Graph::add_mesh(Mesh_Data m, Material_Descriptor md, string name,
-                      weak_ptr<Scene_Graph_Node> parent,
                       const mat4 *import_basis)
 {
   shared_ptr<Scene_Graph_Node> node =
@@ -111,58 +110,74 @@ Scene_Graph::add_mesh(Mesh_Data m, Material_Descriptor md, string name,
   Mesh mesh(m, name);
   Material material(md);
   node->model.push_back({mesh, material});
-  set_parent(node, parent);
+  set_parent(node, root, false);
   return node;
 }
 void Scene_Graph::set_parent(weak_ptr<Scene_Graph_Node> p,
-                             weak_ptr<Scene_Graph_Node> desired_parent)
+                             weak_ptr<Scene_Graph_Node> desired_parent,bool parent_owned)
 {
-  shared_ptr<Scene_Graph_Node> current_parent_ptr = p.lock()->parent.lock();
+  shared_ptr<Scene_Graph_Node> child = p.lock();
+  shared_ptr<Scene_Graph_Node> current_parent_ptr = child->parent.lock();
+
   if (current_parent_ptr)
   {
-    for (auto i = current_parent_ptr->children.begin();
-         i != current_parent_ptr->children.end(); ++i)
+    for (auto i = current_parent_ptr->owned_children.begin();
+         i != current_parent_ptr->owned_children.end(); ++i)
     {
       if (*i == p.lock())
       {
-        current_parent_ptr->children.erase(i);
+        current_parent_ptr->owned_children.erase(i);
+        break;
+      }
+    }
+    for (auto i = current_parent_ptr->unowned_children.begin();
+      i != current_parent_ptr->unowned_children.end(); ++i)
+    {
+      if (i->lock() == p.lock())
+      {
+        current_parent_ptr->unowned_children.erase(i);
         break;
       }
     }
   }
+
   shared_ptr<Scene_Graph_Node> desired_parent_ptr = desired_parent.lock();
   if (desired_parent_ptr)
   {
-    p.lock()->parent = desired_parent;
-    desired_parent_ptr->children.push_back(Node_Ptr(p));
+    child->parent = desired_parent;
+    if (parent_owned)
+    {
+      desired_parent_ptr->owned_children.push_back(Node_Ptr(p));
+    }
+    else
+    {
+      desired_parent_ptr->unowned_children.push_back(Node_Ptr(p));
+    }
   }
   else
   {
-    p.lock()->parent = root;
-    root->children.push_back(Node_Ptr(p));
+    set_message("ERROR: set_parent parent doesnt exist.");
+    ASSERT(0);
   }
 }
 
 shared_ptr<Scene_Graph_Node>
 Scene_Graph::add_aiscene(string scene_file_path, const mat4 *import_basis,
-                         weak_ptr<Scene_Graph_Node> parent,
                          Material_Descriptor *material_override)
 {
   return add_aiscene(load_aiscene(scene_file_path), scene_file_path,
-                     import_basis, parent, material_override);
+                     import_basis,  material_override);
 }
 
 shared_ptr<Scene_Graph_Node>
 Scene_Graph::add_aiscene(string scene_file_path,
                          Material_Descriptor *material_override)
 {
-  return add_aiscene(load_aiscene(scene_file_path), scene_file_path, nullptr,
-                     weak_ptr<Scene_Graph_Node>(), material_override);
+  return add_aiscene(load_aiscene(scene_file_path), scene_file_path, nullptr,material_override);
 }
 
 shared_ptr<Scene_Graph_Node> Scene_Graph::add_aiscene(
-    const aiScene *scene, string scene_file_path, const mat4 *import_basis,
-    weak_ptr<Scene_Graph_Node> parent, Material_Descriptor *material_override)
+    const aiScene *scene, string scene_file_path, const mat4 *import_basis, Material_Descriptor *material_override)
 {
   // accumulates as meshes are imported, used along with the scene file path
   // to create a unique_id for the mesh
@@ -176,8 +191,7 @@ shared_ptr<Scene_Graph_Node> Scene_Graph::add_aiscene(
   shared_ptr<Scene_Graph_Node> new_node = make_shared<Scene_Graph_Node>(
       name, root, import_basis, scene, scene_file_path, &mesh_num,
       material_override);
-
-  set_parent(new_node, parent);
+  set_parent(new_node, this->root, false);
 
   // add every aiscene child to the new node
   const uint32 num_children = scene->mRootNode->mNumChildren;
@@ -194,6 +208,8 @@ void Scene_Graph::visit_nodes(const weak_ptr<Scene_Graph_Node> node_ptr,
 {
   shared_ptr<Scene_Graph_Node> entity = node_ptr.lock();
   ASSERT(entity);
+  if ((!entity->visible) && entity->propagate_visibility)
+    return;
 
   const mat4 T = translate(entity->position);
   const mat4 S = scale(entity->scale);
@@ -203,27 +219,35 @@ void Scene_Graph::visit_nodes(const weak_ptr<Scene_Graph_Node> node_ptr,
   const mat4 I = entity->import_basis;
   const mat4 FINAL = STACK * I;
 
-  // TODO optimize: only set lights that will have a noticable effect
   Light_Array affected_lights;
   affected_lights = lights;
   affected_lights.light_count = lights.light_count;
 
-  // Construct render entities from all meshes in this model:
   const uint32 num_meshes = entity->model.size();
   for (uint32 i = 0; i < num_meshes; ++i)
   {
     Mesh *mesh_ptr = &entity->model[i].first;
     Material *material_ptr = &entity->model[i].second;
 
-    // TODO optimize: this is copying all mesh data, because it is kept in the
-    // mesh object
+    if(entity->visible)
     accumulator.emplace_back(mesh_ptr, material_ptr, affected_lights, FINAL);
   }
-  const uint32 size = entity->children.size();
-  for (auto i = entity->children.begin(); i != entity->children.end(); ++i)
+  for (auto i = entity->unowned_children.begin(); i != entity->unowned_children.end();)
   {
     weak_ptr<Scene_Graph_Node> child = *i;
-
+    if (!child.lock())
+    {
+      i = entity->unowned_children.erase(i);
+    }
+    else
+    {
+      visit_nodes(child, STACK, accumulator);
+      ++i;
+    }
+  }
+  for (auto i = entity->owned_children.begin(); i != entity->owned_children.end();++i)
+  {
+    weak_ptr<Scene_Graph_Node> child = *i;
     visit_nodes(child, STACK, accumulator);
   }
 }
@@ -232,7 +256,8 @@ void Scene_Graph::visit_nodes_locked_accumulator(
     vector<Render_Entity> *accumulator, atomic_flag *lock)
 {
   shared_ptr<Scene_Graph_Node> entity = node_ptr.lock();
-
+  if ((!entity->visible) && entity->propagate_visibility)
+    return;
   const mat4 T = translate(entity->position);
   const mat4 S = scale(entity->scale);
   const mat4 R = toMat4(entity->orientation);
@@ -254,13 +279,28 @@ void Scene_Graph::visit_nodes_locked_accumulator(
     while (lock->test_and_set())
     { /*spin*/
     }
+    if(entity->visible)
     accumulator->emplace_back(mesh_ptr, material_ptr, affected_lights, FINAL);
+
     lock->clear();
   }
-  const uint32 size = entity->children.size();
-  for (uint32 i = 0; i < size; ++i)
+
+  for (auto i = entity->unowned_children.begin(); i != entity->unowned_children.end();)
   {
-    weak_ptr<Scene_Graph_Node> child = entity->children[i];
+    weak_ptr<Scene_Graph_Node> child = *i;
+    if (!child.lock())
+    {
+      i = entity->unowned_children.erase(i);
+    }
+    else
+    {
+      visit_nodes_locked_accumulator(child, STACK, accumulator, lock);
+      ++i;
+    }
+  }
+  for (auto i = entity->owned_children.begin(); i != entity->owned_children.end(); ++i)
+  {
+    weak_ptr<Scene_Graph_Node> child = *i;
     visit_nodes_locked_accumulator(child, STACK, accumulator, lock);
   }
 }
@@ -274,44 +314,20 @@ void Scene_Graph::visit_root_node_base_index(uint32 node_index, uint32 count,
   ASSERT(entity->position == vec3(0));
   ASSERT(entity->orientation == quat());
   ASSERT(entity->import_basis == mat4(1));
-
+  ASSERT(entity->unowned_children.size() == 0);
   for (uint32 i = node_index; i < node_index + count; ++i)
   {
-    weak_ptr<Scene_Graph_Node> child = entity->children[i];
+    weak_ptr<Scene_Graph_Node> child = entity->owned_children[i];
     visit_nodes_locked_accumulator(child, mat4(1), accumulator, lock);
   }
 }
 
-void Scene_Graph::visit_root_node_base_index_alt(
-    uint32 node_index, uint32 count, vector<Render_Entity> *accumulator,
-    atomic_flag *lock)
-{
-  Scene_Graph_Node *const entity = root.get();
-  ASSERT(entity->name == "SCENE_GRAPH_ROOT");
-  ASSERT(entity->position == vec3(0));
-  ASSERT(entity->orientation == quat(0, 0, 0, 1));
-  ASSERT(entity->import_basis == mat4(1));
-
-  vector<Render_Entity> my_accumulator;
-  my_accumulator.reserve(count * 1000);
-  for (uint32 i = node_index; i < node_index + count; ++i)
-  {
-    weak_ptr<Scene_Graph_Node> child = entity->children[i];
-    visit_nodes(child, mat4(1), my_accumulator);
-  }
-  while (lock->test_and_set())
-  {
-  }
-  copy(my_accumulator.begin(), my_accumulator.end(),
-       back_inserter(*accumulator));
-  lock->clear();
-}
 vector<Render_Entity> Scene_Graph::visit_nodes_async_start()
 {
   vector<Render_Entity> accumulator;
   accumulator.reserve(uint32(last_accumulator_size * 1.5));
 
-  const uint32 root_children_count = root->children.size();
+  const uint32 root_children_count = root->owned_children.size();
   const uint32 thread_count = 4;
   const uint32 nodes_per_thread = root_children_count / thread_count;
   const uint32 leftover_nodes = root_children_count % thread_count;
@@ -354,14 +370,13 @@ vector<Render_Entity> Scene_Graph::visit_nodes_st_start()
 }
 
 shared_ptr<Scene_Graph_Node> Scene_Graph::add_primitive_mesh(
-    Mesh_Primitive p, string name, Material_Descriptor m,
-    weak_ptr<Scene_Graph_Node> parent, const mat4 *import_basis)
+    Mesh_Primitive p, string name, Material_Descriptor m, const mat4 *import_basis)
 {
   Mesh mesh(p, name);
   Material material(m);
   shared_ptr<Scene_Graph_Node> new_node =
       make_shared<Scene_Graph_Node>(name, import_basis);
   new_node->model.push_back({mesh, material});
-  set_parent(new_node, parent);
+  set_parent(new_node, root, false);
   return new_node;
 }

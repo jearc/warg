@@ -27,7 +27,7 @@ Render_Test_State::Render_Test_State(std::string name, SDL_Window *window,
   ground->scale = { 40.0f, 40.0f, 1.0f };
 
   material.uv_scale = vec2(4);
-  sphere = scene.add_aiscene("sphere.obj", nullptr, Node_Ptr(0), &material);
+  sphere = scene.add_aiscene("sphere.obj", nullptr, &material);
 
   material.albedo = "crate_diffuse.png";
   material.emissive = "test_emissive.png";
@@ -38,8 +38,10 @@ Render_Test_State::Render_Test_State(std::string name, SDL_Window *window,
   material.uv_scale = vec2(2);
 
   cube_star = scene.add_primitive_mesh(cube, "star", material);
-  cube_planet = scene.add_primitive_mesh(cube, "planet", material, cube_star);
-  cube_moon = scene.add_primitive_mesh(cube, "moon", material, cube_planet);
+  cube_planet = scene.add_primitive_mesh(cube, "planet", material);
+  scene.set_parent(cube_planet, cube_star, false);
+  cube_moon = scene.add_primitive_mesh(cube, "moon", material);
+  scene.set_parent(cube_moon, cube_planet, false);
 
   cam.phi = .25;
   cam.theta = -1.5f * half_pi<float32>();
@@ -266,12 +268,15 @@ void Render_Test_State::handle_input(State **current_state,
 
 void Render_Test_State::update()
 {
+
   const float32 height = 3.25;
 
   cube_star->scale = vec3(.85); // +0.65f*vec3(sin(current_time*.2));
   cube_star->position = vec3(10 * cos(current_time / 10.f), 0, height);
   const float32 anglestar = wrap_to_range(pi<float32>() * sin(current_time / 2),
     0, 2 * pi<float32>());
+  cube_star->visible = sin(current_time*1.2) > -.25;
+  cube_star->propagate_visibility = true;
   // star->orientation = angleAxis(anglestar,
   // normalize(vec3(cos(current_time*.2), sin(current_time*.2), 1)));
 
@@ -285,6 +290,8 @@ void Render_Test_State::update()
   const float32 angle = wrap_to_range(current_time, 0, 2 * pi<float32>());
   cube_planet->orientation =
     angleAxis((float32)current_time / planet_day, vec3(0, 0, 1));
+  cube_planet->visible = sin(current_time * 6) > 0;
+  cube_planet->propagate_visibility = false;
 
   const float32 moon_scale = 0.25;
   const float32 moon_distance = 1.5;

@@ -38,7 +38,6 @@ Warg_State::Warg_State(std::string name, SDL_Window *window, ivec2 window_size)
   ground_mesh = scene.add_primitive_mesh(plane, "ground_plane", material);
   ground_mesh->position = ground_pos;
   ground_mesh->scale = ground_dim;
-
   add_wall({ 0, 4, 0 }, { 6, 4 }, 10);
   add_wall({ 6, 0, 0 }, { 6, 4 }, 10);
   add_wall({ 6, 0, 0 }, { 10, 0 }, 10);

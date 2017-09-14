@@ -49,8 +49,8 @@ void main()
   {
    color = frag_world_position / 12;
   }
-  float dist = length(frag_world_position);
 
+  float dist = length(frag_world_position);
   if(dist < 1)
   {
     color += 0.5f*vec3(1.000f+sin(time*10)*dist);
