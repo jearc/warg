@@ -11,7 +11,7 @@ uniform vec3 additional_ambient;
 uniform float time;
 uniform vec3 camera_position;
 uniform vec2 uv_scale;
-
+uniform bool discard_over_blend;
 struct Light
 {
   vec3 position;
@@ -56,12 +56,13 @@ struct Material
 };
 
 void main()
-  {
+{
   vec4 albedo_tex = texture2D(albedo, frag_uv).rgba;
 
-  if(albedo_tex.a < 0.3)
+  if(discard_over_blend)
   {
-    discard;
+    if(albedo_tex.a < 0.3)
+      discard;
   }
 
   Material m;
@@ -71,14 +72,14 @@ void main()
   m.shininess = 1.0 + 84 * (1.0 - to_linear(texture2D(roughness, frag_uv).r));
   vec3 n = texture2D(normal, frag_uv).rgb;
   if (n == vec3(0))
-{
+  {
     n = vec3(0, 0, 1);
     m.normal = frag_TBN * n;
-}
-else
-{
-  m.normal = frag_TBN * normalize((n * 2) - 1.0f);
-}
+  }
+  else
+  {
+    m.normal = frag_TBN * normalize((n * 2) - 1.0f);
+  }
   vec3 debug = vec3(-1);
   vec3 result = vec3(0);
   for (int i = 0; i < number_of_lights; ++i)
@@ -125,5 +126,5 @@ else
 
  //result = vec3(texture2D(roughness, frag_uv).r);
  //  ALBEDO = vec4(m.normal,1);
- ALBEDO = vec4(to_srgb(result), 1);
+ ALBEDO = vec4(to_srgb(result),albedo_tex.a);
 }

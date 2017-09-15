@@ -43,6 +43,11 @@ private:
   void bind(const char *name, GLuint location, Shader &shader);
   std::shared_ptr<Texture_Handle> texture;
   std::string file_path;
+
+  GLenum storage_type = GL_RGBA;
+  uint8 alpha_override = 0;
+  bool process_premultiply = false;
+  bool process_override_alpha = false;
 };
 struct Mesh_Handle
 {
@@ -88,8 +93,9 @@ struct Material_Descriptor
   std::string vertex_shader = "vertex_shader.vert";
   std::string frag_shader = "fragment_shader.frag";
   vec2 uv_scale = vec2(1);
+  uint8 albedo_alpha_override = 0;
   bool backface_culling = true;
-  bool has_transparency = false;
+  bool uses_transparency = false;
   // when adding new things here, be sure to add them in the
   // material constructor override section
 };
@@ -100,7 +106,6 @@ struct Material
   Material(Material_Descriptor m);
   Material(aiMaterial *ai_material, std::string working_directory,
            Material_Descriptor *material_override);
-  bool operator==(Material &rhs);
 
 private:
   friend struct Render;
@@ -114,7 +119,6 @@ private:
   Texture roughness;
   Shader shader;
   Material_Descriptor m;
-  vec2 uv_scale = vec2(1);
 };
 
 enum Light_Type
@@ -182,7 +186,7 @@ struct Render
   void set_camera_gaze(vec3 camera_pos, vec3 p);
   void set_vfov(float32 vfov); // vertical field of view in degrees
   SDL_Window *window;
-  void set_render_entities(std::vector<Render_Entity> entities);
+  void set_render_entities(std::vector<Render_Entity> *entities);
   float64 target_frame_time = 1.0 / 60.0;
   uint64 frame_count = 0;
   vec3 clear_color = vec3(1, 0, 0);
@@ -192,6 +196,13 @@ private:
   std::vector<Render_Entity> previous_render_entities;
   std::vector<Render_Entity> render_entities;
   std::vector<Render_Instance> render_instances;
+
+  std::vector<Render_Entity> translucent_entities;
+  // std::vector<Render_Instance> translucent_instances;
+
+  void opaque_pass(float32 time);
+  void instance_pass(float32 time);
+  void translucent_pass(float32 time);
   float64 time_of_last_scale_change = 0.;
   void init_render_targets();
   void dynamic_framerate_target();

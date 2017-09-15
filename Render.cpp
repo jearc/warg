@@ -28,6 +28,7 @@
 #include <unordered_map>
 #include <vector>
 using namespace glm;
+using namespace std;
 
 // our frag shader output attachment points for deferred rendering
 #define DIFFUSE_TARGET GL_COLOR_ATTACHMENT0
@@ -267,22 +268,26 @@ Texture::Texture(std::string path)
   if (path.size() == 0)
   {
     file_path = ERROR_TEXTURE_PATH;
+    load();
     return;
   }
   if (path.substr(0, 6) == "color(")
   { // custom color
     file_path = path;
+    load();
     return;
   }
 
   if (path.find_last_of("/") == path.npos)
   { // no specified directory, so use base path
     file_path = BASE_TEXTURE_PATH + path;
+    load();
     return;
   }
   else
   { // assimp imported model or user specified a directory
     file_path = path;
+    load();
     return;
   }
 }
@@ -313,7 +318,7 @@ void Texture::load()
     Uint32 color = string_to_color(file_path);
     glGenTextures(1, &texture->texture);
     glBindTexture(GL_TEXTURE_2D, texture->texture);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA,
+    glTexImage2D(GL_TEXTURE_2D, 0, storage_type, width, height, 0, GL_RGBA,
                  GL_UNSIGNED_INT_8_8_8_8, &color);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
@@ -347,17 +352,33 @@ void Texture::load()
   }
 
   set_message("Texture load cache miss. Texture from disk: ", file_path, 1.0);
-  // TODO: optimize the texture storage types to save GPU memory
-  // currently  everything is stored with RGBA
-  // could pack maps together like: RGBA with diffuse as RGB and A as
-  // ambient_occlusion
-
   struct stat attr;
   stat(file_path.c_str(), &attr);
   texture.get()->file_mod_t = attr.st_mtime;
+
+  if (process_premultiply)
+  {
+    for (uint32 i = 0; i < width * height; ++i)
+    {
+      uint32 pixel = data[i];
+      uint8 r = (uint8)(0x000000FF & pixel);
+      uint8 g = (uint8)(0x0000FF00 & pixel) >> 8;
+      uint8 b = (uint8)(0x00FF0000 & pixel) >> 16;
+      uint8 a = (uint8)(0xFF000000 & pixel) >> 24;
+
+      if (process_override_alpha)
+        a = alpha_override;
+
+      r = r * ((float)a / 255);
+      g = g * ((float)a / 255);
+      b = b * ((float)a / 255);
+
+      data[i] = (24 << a) | (16 << b) | (8 << g) | r;
+    }
+  }
   glGenTextures(1, &texture->texture);
   glBindTexture(GL_TEXTURE_2D, texture->texture);
-  glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA,
+  glTexImage2D(GL_TEXTURE_2D, 0, storage_type, width, height, 0, GL_RGBA,
                GL_UNSIGNED_BYTE, data);
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER,
@@ -374,15 +395,12 @@ void Texture::bind(const char *name, GLuint binding, Shader &shader)
   load();
 #endif
   GLuint u = glGetUniformLocation(shader.program->program, name);
-  // ASSERT(u != -1);
+  if (u == -1)
+    return;
+
   glUniform1i(u, binding);
   glActiveTexture(GL_TEXTURE0 + (GLuint)binding);
   glBindTexture(GL_TEXTURE_2D, texture ? texture->texture : 0);
-  if (!texture)
-  {
-    // std::cout << "Warning: Null texture pointer with name: " << name
-    //           << " and binding: " << binding << "\n";
-  }
 }
 
 Mesh::Mesh() {}
@@ -631,7 +649,6 @@ Material::Material(aiMaterial *ai_material, std::string working_directory,
     m.vertex_shader = material_override->vertex_shader;
     m.frag_shader = material_override->frag_shader;
     m.backface_culling = material_override->backface_culling;
-    m.has_transparency = material_override->has_transparency;
     m.uv_scale = material_override->uv_scale;
   }
   load(m);
@@ -645,7 +662,6 @@ void Material::load(Material_Descriptor m)
   emissive = Texture(m.emissive);
   roughness = Texture(m.roughness);
   shader = Shader(m.vertex_shader, m.frag_shader);
-  uv_scale = m.uv_scale;
 }
 void Material::bind()
 {
@@ -751,23 +767,8 @@ void set_uniform_lights(Shader &shader, Light_Array &lights)
   shader.set_uniform("additional_ambient", lights.additional_ambient);
 }
 
-void Render::render(float64 state_time)
+void Render::opaque_pass(float32 time)
 {
-#if DYNAMIC_FRAMERATE_TARGET
-  dynamic_framerate_target();
-#endif
-#if DYNAMIC_TEXTURE_RELOADING
-  check_and_clear_expired_textures();
-#endif
-
-  float32 time = (float32)get_real_time();
-  float64 t = (time - state_time) / dt;
-  glViewport(0, 0, size.x, size.y);
-  glBindFramebuffer(GL_FRAMEBUFFER, TARGET_FRAMEBUFFER);
-  glFramebufferTexture(GL_FRAMEBUFFER, DIFFUSE_TARGET, COLOR_TARGET_TEXTURE, 0);
-
-  glClearColor(clear_color.r, clear_color.g, clear_color.b, 1.0);
-  glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
   glEnable(GL_CULL_FACE);
   glFrontFace(GL_CW);
   glCullFace(GL_BACK);
@@ -786,14 +787,19 @@ void Render::render(float64 state_time)
     shader.set_uniform("time", time);
     shader.set_uniform("txaa_jitter", txaa_jitter);
     shader.set_uniform("camera_position", camera_position);
-    shader.set_uniform("uv_scale", entity.material->uv_scale);
+    shader.set_uniform("uv_scale", entity.material->m.uv_scale);
     shader.set_uniform("MVP", projection * camera * entity.transformation);
     shader.set_uniform("Model", entity.transformation);
+    shader.set_uniform("discard_over_blend", true);
     set_uniform_lights(shader, entity.lights);
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, entity.mesh->get_indices_buffer());
     glDrawElements(GL_TRIANGLES, entity.mesh->get_indices_buffer_size(),
                    GL_UNSIGNED_INT, nullptr);
   }
+}
+
+void Render::instance_pass(float32 time)
+{
   for (auto &entity : render_instances)
   {
     ASSERT(0); // untested
@@ -808,7 +814,7 @@ void Render::render(float64 state_time)
     shader.set_uniform("time", time);
     shader.set_uniform("txaa_jitter", txaa_jitter);
     shader.set_uniform("camera_position", camera_position);
-    shader.set_uniform("uv_scale", entity.material->uv_scale);
+    shader.set_uniform("uv_scale", entity.material->m.uv_scale);
     set_uniform_lights(shader, entity.lights);
     //// verify sizes of data, mat4 floats
     ASSERT(entity.Model_Matrices.size() > 0);
@@ -895,7 +901,59 @@ void Render::render(float64 state_time)
     glDisableVertexAttribArray(loc_3);
     glDisableVertexAttribArray(loc_4);
   }
-  draw_calls_last_frame = render_instances.size() + render_entities.size();
+}
+
+void Render::translucent_pass(float32 time)
+{
+  glDisable(GL_CULL_FACE);
+  glDisable(GL_DEPTH_TEST);
+  glEnable(GL_BLEND);
+
+  for (Render_Entity &entity : translucent_entities)
+  {
+    ASSERT(entity.mesh);
+    int vao = entity.mesh->get_vao();
+    glBindVertexArray(vao);
+    Shader &shader = entity.material->shader;
+    shader.use();
+    entity.material->bind();
+    entity.mesh->bind_to_shader(shader);
+    shader.set_uniform("time", time);
+    shader.set_uniform("txaa_jitter", txaa_jitter);
+    shader.set_uniform("camera_position", camera_position);
+    shader.set_uniform("uv_scale", entity.material->m.uv_scale);
+    shader.set_uniform("MVP", projection * camera * entity.transformation);
+    shader.set_uniform("Model", entity.transformation);
+    shader.set_uniform("discard_over_blend", false);
+    set_uniform_lights(shader, entity.lights);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, entity.mesh->get_indices_buffer());
+    glDrawElements(GL_TRIANGLES, entity.mesh->get_indices_buffer_size(),
+                   GL_UNSIGNED_INT, nullptr);
+  }
+}
+void Render::render(float64 state_time)
+{
+#if DYNAMIC_FRAMERATE_TARGET
+  dynamic_framerate_target();
+#endif
+#if DYNAMIC_TEXTURE_RELOADING
+  check_and_clear_expired_textures();
+#endif
+
+  float32 time = (float32)get_real_time();
+  float64 t = (time - state_time) / dt;
+  glViewport(0, 0, size.x, size.y);
+  glBindFramebuffer(GL_FRAMEBUFFER, TARGET_FRAMEBUFFER);
+  glFramebufferTexture(GL_FRAMEBUFFER, DIFFUSE_TARGET, COLOR_TARGET_TEXTURE, 0);
+
+  glClearColor(clear_color.r, clear_color.g, clear_color.b, 1.0);
+  glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+  opaque_pass(time);
+  instance_pass(time);
+  translucent_pass(time);
+
+  draw_calls_last_frame = render_entities.size();
   mat4 o =
       ortho(0.0f, (float32)window_size.x, 0.0f, (float32)window_size.y, 0.1f,
             100.0f) *
@@ -1048,10 +1106,50 @@ void Render::set_vfov(float32 vfov)
   projection = glm::perspective(radians(vfov), aspect, znear, zfar);
 }
 
-void Render::set_render_entities(std::vector<Render_Entity> render_entities)
+void Render::set_render_entities(vector<Render_Entity> *new_entities)
 {
-  this->previous_render_entities = std::move(this->render_entities);
-  this->render_entities = render_entities;
+  previous_render_entities = move(render_entities);
+  render_entities.clear();
+
+  std::vector<std::pair<uint32, float32>>
+      index_distances; // for insert sorted, -1 means index-omit
+
+  for (uint32 i = 0; i < new_entities->size(); ++i)
+  {
+    Render_Entity *entity = &(*new_entities)[i];
+    mat4 *m = &entity->transformation;
+    vec3 translation = vec3((*m)[3][0], (*m)[3][1], (*m)[3][2]);
+
+    float32 dist = length(translation - camera_position);
+    bool is_transparent = entity->material->m.uses_transparency;
+    if (is_transparent)
+    {
+      ASSERT(entity->material->albedo.storage_type == GL_RGBA);
+      index_distances.push_back({i, dist});
+    }
+    else
+    {
+      index_distances.push_back({i, -1.0f});
+    }
+  }
+
+  std::sort(index_distances.begin(), index_distances.end(),
+            [](std::pair<uint32, float32> p1, std::pair<uint32, float32> p2) {
+              return p1.second > p2.second;
+            });
+
+  for (auto i : index_distances)
+  {
+    if (i.second != -1.0f)
+    {
+      translucent_entities.push_back((*new_entities)[i.first]);
+      ASSERT(0); // test this, the furthest objects should be first
+    }
+    else
+    {
+      render_entities.push_back((*new_entities)[i.first]);
+    }
+  }
 }
 
 void check_FBO_status()
@@ -1251,10 +1349,6 @@ mat4 Render::get_next_TXAA_sample()
 
 Mesh_Handle::~Mesh_Handle()
 {
-  if (position_buffer == 27)
-  {
-    int a = 3;
-  }
   set_message("Deleting mesh: ", s(vao, " ", position_buffer));
   glDeleteBuffers(1, &position_buffer);
   glDeleteBuffers(1, &normal_buffer);

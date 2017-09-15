@@ -15,6 +15,10 @@ struct Scene_Graph_Node;
 
 typedef std::shared_ptr<Scene_Graph_Node> Node_Ptr;
 
+
+
+
+
 struct Scene_Graph_Node
 {
   Scene_Graph_Node() {}
