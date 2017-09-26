@@ -548,6 +548,7 @@ int main(int argc, char *argv[]) {
     t.detach();
 
     while (1) {
+		SDL_Delay(10);
         current_tick = SDL_GetTicks();
         if (current_tick - last_tick <= 16)
             continue;
