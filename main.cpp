@@ -547,6 +547,8 @@ int main(int argc, char *argv[]) {
     });
     t.detach();
 
+	bool file_loaded = false;
+
     while (1) {
 		SDL_Delay(10);
         current_tick = SDL_GetTicks();
@@ -584,11 +586,16 @@ int main(int argc, char *argv[]) {
                             break;
                         if (mp_event->event_id == MPV_EVENT_FILE_LOADED) {
                             mpv_command_string(mpv, "set pause yes");
+							file_loaded = true;
                         }
                         if (mp_event->event_id == MPV_EVENT_PLAYBACK_RESTART) {
                             auto status = getstatus();
                             msg(status.c_str());
                         }
+						if (mp_event->event_id == MPV_EVENT_END_FILE && !file_loaded) {
+							msg("moov: m̛̿̇al͒f̃un̩cͯt̿io̲n̙͌͢");
+							goto done;
+						}
                     }
                 }
                 ImGui_ImplSdlGL3_ProcessEvent(&event);
