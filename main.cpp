@@ -571,10 +571,6 @@ int main(int argc, char *argv[]) {
                 } else if (event.key.keysym.mod & KMOD_CTRL &&
                            event.key.keysym.sym == SDLK_SPACE) {
                     mpv_command_string(mpv, "cycle pause");
-                } else if (event.key.keysym.sym == SDLK_LEFT) {
-                    mpv_command_string(mpv, "playlist-prev");
-                } else if (event.key.keysym.sym == SDLK_RIGHT) {
-                    mpv_command_string(mpv, "playlist-next");
                 } else
                     ImGui_ImplSdlGL3_ProcessEvent(&event);
                 break;
