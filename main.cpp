@@ -24,7 +24,7 @@ const uint16_t BUFFER_SIZE = 512;
 const char *PIPE = "/tmp/mpvpipe";
 
 const uint16_t MARGIN_SIZE = 8;
-const float DEFAULT_OPACITY = 0.5;
+const float DEFAULT_OPACITY = 1.0;
 
 struct Message {
     time_t time;
