@@ -285,7 +285,7 @@ void osd() {
         status += playback_time;
         status += " / ";
         status += duration;
-        ImGui::Text(status.c_str());
+        ImGui::Text("%s", status.c_str());
     } else {
         ImGui::Text("Not playing");
     }
@@ -298,7 +298,7 @@ void osd() {
         status += playlist_pos;
         status += "/";
         status += playlist_count;
-        ImGui::Text(status.c_str());
+        ImGui::Text("%s", status.c_str());
     } else {
         ImGui::Text("0/0");
     }
@@ -383,7 +383,7 @@ void chatbox() {
             formatted += msg.from;
             formatted += ": ";
             formatted += msg.text;
-            ImGui::TextWrapped(formatted.c_str());
+            ImGui::TextWrapped("%s", formatted.c_str());
         }
     }
     if (scroll_to_bottom) {
