@@ -116,7 +116,10 @@ int get_num_audio_sub_tracks(mpv_handle *mpv, int *naudio, int *nsubs)
 	return 0;
 }
 
-void sendmsg(const char *msg) { std::cout << "MSG :" << msg << std::endl; }
+void sendmsg(const char *msg)
+{
+	std::cout << "MSG :" << msg << std::endl;
+}
 
 std::string getstatus()
 {
@@ -279,10 +282,10 @@ void osd()
 	bool display = true;
 	ImGui::SetNextWindowPos(pos);
 	ImGui::Begin("StatusDisplay", &display, size, osd_opacity,
-		     ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize |
-			 ImGuiWindowFlags_NoMove |
-			 ImGuiWindowFlags_NoScrollbar |
-			 ImGuiWindowFlags_NoSavedSettings);
+		     ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize
+			 | ImGuiWindowFlags_NoMove
+			 | ImGuiWindowFlags_NoScrollbar
+			 | ImGuiWindowFlags_NoSavedSettings);
 	auto filename = mpv_get_property_string(mpv, "media-title");
 	ImGui::Text("%s", filename);
 	char *pos_sec = mpv_get_property_string(mpv, "playback-time");
@@ -360,8 +363,8 @@ void osd()
 	static int start_pos_x = 0, start_pos_y = 0;
 	static int last_pos_x = mouse_x, last_pos_y = mouse_y;
 	bool mouse_over_window =
-	    (mouse_x >= pos.x && mouse_x < pos.x + size.x) &&
-	    (mouse_y >= pos.y && mouse_y < pos.y + size.y);
+	    (mouse_x >= pos.x && mouse_x < pos.x + size.x)
+	    && (mouse_y >= pos.y && mouse_y < pos.y + size.y);
 	if (ImGui::IsMouseClicked(0) && mouse_over_window) {
 		mouse_down = true;
 		start_pos_x = mouse_x;
@@ -394,10 +397,10 @@ void chatbox()
 	ImGui::SetNextWindowSize(size, ImGuiSetCond_FirstUseEver);
 	ImGui::SetNextWindowPos(pos);
 	ImGui::Begin("ChatBox", &display, size, chat_opacity,
-		     ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize |
-			 ImGuiWindowFlags_NoMove |
-			 ImGuiWindowFlags_NoScrollbar |
-			 ImGuiWindowFlags_NoSavedSettings);
+		     ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize
+			 | ImGuiWindowFlags_NoMove
+			 | ImGuiWindowFlags_NoScrollbar
+			 | ImGuiWindowFlags_NoSavedSettings);
 	ImGui::BeginChild("LogRegion",
 			  ImVec2(0, -ImGui::GetItemsLineHeightWithSpacing()),
 			  false, ImGuiWindowFlags_NoScrollbar);
@@ -435,8 +438,8 @@ void chatbox()
 	static int start_pos_x = 0, start_pos_y = 0;
 	static int last_pos_x = mouse_x, last_pos_y = mouse_y;
 	bool mouse_over_window =
-	    (mouse_x >= pos.x && mouse_x < pos.x + size.x) &&
-	    (mouse_y >= pos.y && mouse_y < pos.y + size.y);
+	    (mouse_x >= pos.x && mouse_x < pos.x + size.x)
+	    && (mouse_y >= pos.y && mouse_y < pos.y + size.y);
 	if (ImGui::IsMouseClicked(0) && mouse_over_window) {
 		mouse_down = true;
 		start_pos_x = mouse_x;
@@ -454,9 +457,9 @@ void chatbox()
 	last_pos_x = mouse_x;
 	last_pos_y = mouse_y;
 	ImGui::PopItemWidth();
-	if (ImGui::IsItemHovered() ||
-	    (ImGui::IsRootWindowOrAnyChildFocused() &&
-	     !ImGui::IsAnyItemActive() && !ImGui::IsMouseClicked(0)))
+	if (ImGui::IsItemHovered()
+	    || (ImGui::IsRootWindowOrAnyChildFocused()
+		&& !ImGui::IsAnyItemActive() && !ImGui::IsMouseClicked(0)))
 		ImGui::SetKeyboardFocusHere(-1);
 	ImGui::End();
 }
@@ -660,8 +663,9 @@ int main(int argc, char *argv[])
 			case SDL_KEYDOWN:
 				if (event.key.keysym.sym == SDLK_F11) {
 					toggle_fullscreen();
-				} else if (event.key.keysym.mod & KMOD_CTRL &&
-					   event.key.keysym.sym == SDLK_SPACE) {
+				} else if (event.key.keysym.mod & KMOD_CTRL
+					   && event.key.keysym.sym
+						  == SDLK_SPACE) {
 					mpv_command_string(mpv, "cycle pause");
 				} else
 					ImGui_ImplSdlGL3_ProcessEvent(&event);
@@ -671,25 +675,25 @@ int main(int argc, char *argv[])
 					while (1) {
 						mpv_event *mp_event =
 						    mpv_wait_event(mpv, 0);
-						if (mp_event->event_id ==
-						    MPV_EVENT_NONE)
+						if (mp_event->event_id
+						    == MPV_EVENT_NONE)
 							break;
-						if (mp_event->event_id ==
-						    MPV_EVENT_FILE_LOADED) {
+						if (mp_event->event_id
+						    == MPV_EVENT_FILE_LOADED) {
 							mpv_command_string(
 							    mpv,
 							    "set pause yes");
 							file_loaded = true;
 						}
-						if (mp_event->event_id ==
-						    MPV_EVENT_PLAYBACK_RESTART) {
+						if (mp_event->event_id
+						    == MPV_EVENT_PLAYBACK_RESTART) {
 							auto status =
 							    getstatus();
 							msg(status.c_str());
 						}
-						if (mp_event->event_id ==
-							MPV_EVENT_END_FILE &&
-						    !file_loaded) {
+						if (mp_event->event_id
+							== MPV_EVENT_END_FILE
+						    && !file_loaded) {
 							msg("moov: "
 							    "m̛̿̇al͒f̃un̩cͯt̿io̲n̙͌͢");
 							goto done;
