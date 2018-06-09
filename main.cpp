@@ -1,5 +1,6 @@
 #include <algorithm>
 #include <ctime>
+#include <fstream>
 #include <iostream>
 #include <mutex>
 #include <stddef.h>
@@ -540,11 +541,61 @@ int main(int argc, char *argv[]) {
         die("could not register events");
     mpv_set_wakeup_callback(mpv, on_mpv_events, NULL);
 
-    const char *cmd[] = {"loadfile", argv[2], NULL};
-    mpv_command(mpv, cmd);
-    for (int i = 3; i < argc; i++) {
-        const char *cmd2[] = {"loadfile", argv[i], "append", NULL};
-        mpv_command(mpv, cmd2);
+    bool file_loaded = false;
+    bool is_playlist = false;
+    int last_completed_track = -1;
+
+    if (argc >= 2 && !strcmp(argv[2], "--resume")) {
+        is_playlist = true;
+
+        std::string line;
+        std::ifstream listfile("/home/james/.moov_playlist");
+        if (listfile.is_open()) {
+            bool first = true;
+            while (getline(listfile, line)) {
+                if (first) {
+                    const char *cmd[] = {"loadfile", line.c_str(), NULL};
+                    mpv_command(mpv, cmd);
+                    first = false;
+                } else {
+                    const char *cmd[] = {"loadfile", line.c_str(), "append",
+                                         NULL};
+                    mpv_command(mpv, cmd);
+                }
+            }
+        }
+        std::ifstream trackfile("/home/james/.moov_track");
+        if (trackfile.is_open()) {
+            int64_t track = -1;
+            if (getline(trackfile, line))
+                track = (int64_t)std::stoi(line);
+            if (track >= 0) {
+                last_completed_track = track;
+                track += 1;
+                mpv_set_property(mpv, "playlist-pos", MPV_FORMAT_INT64, &track);
+            }
+        }
+        file_loaded = true;
+    } else {
+        const char *cmd[] = {"loadfile", argv[2], NULL};
+        mpv_command(mpv, cmd);
+        for (int i = 3; i < argc; i++) {
+            const char *cmd2[] = {"loadfile", argv[i], "append", NULL};
+            mpv_command(mpv, cmd2);
+        }
+        int64_t playlist_count;
+        mpv_get_property(mpv, "playlist-count", MPV_FORMAT_INT64,
+                         &playlist_count);
+        if (playlist_count > 1) {
+            std::ofstream listfile("/home/james/.moov_playlist",
+                                   std::ios::trunc);
+            for (int i = 2; i < argc; i++)
+                listfile << argv[i] << std::endl;
+
+            std::ofstream trackfile("/home/james/.moov_track", std::ios::trunc);
+            trackfile << -1 << std::endl;
+            is_playlist = true;
+        }
     }
 
     auto t = std::thread([]() {
@@ -555,8 +606,6 @@ int main(int argc, char *argv[]) {
         }
     });
     t.detach();
-
-	bool file_loaded = false;
 
     while (1) {
 		SDL_Delay(10);
@@ -615,6 +664,22 @@ int main(int argc, char *argv[]) {
         mpv_opengl_cb_draw(mpv_gl, 0, w, -h);
         ui();
         SDL_GL_SwapWindow(window);
+
+        int64_t playlist_pos;
+        mpv_get_property(mpv, "playlist-pos", MPV_FORMAT_INT64, &playlist_pos);
+        if (is_playlist && playlist_pos > last_completed_track) {
+            char *pos_sec = mpv_get_property_string(mpv, "playback-time");
+            char *total_sec = mpv_get_property_string(mpv, "duration");
+            float progress = 0;
+            if (pos_sec && total_sec)
+                progress = std::stof(pos_sec) / std::stof(total_sec);
+            if (progress > 0.8) {
+                last_completed_track = playlist_pos;
+                std::ofstream trackfile("/home/james/.moov_track",
+                                        std::ios::trunc);
+                trackfile << playlist_pos << std::endl;
+            }
+        }
     }
 
 done:
