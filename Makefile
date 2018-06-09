@@ -23,8 +23,8 @@ ifeq ($(UNAME_S), Linux) #LINUX
 	ECHO_MESSAGE = "Linux"
 	LIBS = -lGL -ldl `sdl2-config --libs` `pkg-config --libs --cflags mpv` -pthread
 
-	CXXFLAGS = -I./imgui -I./libs/gl3w `sdl2-config --cflags`
-	CXXFLAGS += -g
+	CXXFLAGS = -fPIC -g
+	CXXFLAGS += -I./imgui -I./libs/gl3w `sdl2-config --cflags`
 	CFLAGS = $(CXXFLAGS)
 endif
 
@@ -54,7 +54,7 @@ all: $(EXE)
 	@echo Build complete for $(ECHO_MESSAGE)
 
 $(EXE): $(OBJS)
-	$(CXX) -o $(EXE) $(OBJS) $(CXXFLAGS) $(LIBS)
+	$(CXX)  $(CXXFLAGS) -o $(EXE) $(OBJS) $(LIBS)
 
 clean:
 	rm $(EXE) $(OBJS)
