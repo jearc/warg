@@ -1,14 +1,13 @@
 #include <algorithm>
 #include <time.h>
 #include <fstream>
-#include <mutex>
 #include <stddef.h>
 #include <stdlib.h>
 #include <string>
-#include <thread>
 #include <unistd.h>
 #include <vector>
 #include <stdio.h>
+#include <pthread.h>
 
 #include <GL/gl3w.h>
 #include <SDL.h>
@@ -40,7 +39,7 @@ mpv_handle *mpv;
 SDL_GLContext glcontext;
 mpv_opengl_cb_context *mpv_gl;
 std::vector<Message> chat_log;
-std::mutex chat_log_mutex;
+pthread_mutex_t chatmutex = PTHREAD_MUTEX_INITIALIZER;
 
 ImVec4 clear_color = ImColor(114, 144, 154);
 char chat_input_buf[256] = {0};
@@ -191,8 +190,9 @@ void writechat(const char *text, const char *from = NULL)
 	msg.from = from ? from : username;
 	msg.text = text;
 
-	std::lock_guard<std::mutex> guard(chat_log_mutex);
+	pthread_mutex_lock(&chatmutex);
 	chat_log.push_back(msg);
+	pthread_mutex_unlock(&chatmutex);
 	scroll_to_bottom = true;
 }
 
@@ -400,7 +400,7 @@ void chatbox()
 			  ImVec2(0, -ImGui::GetItemsLineHeightWithSpacing()),
 			  false, ImGuiWindowFlags_NoScrollbar);
 	{
-		std::lock_guard<std::mutex> guard(chat_log_mutex);
+		pthread_mutex_lock(&chatmutex);
 		for (auto &msg : chat_log) {
 			tm *now = localtime(&msg.time);
 			char buf[20] = {0};
@@ -414,6 +414,7 @@ void chatbox()
 			formatted += msg.text;
 			ImGui::TextWrapped("%s", formatted.c_str());
 		}
+		pthread_mutex_unlock(&chatmutex);
 	}
 	if (scroll_to_bottom) {
 		ImGui::SetScrollHere();
@@ -496,6 +497,21 @@ int readmsg(const char *l)
 	free(user);
 
 	return 0;
+}
+
+void *stdin_loop(void *arg)
+{
+	char *line = NULL;
+	size_t size;
+	while (true) {
+		getline(&line, &size, stdin);
+		int err = readmsg(line);
+		if (err)
+			fprintf(stderr, "parsing error: %d\n", err);
+		free(line);
+	}
+
+	return NULL;
 }
 
 int main(int argc, char *argv[])
@@ -628,18 +644,8 @@ int main(int argc, char *argv[])
 		}
 	}
 
-	auto t = std::thread([]() {
-		char *line = NULL;
-		size_t size;
-		while (true) {
-			getline(&line, &size, stdin);
-			int err = readmsg(line);
-			if (err)
-				fprintf(stderr, "parsing error: %d\n", err);
-			free(line);
-		}
-	});
-	t.detach();
+	pthread_t stdin_thread;
+	pthread_create(&stdin_thread, NULL, stdin_loop, NULL);
 
 	while (1) {
 		SDL_Delay(10);
