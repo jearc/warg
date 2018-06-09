@@ -28,9 +28,13 @@ install: all
 	@echo 'Installing pidgin adapter script (moovpidgin) to /usr/local/bin.'
 	@cp -f pidgin_adapter.py /usr/local/bin/moovpidgin
 	@chmod 755 /usr/local/bin/moovpidgin
+	@echo 'Installing systemd user unit for pidgin adapter script.'
+	@cp -f moovpidgin.service /etc/systemd/user
 
 uninstall: all
 	@echo 'Removing executable (moov) from /usr/local/bin.'
 	@rm -f /usr/local/bin/moov
 	@echo 'Removing pidgin adapter script (moovpidgin) from /usr/local/bin.'
 	@rm -f /usr/local/bin/moovpidgin
+	@echo 'Removing systemd user unit for pidgin adapter script.'
+	@rm -f /etc/systemd/user/moovpidgin.service
