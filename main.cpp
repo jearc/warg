@@ -21,7 +21,6 @@
 
 static Uint32 wakeup_on_mpv_events;
 
-const uint16_t BUFFER_SIZE = 512;
 const char *PIPE = "/tmp/mpvpipe";
 
 const uint16_t MARGIN_SIZE = 8;
@@ -40,7 +39,6 @@ SDL_Window *window;
 mpv_handle *mpv;
 SDL_GLContext glcontext;
 mpv_opengl_cb_context *mpv_gl;
-char buffer[BUFFER_SIZE];
 std::vector<Message> chat_log;
 std::mutex chat_log_mutex;
 
