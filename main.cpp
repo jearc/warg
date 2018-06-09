@@ -1,7 +1,6 @@
 #include <algorithm>
 #include <ctime>
 #include <fstream>
-#include <iostream>
 #include <mutex>
 #include <stddef.h>
 #include <stdlib.h>
@@ -9,6 +8,7 @@
 #include <thread>
 #include <unistd.h>
 #include <vector>
+#include <stdio.h>
 
 #include <GL/gl3w.h>
 #include <SDL.h>
@@ -62,7 +62,7 @@ std::string username = "User";
 
 static void die(const char *msg)
 {
-	std::cerr << "error: " << msg << std::endl;
+	fprintf(stderr, "error: %s\n", msg);
 	exit(1);
 }
 
@@ -118,7 +118,7 @@ int get_num_audio_sub_tracks(mpv_handle *mpv, int *naudio, int *nsubs)
 
 void sendmsg(const char *msg)
 {
-	std::cout << "MSG :" << msg << std::endl;
+	printf("MSG :%s\n", msg);
 }
 
 std::string getstatus()
@@ -631,10 +631,14 @@ int main(int argc, char *argv[])
 	}
 
 	auto t = std::thread([]() {
-		for (std::string line; std::getline(std::cin, line);) {
-			int err = readmsg(line.c_str());
+		char *line = NULL;
+		size_t size;
+		while (true) {
+			getline(&line, &size, stdin);
+			int err = readmsg(line);
 			if (err)
 				fprintf(stderr, "parsing error: %d\n", err);
+			free(line);
 		}
 	});
 	t.detach();
