@@ -109,6 +109,9 @@ def open_moov(args):
     moov_handler_thread.start()
 
 def send_moov_message(alias, message):
+    h = HTML2Text()
+    h.ignore_links = True
+    message = h.handle(message).strip()
     command = "MSG " + alias + ":" + message + "\n"
     if moov_proc and moov_proc.poll() is None:
         moov_proc.stdin.write(command)
