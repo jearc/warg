@@ -22,15 +22,15 @@ clean:
 
 install: all
 	@mkdir -p /usr/local/bin
-	@echo 'installing executable file to /usr/local/bin'
+	@echo 'Installing executable (moov) to /usr/local/bin.'
 	@cp -f moov /usr/local/bin
 	@chmod 755 /usr/local/bin/moov
-	@echo 'installing pidgin adapter script (moovpidgin) to /usr/local/bin'
+	@echo 'Installing pidgin adapter script (moovpidgin) to /usr/local/bin.'
 	@cp -f pidgin_adapter.py /usr/local/bin/moovpidgin
 	@chmod 755 /usr/local/bin/moovpidgin
 
 uninstall: all
-	@echo 'removing executable file from /usr/local/bin'
+	@echo 'Removing executable (moov) from /usr/local/bin.'
 	@rm -f /usr/local/bin/moov
-	@echo 'removing pidgin adapter script (moovpidgin) from /usr/local/bin'
+	@echo 'Removing pidgin adapter script (moovpidgin) from /usr/local/bin.'
 	@rm -f /usr/local/bin/moovpidgin
