@@ -236,6 +236,12 @@ void on_msg(const char *s, bool self) {
         if (words[1] == "osd_opacity")
             osd_opacity =
                 words.size() > 2 ? atof(words[2].c_str()) : DEFAULT_OPACITY;
+    } else if (com == "ALTF4") {
+        mpv_opengl_cb_uninit_gl(mpv_gl);
+        mpv_terminate_destroy(mpv);
+        SDL_GL_DeleteContext(glcontext);
+        SDL_DestroyWindow(window);
+        exit(0);
     }
 }
 
