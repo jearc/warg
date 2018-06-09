@@ -146,39 +146,44 @@ std::string getstatus()
 
 std::vector<std::string> splitstring(const char *s, char delim)
 {
+	char *dup = strdup(s);
+	char *delimstr = (char *)malloc(2);
+	sprintf(delimstr, "%c", delim);
 	std::vector<std::string> words;
 
-	words.push_back("");
-	for (int w = 0; *s; s++) {
-		if (*s == delim) {
-			w += 1;
-			words.push_back("");
-		} else {
-			words[w] += *s;
-		}
+	char *str = dup, *token, *saveptr;
+	while (token = strtok_r(str, delimstr, &saveptr)) {
+		words.push_back(token);
+		str = NULL;
 	}
+
+	free(dup);
 
 	return words;
 }
 
 int parse_time(const char *timestr)
 {
-	auto selems = splitstring(timestr, ':');
-	std::vector<int> elems;
-	for (int i = selems.size() - 1; i >= 0; i--)
-		elems.push_back(atoi(selems[i].c_str()));
-	auto nelems = elems.size();
+	int nums[3] = {0}, count = 0;
 
-	int t = 0;
+	char *dup = strdup(timestr);
+	char *str = dup, *token, *saveptr;
+	while (count < 3 && (token = strtok_r(str, ":", &saveptr))) {
+		nums[count++] = atoi(token);
+		str = NULL;
+	}
+	free(dup);
 
-	if (nelems > 0)
-		t += elems[0];
-	if (nelems > 1)
-		t += elems[1] * 60;
-	if (nelems > 2)
-		t += elems[2] * 3600;
+	int seconds = 0;
+	int power = 0;
+	while (count > 0) {
+		seconds += nums[count - 1] * pow(60, power);
+		printf("%d^%d\n", nums[count - 1], power);
+		count--;
+		power++;
+	}
 
-	return t;
+	return seconds;
 }
 
 void writechat(const char *text, const char *from = NULL)
