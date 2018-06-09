@@ -38,7 +38,8 @@ void on_msg(const char *s, bool self);
 SDL_Window *window;
 
 mpv_handle *mpv;
-
+SDL_GLContext glcontext;
+mpv_opengl_cb_context *mpv_gl;
 char buffer[BUFFER_SIZE];
 std::vector<Message> chat_log;
 std::mutex chat_log_mutex;
@@ -508,12 +509,12 @@ int main(int argc, char *argv[]) {
     if (!window)
         die("failed to create SDL window");
 
-    mpv_opengl_cb_context *mpv_gl =
+    mpv_gl =
         (mpv_opengl_cb_context *)mpv_get_sub_api(mpv, MPV_SUB_API_OPENGL_CB);
     if (!mpv_gl)
         die("failed to create mpv GL API handle");
 
-    SDL_GLContext glcontext = SDL_GL_CreateContext(window);
+    glcontext = SDL_GL_CreateContext(window);
     if (!glcontext)
         die("failed to create SDL GL context");
 
