@@ -4,13 +4,14 @@ from pydbus import SessionBus
 from gi.repository import GObject
 from threading import Thread
 from subprocess import Popen, PIPE
-from os.path import join
+from os.path import join, isdir, isfile
+from os import getenv
 from os import walk
 from re import search, IGNORECASE
 from html2text import HTML2Text
+from sys import stderr, exit
 
-moov_path = "/home/james/Source/moov/moov"
-video_dir = "/home/james/h/Downloads"
+video_dir = ""
 moov_proc = None
 pending_open = False
 purple_conversation = None
@@ -99,7 +100,7 @@ def moov_handler_thread_f():
 def open_moov(args):
     global moov_proc
     kill_moov()
-    moov_proc = Popen([moov_path] + args,
+    moov_proc = Popen(["moov"] + args,
                       stdin=PIPE,
                       stdout=PIPE,
                       bufsize=1,
@@ -112,8 +113,20 @@ def send_moov_message(alias, message):
     if moov_proc and moov_proc.poll() is None:
         moov_proc.stdin.write(command)
 
+dir_filepath = getenv("HOME") + "/.moov_dir"
+if not isfile(dir_filepath):
+    print("Error: ~/.moov_dir file not found.\nAborting.", file=stderr)
+    exit(1)
+dir_file = open(dir_filepath, "r")
+video_dir = dir_file.readline().strip()
+if not isdir(video_dir):
+    print("Error: directory path specified in ~/.moov_dir is invalid.\nAborting.",
+          file=stderr)
+    exit(2)
+
 bus = SessionBus()
 purple = bus.get("im.pidgin.purple.PurpleService", "/im/pidgin/purple/PurpleObject")
 purple.ReceivedImMsg.connect(on_purple_message_receive_cb)
 purple.SentImMsg.connect(on_purple_message_sent_cb)
+
 GObject.MainLoop().run()
