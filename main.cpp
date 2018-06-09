@@ -360,15 +360,12 @@ void osd()
 	}
 	mouse_over_controls = ImGui::IsWindowHovered();
 	static bool mouse_down = false;
-	static int start_pos_x = 0, start_pos_y = 0;
 	static int last_pos_x = mouse_x, last_pos_y = mouse_y;
 	bool mouse_over_window =
 	    (mouse_x >= pos.x && mouse_x < pos.x + size.x)
 	    && (mouse_y >= pos.y && mouse_y < pos.y + size.y);
 	if (ImGui::IsMouseClicked(0) && mouse_over_window) {
 		mouse_down = true;
-		start_pos_x = mouse_x;
-		start_pos_y = mouse_y;
 	}
 	if (mouse_down) {
 		int delta_x = mouse_x - last_pos_x;
@@ -435,15 +432,12 @@ void chatbox()
 		}
 	}
 	static bool mouse_down = false;
-	static int start_pos_x = 0, start_pos_y = 0;
 	static int last_pos_x = mouse_x, last_pos_y = mouse_y;
 	bool mouse_over_window =
 	    (mouse_x >= pos.x && mouse_x < pos.x + size.x)
 	    && (mouse_y >= pos.y && mouse_y < pos.y + size.y);
 	if (ImGui::IsMouseClicked(0) && mouse_over_window) {
 		mouse_down = true;
-		start_pos_x = mouse_x;
-		start_pos_y = mouse_y;
 	}
 	if (mouse_down) {
 		int delta_x = mouse_x - last_pos_x;
