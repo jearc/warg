@@ -56,6 +56,7 @@ ImVec2 osdpos = ImVec2(MARGIN_SIZE, chatpos.y - MARGIN_SIZE - osdsize.y);
 float chat_opacity = DEFAULT_OPACITY;
 float osd_opacity = DEFAULT_OPACITY;
 std::string username = "User";
+char *home_dir = NULL;
 
 static void die(const char *msg)
 {
@@ -521,6 +522,8 @@ int main(int argc, char *argv[])
 
 	username = argv[1];
 
+	home_dir = getenv("HOME");
+
 	mpv = mpv_create();
 	if (!mpv)
 		die("context init failed");
@@ -590,7 +593,8 @@ int main(int argc, char *argv[])
 		is_playlist = true;
 
 		std::string line;
-		std::ifstream listfile("/home/james/.moov_playlist");
+		std::string path = std::string(home_dir) + "/.moov_playlist";
+		std::ifstream listfile(path);
 		if (listfile.is_open()) {
 			bool first = true;
 			while (getline(listfile, line)) {
@@ -607,7 +611,8 @@ int main(int argc, char *argv[])
 				}
 			}
 		}
-		std::ifstream trackfile("/home/james/.moov_track");
+		path = std::string(home_dir) + "/.moov_track";
+		std::ifstream trackfile(path);
 		if (trackfile.is_open()) {
 			int64_t track = -1;
 			if (getline(trackfile, line))
@@ -632,13 +637,14 @@ int main(int argc, char *argv[])
 		mpv_get_property(mpv, "playlist-count", MPV_FORMAT_INT64,
 				 &playlist_count);
 		if (playlist_count > 1) {
-			std::ofstream listfile("/home/james/.moov_playlist",
-					       std::ios::trunc);
+			std::string path =
+			    std::string(home_dir) + "/.moov_playlist";
+			std::ofstream listfile(path, std::ios::trunc);
 			for (int i = 2; i < argc; i++)
 				listfile << argv[i] << std::endl;
 
-			std::ofstream trackfile("/home/james/.moov_track",
-						std::ios::trunc);
+			path = std::string(home_dir) + "/.moov_track";
+			std::ofstream trackfile(path, std::ios::trunc);
 			trackfile << -1 << std::endl;
 			is_playlist = true;
 		}
@@ -729,8 +735,9 @@ int main(int argc, char *argv[])
 				    std::stof(pos_sec) / std::stof(total_sec);
 			if (progress > 0.8) {
 				last_completed_track = playlist_pos;
-				std::ofstream trackfile(
-				    "/home/james/.moov_track", std::ios::trunc);
+				std::string path =
+				    std::string(home_dir) + "/.moov_track";
+				std::ofstream trackfile(path, std::ios::trunc);
 				trackfile << playlist_pos << std::endl;
 			}
 		}
