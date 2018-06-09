@@ -5,7 +5,7 @@ OBJS += ./libs/gl3w/GL/gl3w.o
 
 LIBS = -lGL -ldl `sdl2-config --libs` `pkg-config --libs --cflags mpv` -pthread
 
-CXXFLAGS = -fPIC -g
+CXXFLAGS = -fPIC -pedantic -Wall -Wextra -O3 -g
 CXXFLAGS += -I./imgui -I./libs/gl3w `sdl2-config --cflags`
 CFLAGS = $(CXXFLAGS)
 
