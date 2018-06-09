@@ -1,6 +1,5 @@
 #include <algorithm>
 #include <time.h>
-#include <fstream>
 #include <stddef.h>
 #include <stdlib.h>
 #include <string>
@@ -515,6 +514,84 @@ void *stdin_loop(void *arg)
 	return NULL;
 }
 
+char *playlistpath()
+{
+	size_t pathlen = strlen(home_dir) + strlen("/.moov_playlist") + 1;
+	char *path = (char *)malloc(pathlen);
+	snprintf(path, pathlen, "%s/.moov_playlist", home_dir);
+
+	return path;
+}
+
+char *trackpath()
+{
+	size_t pathlen = strlen(home_dir) + strlen("/.moov_track") + 1;
+	char *path = (char *)malloc(pathlen);
+	snprintf(path, pathlen, "%s/.moov_track", home_dir);
+
+	return path;
+}
+
+void load_playlist(int *last_completed_track)
+{
+	size_t size, n;
+	char *path, *line;
+	FILE *fp;
+
+	path = playlistpath();
+	fp = fopen(path, "r");
+	if (!fp)
+		die("could not load playlist file.");
+	line = NULL;
+	size = 0, n = 0;
+	while ((size = getline(&line, &n, fp)) != -1) {
+		if (line[size - 1] == '\n')
+			line[size - 1] = '\0';
+		const char *cmd[] = {"loadfile", line, "append", NULL};
+		mpv_command(mpv, cmd);
+		free(line);
+		line = NULL;
+	}
+	fclose(fp);
+	free(path);
+
+	path = trackpath();
+	fp = fopen(path, "r");
+	if (!fp)
+		die("could not load track file.");
+	line = NULL;
+	n = 0;
+	size = getline(&line, &n, fp);
+	errno = 0;
+	int64_t track = strtol(line, NULL, 10);
+	if (errno)
+		die("could not parse track file.");
+	*last_completed_track = track;
+	track++;
+	mpv_set_property(mpv, "playlist-pos", MPV_FORMAT_INT64, &track);
+	fclose(fp);
+	free(path);
+}
+
+void save_track(int n)
+{
+	char *path = trackpath();
+	FILE *fp = fopen(path, "w");
+	fprintf(fp, "%d\n", n);
+	fclose(fp);
+	free(path);
+}
+
+void save_playlist(int numfiles, char **files)
+{
+	char *path = playlistpath();
+	FILE *fp = fopen(path, "w");
+	for (int i = 0; i < numfiles; i++)
+		fprintf(fp, "%s\n", files[i]);
+	fclose(fp);
+	free(path);
+}
+
 int main(int argc, char *argv[])
 {
 	if (argc < 3)
@@ -591,39 +668,7 @@ int main(int argc, char *argv[])
 
 	if (argc >= 2 && !strcmp(argv[2], "--resume")) {
 		is_playlist = true;
-
-		std::string line;
-		std::string path = std::string(home_dir) + "/.moov_playlist";
-		std::ifstream listfile(path);
-		if (listfile.is_open()) {
-			bool first = true;
-			while (getline(listfile, line)) {
-				if (first) {
-					const char *cmd[] = {
-					    "loadfile", line.c_str(), NULL};
-					mpv_command(mpv, cmd);
-					first = false;
-				} else {
-					const char *cmd[] = {"loadfile",
-							     line.c_str(),
-							     "append", NULL};
-					mpv_command(mpv, cmd);
-				}
-			}
-		}
-		path = std::string(home_dir) + "/.moov_track";
-		std::ifstream trackfile(path);
-		if (trackfile.is_open()) {
-			int64_t track = -1;
-			if (getline(trackfile, line))
-				track = (int64_t)std::stoi(line);
-			if (track >= 0) {
-				last_completed_track = track;
-				track += 1;
-				mpv_set_property(mpv, "playlist-pos",
-						 MPV_FORMAT_INT64, &track);
-			}
-		}
+		load_playlist(&last_completed_track);
 		file_loaded = true;
 	} else {
 		const char *cmd[] = {"loadfile", argv[2], NULL};
@@ -637,15 +682,8 @@ int main(int argc, char *argv[])
 		mpv_get_property(mpv, "playlist-count", MPV_FORMAT_INT64,
 				 &playlist_count);
 		if (playlist_count > 1) {
-			std::string path =
-			    std::string(home_dir) + "/.moov_playlist";
-			std::ofstream listfile(path, std::ios::trunc);
-			for (int i = 2; i < argc; i++)
-				listfile << argv[i] << std::endl;
-
-			path = std::string(home_dir) + "/.moov_track";
-			std::ofstream trackfile(path, std::ios::trunc);
-			trackfile << -1 << std::endl;
+			save_playlist(argc - 2, argv + 2);
+			save_track(-1);
 			is_playlist = true;
 		}
 	}
@@ -735,10 +773,7 @@ int main(int argc, char *argv[])
 				    std::stof(pos_sec) / std::stof(total_sec);
 			if (progress > 0.8) {
 				last_completed_track = playlist_pos;
-				std::string path =
-				    std::string(home_dir) + "/.moov_track";
-				std::ofstream trackfile(path, std::ios::trunc);
-				trackfile << playlist_pos << std::endl;
+				save_track(playlist_pos);
 			}
 		}
 	}
