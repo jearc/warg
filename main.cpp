@@ -530,6 +530,9 @@ int main(int argc, char *argv[]) {
         die("failed to set VO");
 
     mpv_set_option_string(mpv, "ytdl", "yes");
+    mpv_set_option_string(mpv, "ytdl-raw-options", "format=\"bestvideo[height<="
+                                                   "720][ext=mp4]+bestaudio/"
+                                                   "best[height<=720]/best\"");
     mpv_set_option_string(mpv, "input-ipc-server", PIPE);
 
     wakeup_on_mpv_events = SDL_RegisterEvents(1);
