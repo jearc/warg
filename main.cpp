@@ -264,7 +264,7 @@ void osd() {
                      ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoScrollbar |
                      ImGuiWindowFlags_NoSavedSettings);
     auto filename = mpv_get_property_string(mpv, "media-title");
-    ImGui::Text(filename);
+    ImGui::Text("%s", filename);
     char *pos_sec = mpv_get_property_string(mpv, "playback-time");
     char *total_sec = mpv_get_property_string(mpv, "duration");
     float progress = 0;
