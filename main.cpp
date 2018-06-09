@@ -1,5 +1,5 @@
 #include <algorithm>
-#include <ctime>
+#include <time.h>
 #include <fstream>
 #include <mutex>
 #include <stddef.h>
