@@ -1,0 +1,10 @@
+[Unit]
+Description=moovpidgin
+
+[Service]
+ExecStart=/usr/local/bin/moovpidgin
+Environment=DISPLAY=:0
+Restart=on-failure
+
+[Install]
+WantedBy=default.target
