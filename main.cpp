@@ -47,7 +47,6 @@ std::mutex chat_log_mutex;
 ImVec4 clear_color = ImColor(114, 144, 154);
 char chat_input_buf[256] = {0};
 bool scroll_to_bottom = true;
-bool is_fullscreen = false;
 int mouse_x = 0, mouse_y = 0;
 int last_mouse_move = 0;
 int64_t current_tick = 0;
@@ -247,6 +246,12 @@ void on_msg(const char *s, bool self) {
     }
 }
 
+void toggle_fullscreen() {
+	bool is_fullscreen = SDL_GetWindowFlags(window) & SDL_WINDOW_FULLSCREEN;
+	SDL_SetWindowFullscreen(window,
+							is_fullscreen ? 0 : SDL_WINDOW_FULLSCREEN_DESKTOP);
+}
+
 void osd() {
     if (!(mouse_over_controls || current_tick - last_mouse_move < 1000))
         return;
@@ -332,8 +337,7 @@ void osd() {
     ImGui::Button(audio_button.c_str());
     ImGui::SameLine();
     if (ImGui::Button("Full")) {
-        SDL_SetWindowFullscreen(window, !is_fullscreen);
-        is_fullscreen = !is_fullscreen;
+		toggle_fullscreen();
     }
     mouse_over_controls = ImGui::IsWindowHovered();
     static bool mouse_down = false;
@@ -625,8 +629,7 @@ int main(int argc, char *argv[]) {
                 goto done;
             case SDL_KEYDOWN:
                 if (event.key.keysym.sym == SDLK_F11) {
-                    SDL_SetWindowFullscreen(window, !is_fullscreen);
-                    is_fullscreen = !is_fullscreen;
+					toggle_fullscreen();
                 } else if (event.key.keysym.mod & KMOD_CTRL &&
                            event.key.keysym.sym == SDLK_SPACE) {
                     mpv_command_string(mpv, "cycle pause");
