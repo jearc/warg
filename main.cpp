@@ -1,10 +1,10 @@
 #include <time.h>
 #include <stddef.h>
 #include <stdlib.h>
-#include <string>
 #include <unistd.h>
 #include <stdio.h>
 #include <pthread.h>
+#include <errno.h>
 
 #include <GL/gl3w.h>
 #include <SDL.h>
@@ -53,7 +53,7 @@ ImVec2 osdsize = ImVec2(400, 78);
 ImVec2 osdpos = ImVec2(MARGIN_SIZE, chatpos.y - MARGIN_SIZE - osdsize.y);
 float chat_opacity = DEFAULT_OPACITY;
 float osd_opacity = DEFAULT_OPACITY;
-std::string username = "User";
+char *username = "User";
 char *home_dir = NULL;
 
 static void die(const char *msg)
@@ -93,17 +93,14 @@ int get_num_audio_sub_tracks(mpv_handle *mpv, int *naudio, int *nsubs)
 		return -1;
 	int naudio_ = 0, nsubs_ = 0;
 	for (int i = 0; i < ntracks; i++) {
-		std::string prop;
-		prop += "track-list/";
-		prop += std::to_string(i);
-		prop += "/type";
+		char propbuf[100];
+		snprintf(propbuf, 100, "track-list/%d/type", i);
 		char *type = NULL;
-		if (mpv_get_property(mpv, prop.c_str(), MPV_FORMAT_STRING,
-				     &type))
+		if (mpv_get_property(mpv, propbuf, MPV_FORMAT_STRING, &type))
 			return -2;
-		if (std::string(type) == "sub")
+		if (strcmp(type, "sub") == 0)
 			nsubs_++;
-		if (std::string(type) == "audio")
+		if (strcmp(type, "audio") == 0)
 			naudio_++;
 	}
 
@@ -117,7 +114,7 @@ void sendmsg(const char *msg)
 	printf("MSG :%s\n", msg);
 }
 
-std::string getstatus()
+char *getstatus()
 {
 	char *playback_time = mpv_get_property_osd_string(mpv, "playback-time");
 	char *duration = mpv_get_property_osd_string(mpv, "duration");
@@ -127,18 +124,13 @@ std::string getstatus()
 	int paused = 0;
 	mpv_get_property(mpv, "pause", MPV_FORMAT_FLAG, &paused);
 
-	std::string status;
+	char *status = (char *)malloc(50);
 	if (playback_time && duration) {
-		status += "moov: [";
-		status += playlist_pos;
-		status += "/";
-		status += playlist_count;
-		status += "] ";
-		status += paused ? "paused" : "playing";
-		status += " ";
-		status += playback_time;
+		snprintf(status, 50, "moov: [%s/%s] %s %s", playlist_pos,
+			 playlist_count, paused ? "paused" : "playing",
+			 playback_time);
 	} else {
-		status = "moov: not playing";
+		sprintf(status, "moov: not playing");
 	}
 
 	return status;
@@ -173,7 +165,7 @@ void writechat(const char *text, const char *from = NULL)
 	Message msg;
 	time_t t = time(0);
 	msg.time = t;
-	msg.from = strdup(from ? from : username.c_str());
+	msg.from = strdup(from ? from : username);
 	msg.text = strdup(text);
 
 	pthread_mutex_lock(&chatmutex);
@@ -215,11 +207,13 @@ void on_msg(const char *s, bool self)
 
 	if (strcmp(tokens[0], "pp") == 0) {
 		mpv_command_string(mpv, "cycle pause");
-		auto status = getstatus();
-		msg(status.c_str());
+		char *status = getstatus();
+		msg(status);
+		free(status);
 	} else if (strcmp(tokens[0], "STATUS") == 0) {
-		auto status = getstatus();
-		msg(status.c_str());
+		char *status = getstatus();
+		msg(status);
+		free(status);
 	} else if (strcmp(tokens[0], "NEXT") == 0) {
 		mpv_command_string(mpv, "playlist-next");
 	} else if (strcmp(tokens[0], "PREV") == 0) {
@@ -284,8 +278,11 @@ void osd()
 	char *pos_sec = mpv_get_property_string(mpv, "playback-time");
 	char *total_sec = mpv_get_property_string(mpv, "duration");
 	float progress = 0;
-	if (pos_sec && total_sec)
-		progress = std::stof(pos_sec) / std::stof(total_sec);
+	if (pos_sec && total_sec) {
+		float total_sec_f = strtof(total_sec, NULL);
+		if (total_sec_f != 0)
+			progress = strtof(pos_sec, NULL) / total_sec_f;
+	}
 	ImGui::ProgressBar(progress, ImVec2(380, 20));
 	if (ImGui::IsItemClicked() && total_sec) {
 		auto min = ImGui::GetItemRectMin();
@@ -293,7 +290,7 @@ void osd()
 		auto mouse = ImGui::GetMousePos();
 
 		float fraction = (mouse.x - min.x) / (max.x - min.x);
-		double time = fraction * std::stof(total_sec);
+		double time = fraction * strtof(total_sec, NULL);
 
 		mpv_set_property(mpv, "time-pos", MPV_FORMAT_DOUBLE, &time);
 	}
@@ -306,11 +303,9 @@ void osd()
 	char *playlist_count =
 	    mpv_get_property_osd_string(mpv, "playlist-count");
 	if (playback_time && duration) {
-		std::string status;
-		status += playback_time;
-		status += " / ";
-		status += duration;
-		ImGui::Text("%s", status.c_str());
+		char statusbuf[20];
+		snprintf(statusbuf, 20, "%s / %s", playback_time, duration);
+		ImGui::Text("%s", statusbuf);
 	} else {
 		ImGui::Text("Not playing");
 	}
@@ -319,11 +314,9 @@ void osd()
 		mpv_command_string(mpv, "playlist-prev");
 	ImGui::SameLine();
 	if (playlist_pos && playlist_count) {
-		std::string status;
-		status += playlist_pos;
-		status += "/";
-		status += playlist_count;
-		ImGui::Text("%s", status.c_str());
+		char statusbuf[20];
+		snprintf(statusbuf, 20, "%s/%s", playlist_pos, playlist_count);
+		ImGui::Text("%s", statusbuf);
 	} else {
 		ImGui::Text("0/0");
 	}
@@ -336,17 +329,17 @@ void osd()
 	get_num_audio_sub_tracks(mpv, &naudio, &nsubs);
 	int64_t selsub = 0;
 	mpv_get_property(mpv, "sub", MPV_FORMAT_INT64, &selsub);
-	std::string sub_button =
-	    "Sub: " + std::to_string(selsub) + "/" + std::to_string(nsubs);
-	if (ImGui::Button(sub_button.c_str())) {
+	char subbuttonbuf[10] = {0};
+	snprintf(subbuttonbuf, 10, "Sub: %d/%d", selsub, nsubs);
+	if (ImGui::Button(subbuttonbuf)) {
 		mpv_command_string(mpv, "cycle sub");
 	}
 	ImGui::SameLine();
 	int64_t selaudio = 0;
 	mpv_get_property(mpv, "audio", MPV_FORMAT_INT64, &selaudio);
-	std::string audio_button =
-	    "Audio: " + std::to_string(selaudio) + "/" + std::to_string(naudio);
-	ImGui::Button(audio_button.c_str());
+	char audiobuttonbuf[15] = {0};
+	snprintf(audiobuttonbuf, 15, "Audio: %d/%d", selaudio, naudio);
+	ImGui::Button(audiobuttonbuf);
 	ImGui::SameLine();
 	if (ImGui::Button("Full")) {
 		toggle_fullscreen();
@@ -401,14 +394,13 @@ void chatbox()
 			tm *now = localtime(&msg->time);
 			char buf[20] = {0};
 			strftime(buf, sizeof(buf), "%X", now);
-			std::string formatted;
-			formatted += "[";
-			formatted += buf;
-			formatted += "] ";
-			formatted += msg->from;
-			formatted += ": ";
-			formatted += msg->text;
-			ImGui::TextWrapped("%s", formatted.c_str());
+			int lenformatted = 6 + strlen(buf) + strlen(msg->from)
+					   + strlen(msg->text);
+			char *formatted = (char *)malloc(lenformatted);
+			snprintf(formatted, lenformatted, "[%s] %s: %s", buf,
+				 msg->from, msg->text);
+
+			ImGui::TextWrapped("%s", formatted);
 		}
 		pthread_mutex_unlock(&chatmutex);
 	}
@@ -593,7 +585,7 @@ int main(int argc, char *argv[])
 	if (argc < 3)
 		die("pass a username and media file(s) or URL(s) as arguments");
 
-	username = argv[1];
+	username = strdup(argv[1]);
 
 	home_dir = getenv("HOME");
 
@@ -729,9 +721,10 @@ int main(int argc, char *argv[])
 						}
 						if (mp_event->event_id
 						    == MPV_EVENT_PLAYBACK_RESTART) {
-							auto status =
+							char *status =
 							    getstatus();
-							msg(status.c_str());
+							msg(status);
+							free(status);
 						}
 						if (mp_event->event_id
 							== MPV_EVENT_END_FILE
@@ -764,9 +757,12 @@ int main(int argc, char *argv[])
 			char *total_sec =
 			    mpv_get_property_string(mpv, "duration");
 			float progress = 0;
-			if (pos_sec && total_sec)
-				progress =
-				    std::stof(pos_sec) / std::stof(total_sec);
+			if (pos_sec && total_sec) {
+				float total_sec_f = strtof(total_sec, NULL);
+				if (total_sec_f != 0)
+					progress =
+					    strtof(pos_sec, NULL) / total_sec_f;
+			}
 			if (progress > 0.8) {
 				last_completed_track = playlist_pos;
 				save_track(playlist_pos);
