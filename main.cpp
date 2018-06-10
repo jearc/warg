@@ -152,7 +152,6 @@ int parse_time(const char *timestr)
 	int power = 0;
 	while (count > 0) {
 		seconds += nums[count - 1] * pow(60, power);
-		printf("%d^%d\n", nums[count - 1], power);
 		count--;
 		power++;
 	}
