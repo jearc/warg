@@ -3,7 +3,6 @@
 #include <stdlib.h>
 #include <string>
 #include <unistd.h>
-#include <vector>
 #include <stdio.h>
 #include <pthread.h>
 
@@ -25,8 +24,8 @@ const float DEFAULT_OPACITY = 1.0;
 
 struct Message {
 	time_t time;
-	std::string from;
-	std::string text;
+	char *from;
+	char *text;
 };
 
 void on_msg(const char *s, bool self);
@@ -36,7 +35,8 @@ SDL_Window *window;
 mpv_handle *mpv;
 SDL_GLContext glcontext;
 mpv_opengl_cb_context *mpv_gl;
-std::vector<Message> chat_log;
+Message *chatlog = NULL;
+size_t maxmsgs = 0, nmsgs = 0;
 pthread_mutex_t chatmutex = PTHREAD_MUTEX_INITIALIZER;
 
 ImVec4 clear_color = ImColor(114, 144, 154);
@@ -173,11 +173,16 @@ void writechat(const char *text, const char *from = NULL)
 	Message msg;
 	time_t t = time(0);
 	msg.time = t;
-	msg.from = from ? from : username;
-	msg.text = text;
+	msg.from = strdup(from ? from : username.c_str());
+	msg.text = strdup(text);
 
 	pthread_mutex_lock(&chatmutex);
-	chat_log.push_back(msg);
+	if (nmsgs >= maxmsgs) {
+		maxmsgs += 3;
+		chatlog =
+		    (Message *)realloc(chatlog, maxmsgs * sizeof(Message));
+	}
+	chatlog[nmsgs++] = msg;
 	pthread_mutex_unlock(&chatmutex);
 	scroll_to_bottom = true;
 }
@@ -391,17 +396,18 @@ void chatbox()
 			  false, ImGuiWindowFlags_NoScrollbar);
 	{
 		pthread_mutex_lock(&chatmutex);
-		for (auto &msg : chat_log) {
-			tm *now = localtime(&msg.time);
+		for (int i = 0; i < nmsgs; i++) {
+			Message *msg = &chatlog[i];
+			tm *now = localtime(&msg->time);
 			char buf[20] = {0};
 			strftime(buf, sizeof(buf), "%X", now);
 			std::string formatted;
 			formatted += "[";
 			formatted += buf;
 			formatted += "] ";
-			formatted += msg.from;
+			formatted += msg->from;
 			formatted += ": ";
-			formatted += msg.text;
+			formatted += msg->text;
 			ImGui::TextWrapped("%s", formatted.c_str());
 		}
 		pthread_mutex_unlock(&chatmutex);
