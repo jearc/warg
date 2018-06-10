@@ -144,24 +144,6 @@ std::string getstatus()
 	return status;
 }
 
-std::vector<std::string> splitstring(const char *s, char delim)
-{
-	char *dup = strdup(s);
-	char *delimstr = (char *)malloc(2);
-	sprintf(delimstr, "%c", delim);
-	std::vector<std::string> words;
-
-	char *str = dup, *token, *saveptr;
-	while (token = strtok_r(str, delimstr, &saveptr)) {
-		words.push_back(token);
-		str = NULL;
-	}
-
-	free(dup);
-
-	return words;
-}
-
 int parse_time(const char *timestr)
 {
 	int nums[3] = {0}, count = 0;
@@ -217,50 +199,54 @@ void msg(const char *text, const char *from = NULL)
 
 void on_msg(const char *s, bool self)
 {
-	auto words = splitstring(s, ' ');
-	std::string com;
-	if (words.size() > 0)
-		com = words[0];
-	else
-		return;
+	char *tokens[3] = {0};
+	int ntokens = 0;
 
-	if (com == "pp") {
+	char *dup = strdup(s), *str = dup, *token, *saveptr;
+	while (ntokens < 3 && (token = strtok_r(str, " ", &saveptr))) {
+		tokens[ntokens++] = strdup(token);
+		str = NULL;
+	}
+
+	if (strcmp(tokens[0], "pp") == 0) {
 		mpv_command_string(mpv, "cycle pause");
 		auto status = getstatus();
 		msg(status.c_str());
-	} else if (com == "STATUS") {
+	} else if (strcmp(tokens[0], "STATUS") == 0) {
 		auto status = getstatus();
 		msg(status.c_str());
-	} else if (com == "NEXT") {
+	} else if (strcmp(tokens[0], "NEXT") == 0) {
 		mpv_command_string(mpv, "playlist-next");
-	} else if (com == "PREV") {
+	} else if (strcmp(tokens[0], "PREV") == 0) {
 		mpv_command_string(mpv, "playlist-prev");
-	} else if (com == "SEEK") {
-		if (words.size() < 2)
+	} else if (strcmp(tokens[0], "SEEK") == 0) {
+		if (ntokens < 2)
 			return;
-		double time = parse_time(words[1].c_str());
+		double time = parse_time(tokens[1]);
 		mpv_set_property(mpv, "time-pos", MPV_FORMAT_DOUBLE, &time);
-	} else if (com == "INDEX") {
-		if (words.size() < 2)
+	} else if (strcmp(tokens[0], "INDEX") == 0) {
+		if (ntokens < 2)
 			return;
-		int64_t index = atoi(words[1].c_str()) - 1;
+		int64_t index = atoi(tokens[1]) - 1;
 		mpv_set_property(mpv, "playlist-pos", MPV_FORMAT_INT64, &index);
-	} else if (com == ":set" && self) {
-		if (words.size() < 2)
+	} else if (strcmp(tokens[0], ":set") == 0 && self) {
+		if (ntokens < 2)
 			return;
-		if (words[1] == "chat_opacity")
-			chat_opacity = words.size() > 2 ? atof(words[2].c_str())
-							: DEFAULT_OPACITY;
-		if (words[1] == "osd_opacity")
-			osd_opacity = words.size() > 2 ? atof(words[2].c_str())
-						       : DEFAULT_OPACITY;
-	} else if (com == "ALTF4") {
+		if (strcmp(tokens[1], "chat_opacity") == 0)
+			chat_opacity =
+			    ntokens > 2 ? atof(tokens[2]) : DEFAULT_OPACITY;
+		if (strcmp(tokens[1], "osd_opacity") == 0)
+			osd_opacity =
+			    ntokens > 2 ? atof(tokens[2]) : DEFAULT_OPACITY;
+	} else if (strcmp(tokens[0], "ALTF4") == 0) {
 		mpv_opengl_cb_uninit_gl(mpv_gl);
 		mpv_terminate_destroy(mpv);
 		SDL_GL_DeleteContext(glcontext);
 		SDL_DestroyWindow(window);
 		exit(0);
 	}
+
+	free(dup);
 }
 
 void toggle_fullscreen()
