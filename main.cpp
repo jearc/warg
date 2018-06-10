@@ -40,7 +40,7 @@ size_t maxmsgs = 0, nmsgs = 0;
 pthread_mutex_t chatmutex = PTHREAD_MUTEX_INITIALIZER;
 
 ImVec4 clear_color = ImColor(114, 144, 154);
-char chat_input_buf[256] = {0};
+char chat_input_buf[256] = { 0 };
 bool scroll_to_bottom = true;
 int mouse_x = 0, mouse_y = 0;
 int last_mouse_move = 0;
@@ -84,7 +84,7 @@ static void *get_proc_address_mpv(void *fn_ctx, const char *name)
 
 static void on_mpv_events(void *ctx)
 {
-	SDL_Event event = {.type = wakeup_on_mpv_events};
+	SDL_Event event = { .type = wakeup_on_mpv_events };
 	SDL_PushEvent(&event);
 }
 
@@ -135,7 +135,7 @@ char *getstatus()
 	char *duration = mpv_get_property_osd_string(mpv, "duration");
 	char *playlist_pos = mpv_get_property_osd_string(mpv, "playlist-pos-1");
 	char *playlist_count =
-	    mpv_get_property_osd_string(mpv, "playlist-count");
+		mpv_get_property_osd_string(mpv, "playlist-count");
 	int paused = 0;
 	mpv_get_property(mpv, "pause", MPV_FORMAT_FLAG, &paused);
 
@@ -153,7 +153,7 @@ char *getstatus()
 
 int parse_time(const char *timestr)
 {
-	int nums[3] = {0}, count = 0;
+	int nums[3] = { 0 }, count = 0;
 
 	char *dup = strdup(timestr);
 	char *str = dup, *token, *saveptr;
@@ -186,7 +186,7 @@ void writechat(const char *text, const char *from = NULL)
 	if (nmsgs >= maxmsgs) {
 		maxmsgs += 3;
 		chatlog =
-		    (Message *)realloc(chatlog, maxmsgs * sizeof(Message));
+			(Message *)realloc(chatlog, maxmsgs * sizeof(Message));
 	}
 	chatlog[nmsgs++] = msg;
 	pthread_mutex_unlock(&chatmutex);
@@ -210,7 +210,7 @@ void msg(const char *text, const char *from = NULL)
 
 void on_msg(const char *s, bool self)
 {
-	char *tokens[3] = {0};
+	char *tokens[3] = { 0 };
 	int ntokens = 0;
 
 	char *dup = strdup(s), *str = dup, *token, *saveptr;
@@ -247,10 +247,10 @@ void on_msg(const char *s, bool self)
 			return;
 		if (strcmp(tokens[1], "chat_opacity") == 0)
 			chat_opacity =
-			    ntokens > 2 ? atof(tokens[2]) : DEFAULT_OPACITY;
+				ntokens > 2 ? atof(tokens[2]) : DEFAULT_OPACITY;
 		if (strcmp(tokens[1], "osd_opacity") == 0)
 			osd_opacity =
-			    ntokens > 2 ? atof(tokens[2]) : DEFAULT_OPACITY;
+				ntokens > 2 ? atof(tokens[2]) : DEFAULT_OPACITY;
 	} else if (strcmp(tokens[0], "ALTF4") == 0) {
 		mpv_opengl_cb_uninit_gl(mpv_gl);
 		mpv_terminate_destroy(mpv);
@@ -266,7 +266,7 @@ void toggle_fullscreen()
 {
 	bool is_fullscreen = SDL_GetWindowFlags(window) & SDL_WINDOW_FULLSCREEN;
 	SDL_SetWindowFullscreen(
-	    window, is_fullscreen ? 0 : SDL_WINDOW_FULLSCREEN_DESKTOP);
+		window, is_fullscreen ? 0 : SDL_WINDOW_FULLSCREEN_DESKTOP);
 }
 
 void osd()
@@ -276,17 +276,17 @@ void osd()
 
 	ImVec2 size = osdsize;
 	ImVec2 pos;
-	pos.x = osdpos.x >= 0 ? osdpos.x
-			      : (int)ImGui::GetIO().DisplaySize.x + osdpos.x;
-	pos.y = osdpos.y >= 0 ? osdpos.y
-			      : (int)ImGui::GetIO().DisplaySize.y + osdpos.y;
+	pos.x = osdpos.x >= 0 ? osdpos.x :
+				(int)ImGui::GetIO().DisplaySize.x + osdpos.x;
+	pos.y = osdpos.y >= 0 ? osdpos.y :
+				(int)ImGui::GetIO().DisplaySize.y + osdpos.y;
 	bool display = true;
 	ImGui::SetNextWindowPos(pos);
 	ImGui::Begin("StatusDisplay", &display, size, osd_opacity,
-		     ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize
-			 | ImGuiWindowFlags_NoMove
-			 | ImGuiWindowFlags_NoScrollbar
-			 | ImGuiWindowFlags_NoSavedSettings);
+		     ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize |
+			     ImGuiWindowFlags_NoMove |
+			     ImGuiWindowFlags_NoScrollbar |
+			     ImGuiWindowFlags_NoSavedSettings);
 	auto filename = mpv_get_property_string(mpv, "media-title");
 	ImGui::Text("%s", filename);
 	char *pos_sec = mpv_get_property_string(mpv, "playback-time");
@@ -315,7 +315,7 @@ void osd()
 	char *duration = mpv_get_property_osd_string(mpv, "duration");
 	char *playlist_pos = mpv_get_property_osd_string(mpv, "playlist-pos-1");
 	char *playlist_count =
-	    mpv_get_property_osd_string(mpv, "playlist-count");
+		mpv_get_property_osd_string(mpv, "playlist-count");
 	if (playback_time && duration) {
 		char statusbuf[20];
 		snprintf(statusbuf, 20, "%s / %s", playback_time, duration);
@@ -343,7 +343,7 @@ void osd()
 	get_num_audio_sub_tracks(mpv, &naudio, &nsubs);
 	int64_t selsub = 0;
 	mpv_get_property(mpv, "sub", MPV_FORMAT_INT64, &selsub);
-	char subbuttonbuf[10] = {0};
+	char subbuttonbuf[10] = { 0 };
 	snprintf(subbuttonbuf, 10, "Sub: %d/%d", selsub, nsubs);
 	if (ImGui::Button(subbuttonbuf)) {
 		mpv_command_string(mpv, "cycle sub");
@@ -351,7 +351,7 @@ void osd()
 	ImGui::SameLine();
 	int64_t selaudio = 0;
 	mpv_get_property(mpv, "audio", MPV_FORMAT_INT64, &selaudio);
-	char audiobuttonbuf[15] = {0};
+	char audiobuttonbuf[15] = { 0 };
 	snprintf(audiobuttonbuf, 15, "Audio: %d/%d", selaudio, naudio);
 	ImGui::Button(audiobuttonbuf);
 	ImGui::SameLine();
@@ -362,8 +362,8 @@ void osd()
 	static bool mouse_down = false;
 	static int last_pos_x = mouse_x, last_pos_y = mouse_y;
 	bool mouse_over_window =
-	    (mouse_x >= pos.x && mouse_x < pos.x + size.x)
-	    && (mouse_y >= pos.y && mouse_y < pos.y + size.y);
+		(mouse_x >= pos.x && mouse_x < pos.x + size.x) &&
+		(mouse_y >= pos.y && mouse_y < pos.y + size.y);
 	if (ImGui::IsMouseClicked(0) && mouse_over_window) {
 		mouse_down = true;
 	}
@@ -385,19 +385,19 @@ void chatbox()
 {
 	ImVec2 size = chatsize;
 	ImVec2 pos;
-	pos.x = chatpos.x >= 0 ? chatpos.x
-			       : (int)ImGui::GetIO().DisplaySize.x + chatpos.x;
-	pos.y = chatpos.y >= 0 ? chatpos.y
-			       : (int)ImGui::GetIO().DisplaySize.y + chatpos.y;
+	pos.x = chatpos.x >= 0 ? chatpos.x :
+				 (int)ImGui::GetIO().DisplaySize.x + chatpos.x;
+	pos.y = chatpos.y >= 0 ? chatpos.y :
+				 (int)ImGui::GetIO().DisplaySize.y + chatpos.y;
 
 	bool display = true;
 	ImGui::SetNextWindowSize(size, ImGuiSetCond_FirstUseEver);
 	ImGui::SetNextWindowPos(pos);
 	ImGui::Begin("ChatBox", &display, size, chat_opacity,
-		     ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize
-			 | ImGuiWindowFlags_NoMove
-			 | ImGuiWindowFlags_NoScrollbar
-			 | ImGuiWindowFlags_NoSavedSettings);
+		     ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize |
+			     ImGuiWindowFlags_NoMove |
+			     ImGuiWindowFlags_NoScrollbar |
+			     ImGuiWindowFlags_NoSavedSettings);
 	ImGui::BeginChild("LogRegion",
 			  ImVec2(0, -ImGui::GetItemsLineHeightWithSpacing()),
 			  false, ImGuiWindowFlags_NoScrollbar);
@@ -406,10 +406,10 @@ void chatbox()
 		for (int i = 0; i < nmsgs; i++) {
 			Message *msg = &chatlog[i];
 			tm *now = localtime(&msg->time);
-			char buf[20] = {0};
+			char buf[20] = { 0 };
 			strftime(buf, sizeof(buf), "%X", now);
-			int lenformatted = 6 + strlen(buf) + strlen(msg->from)
-					   + strlen(msg->text);
+			int lenformatted = 6 + strlen(buf) + strlen(msg->from) +
+					   strlen(msg->text);
 			char *formatted = (char *)malloc(lenformatted);
 			snprintf(formatted, lenformatted, "[%s] %s: %s", buf,
 				 msg->from, msg->text);
@@ -435,8 +435,8 @@ void chatbox()
 	static bool mouse_down = false;
 	static int last_pos_x = mouse_x, last_pos_y = mouse_y;
 	bool mouse_over_window =
-	    (mouse_x >= pos.x && mouse_x < pos.x + size.x)
-	    && (mouse_y >= pos.y && mouse_y < pos.y + size.y);
+		(mouse_x >= pos.x && mouse_x < pos.x + size.x) &&
+		(mouse_y >= pos.y && mouse_y < pos.y + size.y);
 	if (ImGui::IsMouseClicked(0) && mouse_over_window) {
 		mouse_down = true;
 	}
@@ -452,9 +452,9 @@ void chatbox()
 	last_pos_x = mouse_x;
 	last_pos_y = mouse_y;
 	ImGui::PopItemWidth();
-	if (ImGui::IsItemHovered()
-	    || (ImGui::IsRootWindowOrAnyChildFocused()
-		&& !ImGui::IsAnyItemActive() && !ImGui::IsMouseClicked(0)))
+	if (ImGui::IsItemHovered() ||
+	    (ImGui::IsRootWindowOrAnyChildFocused() &&
+	     !ImGui::IsAnyItemActive() && !ImGui::IsMouseClicked(0)))
 		ImGui::SetKeyboardFocusHere(-1);
 	ImGui::End();
 }
@@ -549,7 +549,7 @@ void load_playlist(int *last_completed_track)
 	while ((size = getline(&line, &n, fp)) != -1) {
 		if (line[size - 1] == '\n')
 			line[size - 1] = '\0';
-		const char *cmd[] = {"loadfile", line, "append", NULL};
+		const char *cmd[] = { "loadfile", line, "append", NULL };
 		mpv_command(mpv, cmd);
 		free(line);
 		line = NULL;
@@ -598,8 +598,8 @@ void handle_keydown(SDL_Event event)
 {
 	if (event.key.keysym.sym == SDLK_F11) {
 		toggle_fullscreen();
-	} else if (event.key.keysym.mod & KMOD_CTRL
-		   && event.key.keysym.sym == SDLK_SPACE) {
+	} else if (event.key.keysym.mod & KMOD_CTRL &&
+		   event.key.keysym.sym == SDLK_SPACE) {
 		mpv_command_string(mpv, "cycle pause");
 	} else {
 		ImGui_ImplSdlGL3_ProcessEvent(&event);
@@ -695,14 +695,15 @@ int main(int argc, char *argv[])
 	SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 2);
 	SDL_DisplayMode current;
 	SDL_GetCurrentDisplayMode(0, &current);
-	window = SDL_CreateWindow(
-	    "Moov", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 1280, 720,
-	    SDL_WINDOW_OPENGL | SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE);
+	window = SDL_CreateWindow("Moov", SDL_WINDOWPOS_CENTERED,
+				  SDL_WINDOWPOS_CENTERED, 1280, 720,
+				  SDL_WINDOW_OPENGL | SDL_WINDOW_SHOWN |
+					  SDL_WINDOW_RESIZABLE);
 	if (!window)
 		die("failed to create SDL window");
 
 	mpv_gl = (mpv_opengl_cb_context *)mpv_get_sub_api(
-	    mpv, MPV_SUB_API_OPENGL_CB);
+		mpv, MPV_SUB_API_OPENGL_CB);
 	if (!mpv_gl)
 		die("failed to create mpv GL API handle");
 
@@ -740,11 +741,11 @@ int main(int argc, char *argv[])
 		load_playlist(&last_completed_track);
 		file_loaded = true;
 	} else {
-		const char *cmd[] = {"loadfile", argv[2], NULL};
+		const char *cmd[] = { "loadfile", argv[2], NULL };
 		mpv_command(mpv, cmd);
 		for (int i = 3; i < argc; i++) {
-			const char *cmd2[] = {"loadfile", argv[i], "append",
-					      NULL};
+			const char *cmd2[] = { "loadfile", argv[i], "append",
+					       NULL };
 			mpv_command(mpv, cmd2);
 		}
 		int64_t playlist_count;
