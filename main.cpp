@@ -55,10 +55,25 @@ float chat_opacity = DEFAULT_OPACITY;
 float osd_opacity = DEFAULT_OPACITY;
 char *username = "User";
 char *home_dir = NULL;
+bool file_loaded = false;
+bool is_playlist = false;
+int last_completed_track = -1;
+
+void cleanup()
+{
+	if (mpv_gl)
+		mpv_opengl_cb_uninit_gl(mpv_gl);
+	if (mpv)
+		mpv_terminate_destroy(mpv);
+	SDL_GL_DeleteContext(glcontext);
+	if (window)
+		SDL_DestroyWindow(window);
+}
 
 static void die(const char *msg)
 {
 	fprintf(stderr, "error: %s\n", msg);
+	cleanup();
 	exit(1);
 }
 
@@ -579,6 +594,77 @@ void save_playlist(int numfiles, char **files)
 	free(path);
 }
 
+void handle_keydown(SDL_Event event)
+{
+	if (event.key.keysym.sym == SDLK_F11) {
+		toggle_fullscreen();
+	} else if (event.key.keysym.mod & KMOD_CTRL
+		   && event.key.keysym.sym == SDLK_SPACE) {
+		mpv_command_string(mpv, "cycle pause");
+	} else {
+		ImGui_ImplSdlGL3_ProcessEvent(&event);
+	}
+}
+
+void handle_mpv_events()
+{
+	while (1) {
+		mpv_event *mp_event = mpv_wait_event(mpv, 0);
+		if (mp_event->event_id == MPV_EVENT_NONE)
+			break;
+		if (mp_event->event_id == MPV_EVENT_FILE_LOADED) {
+			mpv_command_string(mpv, "set pause yes");
+			file_loaded = true;
+		}
+		if (mp_event->event_id == MPV_EVENT_PLAYBACK_RESTART) {
+			char *status = getstatus();
+			msg(status);
+			free(status);
+		}
+		if (mp_event->event_id == MPV_EVENT_END_FILE && !file_loaded) {
+			msg("moov: m̛̿̇al͒f̃un̩cͯt̿io̲n̙͌͢");
+			die("couldn't load file");
+		}
+	}
+}
+
+void handle_events()
+{
+	SDL_Event event;
+	while (SDL_PollEvent(&event)) {
+		if (event.type == SDL_QUIT) {
+			cleanup();
+			exit(0);
+		} else if (event.type == SDL_KEYDOWN) {
+			handle_keydown(event);
+		} else if (event.type == wakeup_on_mpv_events) {
+			handle_mpv_events();
+		} else {
+			ImGui_ImplSdlGL3_ProcessEvent(&event);
+		}
+	}
+}
+
+void save_playlist_state()
+{
+	int64_t playlist_pos;
+	mpv_get_property(mpv, "playlist-pos", MPV_FORMAT_INT64, &playlist_pos);
+	if (!is_playlist || playlist_pos <= last_completed_track)
+		return;
+	char *pos_sec = mpv_get_property_string(mpv, "playback-time");
+	char *total_sec = mpv_get_property_string(mpv, "duration");
+	float progress = 0;
+	if (pos_sec && total_sec) {
+		float total_sec_f = strtof(total_sec, NULL);
+		if (total_sec_f != 0)
+			progress = strtof(pos_sec, NULL) / total_sec_f;
+	}
+	if (progress > 0.8) {
+		last_completed_track = playlist_pos;
+		save_track(playlist_pos);
+	}
+}
+
 int main(int argc, char *argv[])
 {
 	if (argc < 3)
@@ -649,10 +735,6 @@ int main(int argc, char *argv[])
 		die("could not register events");
 	mpv_set_wakeup_callback(mpv, on_mpv_events, NULL);
 
-	bool file_loaded = false;
-	bool is_playlist = false;
-	int last_completed_track = -1;
-
 	if (argc >= 2 && !strcmp(argv[2], "--resume")) {
 		is_playlist = true;
 		load_playlist(&last_completed_track);
@@ -688,55 +770,8 @@ int main(int argc, char *argv[])
 		SDL_GetMouseState(&mouse_x, &mouse_y);
 		if (old_mouse_x != mouse_x || old_mouse_y != mouse_y)
 			last_mouse_move = current_tick;
-		SDL_Event event;
-		while (SDL_PollEvent(&event)) {
-			switch (event.type) {
-			case SDL_QUIT:
-				goto done;
-			case SDL_KEYDOWN:
-				if (event.key.keysym.sym == SDLK_F11) {
-					toggle_fullscreen();
-				} else if (event.key.keysym.mod & KMOD_CTRL
-					   && event.key.keysym.sym
-						  == SDLK_SPACE) {
-					mpv_command_string(mpv, "cycle pause");
-				} else
-					ImGui_ImplSdlGL3_ProcessEvent(&event);
-				break;
-			default:
-				if (event.type == wakeup_on_mpv_events) {
-					while (1) {
-						mpv_event *mp_event =
-						    mpv_wait_event(mpv, 0);
-						if (mp_event->event_id
-						    == MPV_EVENT_NONE)
-							break;
-						if (mp_event->event_id
-						    == MPV_EVENT_FILE_LOADED) {
-							mpv_command_string(
-							    mpv,
-							    "set pause yes");
-							file_loaded = true;
-						}
-						if (mp_event->event_id
-						    == MPV_EVENT_PLAYBACK_RESTART) {
-							char *status =
-							    getstatus();
-							msg(status);
-							free(status);
-						}
-						if (mp_event->event_id
-							== MPV_EVENT_END_FILE
-						    && !file_loaded) {
-							msg("moov: "
-							    "m̛̿̇al͒f̃un̩cͯt̿io̲n̙͌͢");
-							goto done;
-						}
-					}
-				}
-				ImGui_ImplSdlGL3_ProcessEvent(&event);
-			}
-		}
+
+		handle_events();
 
 		int w, h;
 		SDL_GetWindowSize(window, &w, &h);
@@ -747,33 +782,10 @@ int main(int argc, char *argv[])
 		ui();
 		SDL_GL_SwapWindow(window);
 
-		int64_t playlist_pos;
-		mpv_get_property(mpv, "playlist-pos", MPV_FORMAT_INT64,
-				 &playlist_pos);
-		if (is_playlist && playlist_pos > last_completed_track) {
-			char *pos_sec =
-			    mpv_get_property_string(mpv, "playback-time");
-			char *total_sec =
-			    mpv_get_property_string(mpv, "duration");
-			float progress = 0;
-			if (pos_sec && total_sec) {
-				float total_sec_f = strtof(total_sec, NULL);
-				if (total_sec_f != 0)
-					progress =
-					    strtof(pos_sec, NULL) / total_sec_f;
-			}
-			if (progress > 0.8) {
-				last_completed_track = playlist_pos;
-				save_track(playlist_pos);
-			}
-		}
+		save_playlist_state();
 	}
 
-done:
-	mpv_opengl_cb_uninit_gl(mpv_gl);
-	mpv_terminate_destroy(mpv);
-	SDL_GL_DeleteContext(glcontext);
-	SDL_DestroyWindow(window);
+	cleanup();
 
 	return 0;
 }
