@@ -507,6 +507,10 @@ void *stdin_loop(void *arg)
 	size_t size;
 	while (true) {
 		getline(&line, &size, stdin);
+		char *ch = line;
+		while (*ch++ != '\0')
+			if (ch != line && *(ch - 1) == '\n')
+				*(ch - 1) = '\0';
 		int err = readmsg(line);
 		if (err)
 			fprintf(stderr, "parsing error: %d\n", err);
