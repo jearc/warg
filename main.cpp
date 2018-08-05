@@ -117,7 +117,7 @@ void sendmsg(const char *msg)
 	printf("MSG :%s\n", msg);
 }
 
-char *getstatus()
+char *writestatus(char buf[])
 {
 	char *playback_time = mpv_get_property_osd_string(mpv, "playback-time");
 	char *duration = mpv_get_property_osd_string(mpv, "duration");
@@ -127,16 +127,13 @@ char *getstatus()
 	int paused = 0;
 	mpv_get_property(mpv, "pause", MPV_FORMAT_FLAG, &paused);
 
-	char *status = (char *)malloc(50);
 	if (playback_time && duration) {
-		snprintf(status, 50, "moov: [%s/%s] %s %s", playlist_pos,
+		snprintf(buf, 50, "moov: [%s/%s] %s %s", playlist_pos,
 			 playlist_count, paused ? "paused" : "playing",
 			 playback_time);
 	} else {
-		sprintf(status, "moov: not playing");
+		sprintf(buf, "moov: not playing");
 	}
-
-	return status;
 }
 
 int parse_time(const char *timestr)
@@ -209,13 +206,13 @@ void on_msg(const char *s, bool self)
 
 	if (strcmp(tokens[0], "pp") == 0) {
 		mpv_command_string(mpv, "cycle pause");
-		char *status = getstatus();
-		msg(status);
-		free(status);
+		char statusbuf[50] = {};
+		writestatus(statusbuf);
+		msg(statusbuf);
 	} else if (strcmp(tokens[0], "STATUS") == 0) {
-		char *status = getstatus();
-		msg(status);
-		free(status);
+		char statusbuf[50] = {};
+		writestatus(statusbuf);
+		msg(statusbuf);
 	} else if (strcmp(tokens[0], "NEXT") == 0) {
 		mpv_command_string(mpv, "playlist-next");
 	} else if (strcmp(tokens[0], "PREV") == 0) {
@@ -396,13 +393,8 @@ void chatbox()
 			tm *now = localtime(&msg->time);
 			char buf[20] = { 0 };
 			strftime(buf, sizeof(buf), "%X", now);
-			int lenformatted = 6 + strlen(buf) + strlen(msg->from) +
-					   strlen(msg->text);
-			char *formatted = (char *)malloc(lenformatted);
-			snprintf(formatted, lenformatted, "[%s] %s: %s", buf,
-				 msg->from, msg->text);
-
-			ImGui::TextWrapped("%s", formatted);
+			ImGui::TextWrapped("[%s] %s: %s", buf, msg->from,
+					   msg->text);
 		}
 		pthread_mutex_unlock(&chatmutex);
 	}
@@ -609,9 +601,9 @@ void handle_mpv_events()
 			file_loaded = true;
 		}
 		if (mp_event->event_id == MPV_EVENT_PLAYBACK_RESTART) {
-			char *status = getstatus();
-			msg(status);
-			free(status);
+			char statusbuf[50] = {};
+			writestatus(statusbuf);
+			msg(statusbuf);
 		}
 		if (mp_event->event_id == MPV_EVENT_END_FILE && !file_loaded) {
 			msg("moov: m̛̿̇al͒f̃un̩cͯt̿io̲n̙͌͢");
