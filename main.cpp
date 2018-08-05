@@ -88,18 +88,6 @@ static void on_mpv_events(void *ctx)
 	SDL_PushEvent(&event);
 }
 
-char *seconds_to_time_string(float t)
-{
-	unsigned int h = floor(t / 3600);
-	unsigned int m = floor((t - 3600 * h) / 60);
-	unsigned int s = floor(t - 3600 * h - 60 * m);
-
-	char *ts = (char *)malloc(9);
-	snprintf(ts, 9, "%02d:%02d:%02d", h, m, s);
-
-	return ts;
-}
-
 int get_num_audio_sub_tracks(mpv_handle *mpv, int *naudio, int *nsubs)
 {
 	int64_t ntracks;
