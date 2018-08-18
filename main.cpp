@@ -15,6 +15,8 @@
 #include "imgui/imgui.h"
 #include "imgui/imgui_impl_sdl_gl3.h"
 
+#define MAX_MSG_LEN 1000
+
 static Uint32 wakeup_on_mpv_events;
 
 const char *PIPE = "/tmp/mpvpipe";
@@ -483,18 +485,26 @@ int readmsg(const char *l)
 
 void *stdin_loop(void *arg)
 {
-	char *line = NULL;
-	size_t size;
+	char buf[MAX_MSG_LEN];
+	memset(buf, 0, sizeof buf);
+	size_t bufidx = 0;
+
 	while (true) {
-		getline(&line, &size, stdin);
-		char *ch = line;
-		while (*ch++ != '\0')
-			if (ch != line && *(ch - 1) == '\n')
-				*(ch - 1) = '\0';
-		int err = readmsg(line);
-		if (err)
-			fprintf(stderr, "parsing error: %d\n", err);
-		free(line);
+		char c = getchar();
+		switch (c) {
+		case EOF:
+			die("eof");
+			break;
+		case '\0':
+			readmsg(buf);
+			memset(buf, 0, sizeof buf);
+			bufidx = 0;
+			break;
+		default:
+			if (bufidx < (sizeof buf) - 1 && !(bufidx == 0 && c == '\n'))
+				buf[bufidx++] = c;
+			break;
+		}
 	}
 
 	return NULL;
