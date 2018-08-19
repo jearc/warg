@@ -7,3 +7,4 @@ moov
 *.map
 *.sym
 *~
+.vscode

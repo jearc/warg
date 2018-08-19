@@ -43,7 +43,10 @@ def handle_moov_command(account, conversation, args, from_self):
     username = purple.PurpleAccountGetAlias(account)
     if from_self:
         purple_conversation = conversation
-        open_moov([username] + args)
+        open_moov(args)
+        print("running moov with args:")
+        for arg in args:
+            print(arg)
     else:
         pending_open = (conversation, args)
         send_purple_message(conversation, "moov: awaiting confirmation...")
@@ -61,10 +64,14 @@ def parse_command(account, conversation, message, from_self):
         else:
             send_purple_message(conversation, "moov: no videos found")
     if message.find('YT') == 0:
-        url = message.split()[1]
-        handle_moov_command(account, conversation, [url], from_self)
+        split = message.split()
+        url = split[1]
+        if len(split) > 2:
+            handle_moov_command(account, conversation, [url, "-s", split[2]], from_self)
+        else:
+            handle_moov_command(account, conversation, [url], from_self)
     if message == "RESUME":
-        handle_moov_command(account, conversation, ['--resume'], from_self)
+        handle_moov_command(account, conversation, ['-r'], from_self)
     if message == "sure" and from_self:
         handle_moov_command(account, conversation, pending_open[1], True)
         pending_open = None
@@ -80,6 +87,8 @@ def on_purple_message_sent_cb(account, recipient, message):
     for conv in purple.PurpleGetConversations():
         if recipient.split('/')[0] == purple.PurpleConversationGetName(conv).split('/')[0]:
             conversation = conv
+    if conversation and conversation == purple_conversation:
+        send_moov_message(username, message)
     parse_command(account, conversation, message, True)
 
 def kill_moov():
@@ -91,10 +100,14 @@ def kill_moov():
 
 def moov_handler_thread_f():
     global purple_conversation
+    partial = ''
     while moov_proc and moov_proc.poll() is None:
-        line = moov_proc.stdout.readline()
-        if line[0:3] == "MSG":
-            send_purple_message(purple_conversation, line[5:-1])
+        char = moov_proc.stdout.read(1)
+        if char == '\0':
+            send_purple_message(purple_conversation, partial)
+            partial = ''
+        else:
+            partial = partial + char
     purple_conversation = None
 
 def open_moov(args):
@@ -112,9 +125,10 @@ def send_moov_message(alias, message):
     h = HTML2Text()
     h.ignore_links = True
     message = h.handle(message).strip()
-    command = "MSG " + alias + ":" + message + "\n"
+    command = alias + ":" + message + "\0"
     if moov_proc and moov_proc.poll() is None:
         moov_proc.stdin.write(command)
+        moov_proc.stdin.flush()
 
 dir_filepath = getenv("HOME") + "/.moov_dir"
 if not isfile(dir_filepath):

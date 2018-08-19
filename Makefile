@@ -1,11 +1,11 @@
 EXE = moov
-OBJS = main.o ./imgui/imgui_impl_sdl_gl3.o
-OBJS += ./imgui/imgui.o ./imgui/imgui_demo.o ./imgui/imgui_draw.o
+OBJS = main.o cmd.o chat.o mpv.o util.o
+OBJS += ./imgui/imgui_impl_sdl_gl3.o ./imgui/imgui.o ./imgui/imgui_demo.o ./imgui/imgui_draw.o
 OBJS += ./libs/gl3w/GL/gl3w.o
 
 LIBS = -lGL -ldl `sdl2-config --libs` `pkg-config --libs --cflags mpv` -pthread
 
-CXXFLAGS = -fPIC -pedantic -Wall -Wextra -O3 -g
+CXXFLAGS = -fPIC -pedantic -Wall -Wextra -O2
 CXXFLAGS += -I./imgui -I./libs/gl3w `sdl2-config --cflags`
 CFLAGS = $(CXXFLAGS)
 

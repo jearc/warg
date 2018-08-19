@@ -1,7 +1,4 @@
 #include <time.h>
-#include <stddef.h>
-#include <stdlib.h>
-#include <unistd.h>
 #include <stdio.h>
 #include <pthread.h>
 #include <errno.h>
@@ -15,6 +12,24 @@
 #include "imgui/imgui.h"
 #include "imgui/imgui_impl_sdl_gl3.h"
 
+struct Message {
+	time_t time;
+	char *from;
+	char *text;
+};
+
+struct chatlog {
+	Message *msg = NULL;
+	size_t msg_max = 0;
+	size_t msg_cnt = 0;
+	pthread_mutex_t mtx = PTHREAD_MUTEX_INITIALIZER;
+};
+
+#include "util.h"
+#include "mpv.h"
+#include "chat.h"
+#include "cmd.h"
+
 #define MAX_MSG_LEN 1000
 
 static Uint32 wakeup_on_mpv_events;
@@ -24,52 +39,45 @@ const char *PIPE = "/tmp/mpvpipe";
 const uint16_t MARGIN_SIZE = 8;
 const float DEFAULT_OPACITY = 1.0;
 
-struct Message {
-	time_t time;
-	char *from;
-	char *text;
-};
-
 void on_msg(const char *s, bool self);
+void sendmsg(const char *);
 
-SDL_Window *window;
+SDL_Window *WINDOW;
 
-mpv_handle *mpv;
-SDL_GLContext glcontext;
-mpv_opengl_cb_context *mpv_gl;
-Message *chatlog = NULL;
-size_t maxmsgs = 0, nmsgs = 0;
-pthread_mutex_t chatmutex = PTHREAD_MUTEX_INITIALIZER;
+chatlog CHATLOG;
 
-ImVec4 clear_color = ImColor(114, 144, 154);
-char chat_input_buf[256] = { 0 };
-bool scroll_to_bottom = true;
-int mouse_x = 0, mouse_y = 0;
-int last_mouse_move = 0;
-int64_t current_tick = 0;
-int64_t last_tick = 0;
-bool mouse_over_controls = false;
-ImVec2 chatsize = ImVec2(400, 200);
-ImVec2 chatpos = ImVec2(-chatsize.x - MARGIN_SIZE, -chatsize.y - MARGIN_SIZE);
-ImVec2 osdsize = ImVec2(400, 78);
-ImVec2 osdpos = ImVec2(MARGIN_SIZE, chatpos.y - MARGIN_SIZE - osdsize.y);
-float chat_opacity = DEFAULT_OPACITY;
-float osd_opacity = DEFAULT_OPACITY;
-char *username = "User";
-char *home_dir = NULL;
-bool file_loaded = false;
-bool is_playlist = false;
-int last_completed_track = -1;
+mpv_handle *MPV;
+SDL_GLContext GLCONTEXT;
+mpv_opengl_cb_context *MPV_GL;
+
+ImVec4 CLEAR_COLOR = ImColor(114, 144, 154);
+char CHAT_INPUT_BUF[256] = { 0 };
+bool SCROLL_TO_BOTTOM = true;
+int MOUSE_X = 0, MOUSE_Y = 0;
+int LAST_MOUSE_MOVE = 0;
+int64_t CURRENT_TICK = 0;
+int64_t LAST_TICK = 0;
+bool MOUSE_OVER_CONTROLS = false;
+ImVec2 CHATSIZE = ImVec2(400, 200);
+ImVec2 CHATPOS = ImVec2(-CHATSIZE.x - MARGIN_SIZE, -CHATSIZE.y - MARGIN_SIZE);
+ImVec2 OSDSIZE = ImVec2(400, 78);
+ImVec2 OSDPOS = ImVec2(MARGIN_SIZE, CHATPOS.y - MARGIN_SIZE - CHATSIZE.y);
+float CHAT_OPACITY = DEFAULT_OPACITY;
+float OSD_OPACITY = DEFAULT_OPACITY;
+char *HOME_DIR = NULL;
+bool FILE_LOADED = false;
+bool IS_PLAYLIST = false;
+int LAST_COMPLETED_TRACK = -1;
 
 void cleanup()
 {
-	if (mpv_gl)
-		mpv_opengl_cb_uninit_gl(mpv_gl);
-	if (mpv)
-		mpv_terminate_destroy(mpv);
-	SDL_GL_DeleteContext(glcontext);
-	if (window)
-		SDL_DestroyWindow(window);
+	if (MPV_GL)
+		mpv_opengl_cb_uninit_gl(MPV_GL);
+	if (MPV)
+		mpv_terminate_destroy(MPV);
+	SDL_GL_DeleteContext(GLCONTEXT);
+	if (WINDOW)
+		SDL_DestroyWindow(WINDOW);
 }
 
 static void die(const char *msg)
@@ -81,203 +89,49 @@ static void die(const char *msg)
 
 static void *get_proc_address_mpv(void *fn_ctx, const char *name)
 {
+	UNUSED(fn_ctx);
+
 	return SDL_GL_GetProcAddress(name);
 }
 
 static void on_mpv_events(void *ctx)
 {
-	SDL_Event event = { .type = wakeup_on_mpv_events };
+	UNUSED(ctx);
+
+	SDL_Event event;
+	event.type = wakeup_on_mpv_events;
 	SDL_PushEvent(&event);
-}
-
-int get_num_audio_sub_tracks(mpv_handle *mpv, int *naudio, int *nsubs)
-{
-	int64_t ntracks;
-	if (mpv_get_property(mpv, "track-list/count", MPV_FORMAT_INT64,
-			     &ntracks))
-		return -1;
-	int naudio_ = 0, nsubs_ = 0;
-	for (int i = 0; i < ntracks; i++) {
-		char propbuf[100];
-		snprintf(propbuf, 100, "track-list/%d/type", i);
-		char *type = NULL;
-		if (mpv_get_property(mpv, propbuf, MPV_FORMAT_STRING, &type))
-			return -2;
-		if (strcmp(type, "sub") == 0)
-			nsubs_++;
-		if (strcmp(type, "audio") == 0)
-			naudio_++;
-	}
-
-	*naudio = naudio_;
-	*nsubs = nsubs_;
-	return 0;
-}
-
-void sendmsg(const char *msg)
-{
-	printf("MSG :%s\n", msg);
-}
-
-char *writestatus(char buf[])
-{
-	char *playback_time = mpv_get_property_osd_string(mpv, "playback-time");
-	char *duration = mpv_get_property_osd_string(mpv, "duration");
-	char *playlist_pos = mpv_get_property_osd_string(mpv, "playlist-pos-1");
-	char *playlist_count =
-		mpv_get_property_osd_string(mpv, "playlist-count");
-	int paused = 0;
-	mpv_get_property(mpv, "pause", MPV_FORMAT_FLAG, &paused);
-
-	if (playback_time && duration) {
-		snprintf(buf, 50, "moov: [%s/%s] %s %s", playlist_pos,
-			 playlist_count, paused ? "paused" : "playing",
-			 playback_time);
-	} else {
-		sprintf(buf, "moov: not playing");
-	}
-}
-
-int parse_time(const char *timestr)
-{
-	int nums[3] = { 0 }, count = 0;
-
-	char *dup = strdup(timestr);
-	char *str = dup, *token, *saveptr;
-	while (count < 3 && (token = strtok_r(str, ":", &saveptr))) {
-		nums[count++] = atoi(token);
-		str = NULL;
-	}
-	free(dup);
-
-	int seconds = 0;
-	int power = 0;
-	while (count > 0) {
-		seconds += nums[count - 1] * pow(60, power);
-		count--;
-		power++;
-	}
-
-	return seconds;
-}
-
-void writechat(const char *text, const char *from = NULL)
-{
-	Message msg;
-	time_t t = time(0);
-	msg.time = t;
-	msg.from = strdup(from ? from : username);
-	msg.text = strdup(text);
-
-	pthread_mutex_lock(&chatmutex);
-	if (nmsgs >= maxmsgs) {
-		maxmsgs += 3;
-		chatlog =
-			(Message *)realloc(chatlog, maxmsgs * sizeof(Message));
-	}
-	chatlog[nmsgs++] = msg;
-	pthread_mutex_unlock(&chatmutex);
-	scroll_to_bottom = true;
-}
-
-void msg(const char *text, const char *from = NULL)
-{
-	if (!text)
-		return;
-
-	int len = strlen(text);
-
-	writechat(text, from);
-
-	if (!(from || (len > 2 && text[0] == ':')))
-		sendmsg(text);
-
-	on_msg(text, !from);
-}
-
-void on_msg(const char *s, bool self)
-{
-	char *tokens[3] = { 0 };
-	int ntokens = 0;
-
-	char *dup = strdup(s), *str = dup, *token, *saveptr;
-	while (ntokens < 3 && (token = strtok_r(str, " ", &saveptr))) {
-		tokens[ntokens++] = strdup(token);
-		str = NULL;
-	}
-
-	if (strcmp(tokens[0], "pp") == 0) {
-		mpv_command_string(mpv, "cycle pause");
-		char statusbuf[50] = {};
-		writestatus(statusbuf);
-		msg(statusbuf);
-	} else if (strcmp(tokens[0], "STATUS") == 0) {
-		char statusbuf[50] = {};
-		writestatus(statusbuf);
-		msg(statusbuf);
-	} else if (strcmp(tokens[0], "NEXT") == 0) {
-		mpv_command_string(mpv, "playlist-next");
-	} else if (strcmp(tokens[0], "PREV") == 0) {
-		mpv_command_string(mpv, "playlist-prev");
-	} else if (strcmp(tokens[0], "SEEK") == 0) {
-		if (ntokens < 2)
-			return;
-		double time = parse_time(tokens[1]);
-		mpv_set_property(mpv, "time-pos", MPV_FORMAT_DOUBLE, &time);
-	} else if (strcmp(tokens[0], "INDEX") == 0) {
-		if (ntokens < 2)
-			return;
-		int64_t index = atoi(tokens[1]) - 1;
-		mpv_set_property(mpv, "playlist-pos", MPV_FORMAT_INT64, &index);
-	} else if (strcmp(tokens[0], ":set") == 0 && self) {
-		if (ntokens < 2)
-			return;
-		if (strcmp(tokens[1], "chat_opacity") == 0)
-			chat_opacity =
-				ntokens > 2 ? atof(tokens[2]) : DEFAULT_OPACITY;
-		if (strcmp(tokens[1], "osd_opacity") == 0)
-			osd_opacity =
-				ntokens > 2 ? atof(tokens[2]) : DEFAULT_OPACITY;
-	} else if (strcmp(tokens[0], "ALTF4") == 0) {
-		mpv_opengl_cb_uninit_gl(mpv_gl);
-		mpv_terminate_destroy(mpv);
-		SDL_GL_DeleteContext(glcontext);
-		SDL_DestroyWindow(window);
-		exit(0);
-	}
-
-	free(dup);
 }
 
 void toggle_fullscreen()
 {
-	bool is_fullscreen = SDL_GetWindowFlags(window) & SDL_WINDOW_FULLSCREEN;
+	bool is_fullscreen = SDL_GetWindowFlags(WINDOW) & SDL_WINDOW_FULLSCREEN;
 	SDL_SetWindowFullscreen(
-		window, is_fullscreen ? 0 : SDL_WINDOW_FULLSCREEN_DESKTOP);
+		WINDOW, is_fullscreen ? 0 : SDL_WINDOW_FULLSCREEN_DESKTOP);
 }
 
 void osd()
 {
-	if (!(mouse_over_controls || current_tick - last_mouse_move < 1000))
+	if (!(MOUSE_OVER_CONTROLS || CURRENT_TICK - LAST_MOUSE_MOVE < 1000))
 		return;
 
-	ImVec2 size = osdsize;
+	ImVec2 size = OSDSIZE;
 	ImVec2 pos;
-	pos.x = osdpos.x >= 0 ? osdpos.x :
-				(int)ImGui::GetIO().DisplaySize.x + osdpos.x;
-	pos.y = osdpos.y >= 0 ? osdpos.y :
-				(int)ImGui::GetIO().DisplaySize.y + osdpos.y;
+	pos.x = OSDPOS.x >= 0 ? OSDPOS.x :
+				(int)ImGui::GetIO().DisplaySize.x + OSDPOS.x;
+	pos.y = OSDPOS.y >= 0 ? OSDPOS.y :
+				(int)ImGui::GetIO().DisplaySize.y + OSDPOS.y;
 	bool display = true;
 	ImGui::SetNextWindowPos(pos);
-	ImGui::Begin("StatusDisplay", &display, size, osd_opacity,
+	ImGui::Begin("StatusDisplay", &display, size, OSD_OPACITY,
 		     ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize |
 			     ImGuiWindowFlags_NoMove |
 			     ImGuiWindowFlags_NoScrollbar |
 			     ImGuiWindowFlags_NoSavedSettings);
-	auto filename = mpv_get_property_string(mpv, "media-title");
+	auto filename = mpv_get_property_string(MPV, "media-title");
 	ImGui::Text("%s", filename);
-	char *pos_sec = mpv_get_property_string(mpv, "playback-time");
-	char *total_sec = mpv_get_property_string(mpv, "duration");
+	char *pos_sec = mpv_get_property_string(MPV, "playback-time");
+	char *total_sec = mpv_get_property_string(MPV, "duration");
 	float progress = 0;
 	if (pos_sec && total_sec) {
 		float total_sec_f = strtof(total_sec, NULL);
@@ -293,16 +147,16 @@ void osd()
 		float fraction = (mouse.x - min.x) / (max.x - min.x);
 		double time = fraction * strtof(total_sec, NULL);
 
-		mpv_set_property(mpv, "time-pos", MPV_FORMAT_DOUBLE, &time);
+		mpv_set_property(MPV, "time-pos", MPV_FORMAT_DOUBLE, &time);
 	}
 	if (ImGui::Button("PP"))
-		mpv_command_string(mpv, "cycle pause");
+		mpv_command_string(MPV, "cycle pause");
 	ImGui::SameLine();
-	char *playback_time = mpv_get_property_osd_string(mpv, "playback-time");
-	char *duration = mpv_get_property_osd_string(mpv, "duration");
-	char *playlist_pos = mpv_get_property_osd_string(mpv, "playlist-pos-1");
+	char *playback_time = mpv_get_property_osd_string(MPV, "playback-time");
+	char *duration = mpv_get_property_osd_string(MPV, "duration");
+	char *playlist_pos = mpv_get_property_osd_string(MPV, "playlist-pos-1");
 	char *playlist_count =
-		mpv_get_property_osd_string(mpv, "playlist-count");
+		mpv_get_property_osd_string(MPV, "playlist-count");
 	if (playback_time && duration) {
 		char statusbuf[20];
 		snprintf(statusbuf, 20, "%s / %s", playback_time, duration);
@@ -312,7 +166,7 @@ void osd()
 	}
 	ImGui::SameLine();
 	if (ImGui::Button("<"))
-		mpv_command_string(mpv, "playlist-prev");
+		mpv_command_string(MPV, "playlist-prev");
 	ImGui::SameLine();
 	if (playlist_pos && playlist_count) {
 		char statusbuf[20];
@@ -323,64 +177,64 @@ void osd()
 	}
 	ImGui::SameLine();
 	if (ImGui::Button(">"))
-		mpv_command_string(mpv, "playlist-next");
+		mpv_command_string(MPV, "playlist-next");
 	ImGui::SameLine();
 	int naudio = 0;
 	int nsubs = 0;
-	get_num_audio_sub_tracks(mpv, &naudio, &nsubs);
+	get_num_audio_sub_tracks(MPV, &naudio, &nsubs);
 	int64_t selsub = 0;
-	mpv_get_property(mpv, "sub", MPV_FORMAT_INT64, &selsub);
+	mpv_get_property(MPV, "sub", MPV_FORMAT_INT64, &selsub);
 	char subbuttonbuf[10] = { 0 };
-	snprintf(subbuttonbuf, 10, "Sub: %d/%d", selsub, nsubs);
+	snprintf(subbuttonbuf, 10, "Sub: %ld/%d", selsub, nsubs);
 	if (ImGui::Button(subbuttonbuf)) {
-		mpv_command_string(mpv, "cycle sub");
+		mpv_command_string(MPV, "cycle sub");
 	}
 	ImGui::SameLine();
 	int64_t selaudio = 0;
-	mpv_get_property(mpv, "audio", MPV_FORMAT_INT64, &selaudio);
+	mpv_get_property(MPV, "audio", MPV_FORMAT_INT64, &selaudio);
 	char audiobuttonbuf[15] = { 0 };
-	snprintf(audiobuttonbuf, 15, "Audio: %d/%d", selaudio, naudio);
+	snprintf(audiobuttonbuf, 15, "Audio: %ld/%d", selaudio, naudio);
 	ImGui::Button(audiobuttonbuf);
 	ImGui::SameLine();
 	if (ImGui::Button("Full")) {
 		toggle_fullscreen();
 	}
-	mouse_over_controls = ImGui::IsWindowHovered();
+	MOUSE_OVER_CONTROLS = ImGui::IsWindowHovered();
 	static bool mouse_down = false;
-	static int last_pos_x = mouse_x, last_pos_y = mouse_y;
+	static int last_pos_x = MOUSE_X, last_pos_y = MOUSE_Y;
 	bool mouse_over_window =
-		(mouse_x >= pos.x && mouse_x < pos.x + size.x) &&
-		(mouse_y >= pos.y && mouse_y < pos.y + size.y);
+		(MOUSE_X >= pos.x && MOUSE_X < pos.x + size.x) &&
+		(MOUSE_Y >= pos.y && MOUSE_Y < pos.y + size.y);
 	if (ImGui::IsMouseClicked(0) && mouse_over_window) {
 		mouse_down = true;
 	}
 	if (mouse_down) {
-		int delta_x = mouse_x - last_pos_x;
-		int delta_y = mouse_y - last_pos_y;
-		osdpos.x += delta_x;
-		osdpos.y += delta_y;
+		int delta_x = MOUSE_X - last_pos_x;
+		int delta_y = MOUSE_Y - last_pos_y;
+		OSDPOS.x += delta_x;
+		OSDPOS.y += delta_y;
 	}
 	if (ImGui::IsMouseReleased(0)) {
 		mouse_down = false;
 	}
-	last_pos_x = mouse_x;
-	last_pos_y = mouse_y;
+	last_pos_x = MOUSE_X;
+	last_pos_y = MOUSE_Y;
 	ImGui::End();
 }
 
 void chatbox()
 {
-	ImVec2 size = chatsize;
+	ImVec2 size = CHATSIZE;
 	ImVec2 pos;
-	pos.x = chatpos.x >= 0 ? chatpos.x :
-				 (int)ImGui::GetIO().DisplaySize.x + chatpos.x;
-	pos.y = chatpos.y >= 0 ? chatpos.y :
-				 (int)ImGui::GetIO().DisplaySize.y + chatpos.y;
+	pos.x = CHATPOS.x >= 0 ? CHATPOS.x :
+				 (int)ImGui::GetIO().DisplaySize.x + CHATPOS.x;
+	pos.y = CHATPOS.y >= 0 ? CHATPOS.y :
+				 (int)ImGui::GetIO().DisplaySize.y + CHATPOS.y;
 
 	bool display = true;
 	ImGui::SetNextWindowSize(size, ImGuiSetCond_FirstUseEver);
 	ImGui::SetNextWindowPos(pos);
-	ImGui::Begin("ChatBox", &display, size, chat_opacity,
+	ImGui::Begin("ChatBox", &display, size, CHAT_OPACITY,
 		     ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize |
 			     ImGuiWindowFlags_NoMove |
 			     ImGuiWindowFlags_NoScrollbar |
@@ -389,50 +243,50 @@ void chatbox()
 			  ImVec2(0, -ImGui::GetItemsLineHeightWithSpacing()),
 			  false, ImGuiWindowFlags_NoScrollbar);
 	{
-		pthread_mutex_lock(&chatmutex);
-		for (int i = 0; i < nmsgs; i++) {
-			Message *msg = &chatlog[i];
+		pthread_mutex_lock(&CHATLOG.mtx);
+		for (size_t i = 0; i < CHATLOG.msg_cnt; i++) {
+			Message *msg = &CHATLOG.msg[i];
 			tm *now = localtime(&msg->time);
 			char buf[20] = { 0 };
 			strftime(buf, sizeof(buf), "%X", now);
 			ImGui::TextWrapped("[%s] %s: %s", buf, msg->from,
 					   msg->text);
 		}
-		pthread_mutex_unlock(&chatmutex);
+		pthread_mutex_unlock(&CHATLOG.mtx);
 	}
-	if (scroll_to_bottom) {
+	if (SCROLL_TO_BOTTOM) {
 		ImGui::SetScrollHere();
-		scroll_to_bottom = false;
+		SCROLL_TO_BOTTOM = false;
 	}
 	ImGui::EndChild();
 	ImGui::PushItemWidth(size.x - 8 * 2);
-	if (ImGui::InputText("", chat_input_buf, 256,
+	if (ImGui::InputText("", CHAT_INPUT_BUF, 256,
 			     ImGuiInputTextFlags_EnterReturnsTrue, NULL,
 			     NULL)) {
-		if (strlen(chat_input_buf)) {
-			msg(chat_input_buf);
-			strcpy(chat_input_buf, "");
+		if (strlen(CHAT_INPUT_BUF)) {
+			sendmsg(CHAT_INPUT_BUF);
+			strcpy(CHAT_INPUT_BUF, "");
 		}
 	}
 	static bool mouse_down = false;
-	static int last_pos_x = mouse_x, last_pos_y = mouse_y;
+	static int last_pos_x = MOUSE_X, last_pos_y = MOUSE_Y;
 	bool mouse_over_window =
-		(mouse_x >= pos.x && mouse_x < pos.x + size.x) &&
-		(mouse_y >= pos.y && mouse_y < pos.y + size.y);
+		(MOUSE_X >= pos.x && MOUSE_X < pos.x + size.x) &&
+		(MOUSE_Y >= pos.y && MOUSE_Y < pos.y + size.y);
 	if (ImGui::IsMouseClicked(0) && mouse_over_window) {
 		mouse_down = true;
 	}
 	if (mouse_down) {
-		int delta_x = mouse_x - last_pos_x;
-		int delta_y = mouse_y - last_pos_y;
-		chatpos.x += delta_x;
-		chatpos.y += delta_y;
+		int delta_x = MOUSE_X - last_pos_x;
+		int delta_y = MOUSE_Y - last_pos_y;
+		CHATPOS.x += delta_x;
+		CHATPOS.y += delta_y;
 	}
 	if (ImGui::IsMouseReleased(0)) {
 		mouse_down = false;
 	}
-	last_pos_x = mouse_x;
-	last_pos_y = mouse_y;
+	last_pos_x = MOUSE_X;
+	last_pos_y = MOUSE_Y;
 	ImGui::PopItemWidth();
 	if (ImGui::IsItemHovered() ||
 	    (ImGui::IsRootWindowOrAnyChildFocused() &&
@@ -443,7 +297,7 @@ void chatbox()
 
 void ui()
 {
-	ImGui_ImplSdlGL3_NewFrame(window);
+	ImGui_ImplSdlGL3_NewFrame(WINDOW);
 
 	osd();
 	chatbox();
@@ -453,38 +307,10 @@ void ui()
 	ImGui::Render();
 }
 
-int readmsg(const char *l)
-{
-	char *user = NULL;
-	const char *message = NULL;
-
-	if (!l)
-		return 1;
-
-	if (strncmp("MSG", l, 3))
-		return 2;
-
-	if (strnlen(l, 5) < 5)
-		return 3;
-	const char *u = l + 4;
-	const char *c = strchr(u, ':');
-	if (!c)
-		return 4;
-	user = strndup(u, c - u);
-
-	if (strnlen(c, 2) < 2)
-		return 5;
-	message = c + 1;
-
-	msg(message, user);
-
-	free(user);
-
-	return 0;
-}
-
 void *stdin_loop(void *arg)
 {
+	UNUSED(arg);
+
 	char buf[MAX_MSG_LEN];
 	memset(buf, 0, sizeof buf);
 	size_t bufidx = 0;
@@ -496,12 +322,14 @@ void *stdin_loop(void *arg)
 			die("eof");
 			break;
 		case '\0':
-			readmsg(buf);
+			parsemsg(&CHATLOG, MPV, buf, bufidx);
 			memset(buf, 0, sizeof buf);
 			bufidx = 0;
 			break;
 		default:
-			if (bufidx < (sizeof buf) - 1 && !(bufidx == 0 && c == '\n'))
+			bool leading_whitespace = bufidx == 0 && isspace(c);
+			bool space_available = bufidx < (sizeof buf) - 1;
+			if (!leading_whitespace && space_available)
 				buf[bufidx++] = c;
 			break;
 		}
@@ -512,25 +340,26 @@ void *stdin_loop(void *arg)
 
 char *playlistpath()
 {
-	size_t pathlen = strlen(home_dir) + strlen("/.moov_playlist") + 1;
+	size_t pathlen = strlen(HOME_DIR) + strlen("/.moov_playlist") + 1;
 	char *path = (char *)malloc(pathlen);
-	snprintf(path, pathlen, "%s/.moov_playlist", home_dir);
+	snprintf(path, pathlen, "%s/.moov_playlist", HOME_DIR);
 
 	return path;
 }
 
 char *trackpath()
 {
-	size_t pathlen = strlen(home_dir) + strlen("/.moov_track") + 1;
+	size_t pathlen = strlen(HOME_DIR) + strlen("/.moov_track") + 1;
 	char *path = (char *)malloc(pathlen);
-	snprintf(path, pathlen, "%s/.moov_track", home_dir);
+	snprintf(path, pathlen, "%s/.moov_track", HOME_DIR);
 
 	return path;
 }
 
 void load_playlist(int *last_completed_track)
 {
-	size_t size, n;
+	int size;
+	size_t n;
 	char *path, *line;
 	FILE *fp;
 
@@ -544,7 +373,7 @@ void load_playlist(int *last_completed_track)
 		if (line[size - 1] == '\n')
 			line[size - 1] = '\0';
 		const char *cmd[] = { "loadfile", line, "append", NULL };
-		mpv_command(mpv, cmd);
+		mpv_command(MPV, cmd);
 		free(line);
 		line = NULL;
 	}
@@ -564,7 +393,7 @@ void load_playlist(int *last_completed_track)
 		die("could not parse track file.");
 	*last_completed_track = track;
 	track++;
-	mpv_set_property(mpv, "playlist-pos", MPV_FORMAT_INT64, &track);
+	mpv_set_property(MPV, "playlist-pos", MPV_FORMAT_INT64, &track);
 	fclose(fp);
 	free(path);
 }
@@ -594,35 +423,41 @@ void handle_keydown(SDL_Event event)
 		toggle_fullscreen();
 	} else if (event.key.keysym.mod & KMOD_CTRL &&
 		   event.key.keysym.sym == SDLK_SPACE) {
-		mpv_command_string(mpv, "cycle pause");
+		mpv_command_string(MPV, "cycle pause");
 	} else {
 		ImGui_ImplSdlGL3_ProcessEvent(&event);
 	}
 }
 
-void handle_mpv_events()
+void handle_mpv_events(bool *first_load, double seekto)
 {
 	while (1) {
-		mpv_event *mp_event = mpv_wait_event(mpv, 0);
+		mpv_event *mp_event = mpv_wait_event(MPV, 0);
 		if (mp_event->event_id == MPV_EVENT_NONE)
 			break;
 		if (mp_event->event_id == MPV_EVENT_FILE_LOADED) {
-			mpv_command_string(mpv, "set pause yes");
-			file_loaded = true;
+			mpv_command_string(MPV, "set pause yes");
 		}
 		if (mp_event->event_id == MPV_EVENT_PLAYBACK_RESTART) {
-			char statusbuf[50] = {};
-			writestatus(statusbuf);
-			msg(statusbuf);
+			FILE_LOADED = true;
+			if (*first_load && seekto) {
+				fprintf(stderr, "seeking to %f\n", seekto);
+				mpv_set_property(MPV, "time-pos", MPV_FORMAT_DOUBLE, &seekto);
+				*first_load = false;
+			} else {
+				char statusbuf[50] = {};
+				writestatus(MPV, statusbuf);
+				sendmsg(statusbuf);
+			}
 		}
-		if (mp_event->event_id == MPV_EVENT_END_FILE && !file_loaded) {
-			msg("moov: m̛̿̇al͒f̃un̩cͯt̿io̲n̙͌͢");
+		if (mp_event->event_id == MPV_EVENT_END_FILE && !FILE_LOADED) {
+			sendmsg("moov: m̛̿̇al͒f̃un̩cͯt̿io̲n̙͌͢");
 			die("couldn't load file");
 		}
 	}
 }
 
-void handle_events()
+void handle_events(bool *first_load, double seekto)
 {
 	SDL_Event event;
 	while (SDL_PollEvent(&event)) {
@@ -632,7 +467,7 @@ void handle_events()
 		} else if (event.type == SDL_KEYDOWN) {
 			handle_keydown(event);
 		} else if (event.type == wakeup_on_mpv_events) {
-			handle_mpv_events();
+			handle_mpv_events(first_load, seekto);
 		} else {
 			ImGui_ImplSdlGL3_ProcessEvent(&event);
 		}
@@ -642,11 +477,11 @@ void handle_events()
 void save_playlist_state()
 {
 	int64_t playlist_pos;
-	mpv_get_property(mpv, "playlist-pos", MPV_FORMAT_INT64, &playlist_pos);
-	if (!is_playlist || playlist_pos <= last_completed_track)
+	mpv_get_property(MPV, "playlist-pos", MPV_FORMAT_INT64, &playlist_pos);
+	if (!IS_PLAYLIST || playlist_pos <= LAST_COMPLETED_TRACK)
 		return;
-	char *pos_sec = mpv_get_property_string(mpv, "playback-time");
-	char *total_sec = mpv_get_property_string(mpv, "duration");
+	char *pos_sec = mpv_get_property_string(MPV, "playback-time");
+	char *total_sec = mpv_get_property_string(MPV, "duration");
 	float progress = 0;
 	if (pos_sec && total_sec) {
 		float total_sec_f = strtof(total_sec, NULL);
@@ -654,25 +489,63 @@ void save_playlist_state()
 			progress = strtof(pos_sec, NULL) / total_sec_f;
 	}
 	if (progress > 0.8) {
-		last_completed_track = playlist_pos;
+		LAST_COMPLETED_TRACK = playlist_pos;
 		save_track(playlist_pos);
 	}
 }
 
+struct argconf {
+	double seekto = 0.0;
+
+	bool resume = false;
+
+	char *uri[100] = {};
+	size_t uri_cnt = 0;
+};
+
+argconf parseargs(int argc, char *argv[])
+{
+	argconf conf;
+
+	if (argc <= 1) return conf;
+
+	bool expecting_seekto = false;
+	for (size_t i = 1; i < argc; i++) {
+		if (argv[i][0] == '-') {
+			switch (argv[i][1]) {
+			case 'r':
+				conf.resume = true;
+				break;
+			case 's':
+				fprintf(stderr, "found -s\n");
+				expecting_seekto = true;
+				break;
+			default:
+				die("invalid arg");
+				break;
+			}
+		} else if (expecting_seekto) {
+			conf.seekto = parsetime(argv[i], strlen(argv[i]));
+			fprintf(stderr, "parsed -s param into %f\n", conf.seekto);
+		} else if (conf.uri_cnt < 100) {
+			conf.uri[conf.uri_cnt++] = argv[i];
+		}
+	}
+
+	return conf;
+}
+
 int main(int argc, char *argv[])
 {
-	if (argc < 3)
-		die("pass a username and media file(s) or URL(s) as arguments");
+	argconf conf = parseargs(argc, argv);
 
-	username = strdup(argv[1]);
+	HOME_DIR = getenv("HOME");
 
-	home_dir = getenv("HOME");
-
-	mpv = mpv_create();
-	if (!mpv)
+	MPV = mpv_create();
+	if (!MPV)
 		die("context init failed");
 
-	if (mpv_initialize(mpv) < 0)
+	if (mpv_initialize(MPV) < 0)
 		die("mpv init failed");
 
 	if (SDL_Init(SDL_INIT_VIDEO) < 0)
@@ -689,93 +562,99 @@ int main(int argc, char *argv[])
 	SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 2);
 	SDL_DisplayMode current;
 	SDL_GetCurrentDisplayMode(0, &current);
-	window = SDL_CreateWindow("Moov", SDL_WINDOWPOS_CENTERED,
+	WINDOW = SDL_CreateWindow("Moov", SDL_WINDOWPOS_CENTERED,
 				  SDL_WINDOWPOS_CENTERED, 1280, 720,
 				  SDL_WINDOW_OPENGL | SDL_WINDOW_SHOWN |
 					  SDL_WINDOW_RESIZABLE);
-	if (!window)
+	if (!WINDOW)
 		die("failed to create SDL window");
 
-	mpv_gl = (mpv_opengl_cb_context *)mpv_get_sub_api(
-		mpv, MPV_SUB_API_OPENGL_CB);
-	if (!mpv_gl)
+	MPV_GL = (mpv_opengl_cb_context *)mpv_get_sub_api(
+		MPV, MPV_SUB_API_OPENGL_CB);
+	if (!MPV_GL)
 		die("failed to create mpv GL API handle");
 
-	glcontext = SDL_GL_CreateContext(window);
-	if (!glcontext)
+	GLCONTEXT = SDL_GL_CreateContext(WINDOW);
+	if (!GLCONTEXT)
 		die("failed to create SDL GL context");
 
 	gl3wInit();
 
-	ImGui_ImplSdlGL3_Init(window);
+	ImGui_ImplSdlGL3_Init(WINDOW);
 
-	ImGuiIO &io = ImGui::GetIO();
+	// ImGuiIO &io = ImGui::GetIO();
 	// io.Fonts->AddFontFromFileTTF("LiberationSans-Regular.ttf", 14.0f);
 
-	if (mpv_opengl_cb_init_gl(mpv_gl, NULL, get_proc_address_mpv, NULL) < 0)
+	if (mpv_opengl_cb_init_gl(MPV_GL, NULL, get_proc_address_mpv, NULL) < 0)
 		die("failed to initialize mpv GL context");
 
-	if (mpv_set_option_string(mpv, "vo", "opengl-cb") < 0)
+	if (mpv_set_option_string(MPV, "vo", "opengl-cb") < 0)
 		die("failed to set VO");
 
-	mpv_set_option_string(mpv, "ytdl", "yes");
-	mpv_set_option_string(mpv, "ytdl-raw-options",
+	mpv_set_option_string(MPV, "ytdl", "yes");
+	mpv_set_option_string(MPV, "ytdl-raw-options",
 			      "format=\"bestvideo[height<="
 			      "720][ext=mp4]+bestaudio/"
 			      "best[height<=720]/best\"");
-	mpv_set_option_string(mpv, "input-ipc-server", PIPE);
+	mpv_set_option_string(MPV, "input-ipc-server", PIPE);
 
 	wakeup_on_mpv_events = SDL_RegisterEvents(1);
 	if (wakeup_on_mpv_events == (Uint32)-1)
 		die("could not register events");
-	mpv_set_wakeup_callback(mpv, on_mpv_events, NULL);
+	mpv_set_wakeup_callback(MPV, on_mpv_events, NULL);
 
-	if (argc >= 2 && !strcmp(argv[2], "--resume")) {
-		is_playlist = true;
-		load_playlist(&last_completed_track);
-		file_loaded = true;
-	} else {
-		const char *cmd[] = { "loadfile", argv[2], NULL };
-		mpv_command(mpv, cmd);
-		for (int i = 3; i < argc; i++) {
-			const char *cmd2[] = { "loadfile", argv[i], "append",
+	for (size_t i = 0; i < conf.uri_cnt; i++)
+		fprintf(stderr, "%s\n", conf.uri[i]);
+
+	if (conf.resume) {
+		IS_PLAYLIST = true;
+		load_playlist(&LAST_COMPLETED_TRACK);
+		FILE_LOADED = true;
+	} else if (conf.uri_cnt > 0) {
+		const char *cmd[] = { "loadfile", conf.uri[0], NULL };
+		mpv_command(MPV, cmd);
+		for (int i = 1; i < conf.uri_cnt; i++) {
+			const char *cmd2[] = { "loadfile", conf.uri[i], "append",
 					       NULL };
-			mpv_command(mpv, cmd2);
+			mpv_command(MPV, cmd2);
 		}
 		int64_t playlist_count;
-		mpv_get_property(mpv, "playlist-count", MPV_FORMAT_INT64,
+		mpv_get_property(MPV, "playlist-count", MPV_FORMAT_INT64,
 				 &playlist_count);
 		if (playlist_count > 1) {
-			save_playlist(argc - 2, argv + 2);
+			save_playlist(conf.uri_cnt, conf.uri);
 			save_track(-1);
-			is_playlist = true;
+			IS_PLAYLIST = true;
 		}
+	} else {
+		die("no uris");
 	}
 
 	pthread_t stdin_thread;
 	pthread_create(&stdin_thread, NULL, stdin_loop, NULL);
 
+	bool first_load = true;
 	while (1) {
 		SDL_Delay(10);
-		current_tick = SDL_GetTicks();
-		if (current_tick - last_tick <= 16)
+		CURRENT_TICK = SDL_GetTicks();
+		if (CURRENT_TICK - LAST_TICK <= 16)
 			continue;
-		last_tick = current_tick;
-		int old_mouse_x = mouse_x, old_mouse_y = mouse_y;
-		SDL_GetMouseState(&mouse_x, &mouse_y);
-		if (old_mouse_x != mouse_x || old_mouse_y != mouse_y)
-			last_mouse_move = current_tick;
+		LAST_TICK = CURRENT_TICK;
+		int old_mouse_x = MOUSE_X, old_mouse_y = MOUSE_Y;
+		SDL_GetMouseState(&MOUSE_X, &MOUSE_Y);
+		if (old_mouse_x != MOUSE_X || old_mouse_y != MOUSE_Y)
+			LAST_MOUSE_MOVE = CURRENT_TICK;
 
-		handle_events();
+		handle_events(&first_load, conf.seekto);
 
 		int w, h;
-		SDL_GetWindowSize(window, &w, &h);
-		glClearColor(clear_color.x, clear_color.y, clear_color.z,
-			     clear_color.w);
+		SDL_GetWindowSize(WINDOW, &w, &h);
+		glClearColor(CLEAR_COLOR.x, CLEAR_COLOR.y, CLEAR_COLOR.z,
+			     CLEAR_COLOR.w);
 		glClear(GL_COLOR_BUFFER_BIT);
-		mpv_opengl_cb_draw(mpv_gl, 0, w, -h);
+		mpv_opengl_cb_draw(MPV_GL, 0, w, -h);
 		ui();
-		SDL_GL_SwapWindow(window);
+		SDL_GL_SwapWindow(WINDOW);
 
 		save_playlist_state();
 	}
