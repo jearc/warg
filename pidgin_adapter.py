@@ -44,9 +44,6 @@ def handle_moov_command(account, conversation, args, from_self):
     if from_self:
         purple_conversation = conversation
         open_moov(args)
-        print("running moov with args:")
-        for arg in args:
-            print(arg)
     else:
         pending_open = (conversation, args)
         send_purple_message(conversation, "moov: awaiting confirmation...")

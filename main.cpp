@@ -2,54 +2,30 @@
 #include <stdio.h>
 #include <pthread.h>
 #include <errno.h>
-
-#include <GL/gl3w.h>
-#include <SDL.h>
-
+#include <GL/glew.h>
+#include <SDL2/SDL.h>
 #include <mpv/client.h>
 #include <mpv/opengl_cb.h>
 
 #include "imgui/imgui.h"
 #include "imgui/imgui_impl_sdl_gl3.h"
-
-struct Message {
-	time_t time;
-	char *from;
-	char *text;
-};
-
-struct chatlog {
-	Message *msg = NULL;
-	size_t msg_max = 0;
-	size_t msg_cnt = 0;
-	pthread_mutex_t mtx = PTHREAD_MUTEX_INITIALIZER;
-};
-
 #include "util.h"
 #include "mpv.h"
 #include "chat.h"
 #include "cmd.h"
+#include "ui.h"
 
 #define MAX_MSG_LEN 1000
 
 static Uint32 wakeup_on_mpv_events;
-
 const char *PIPE = "/tmp/mpvpipe";
-
 const uint16_t MARGIN_SIZE = 8;
-const float DEFAULT_OPACITY = 1.0;
-
-void on_msg(const char *s, bool self);
-void sendmsg(const char *);
-
+const float DEFAULT_OPACITY = 0.7;
 SDL_Window *WINDOW;
-
 chatlog CHATLOG;
-
 mpv_handle *MPV;
 SDL_GLContext GLCONTEXT;
 mpv_opengl_cb_context *MPV_GL;
-
 ImVec4 CLEAR_COLOR = ImColor(114, 144, 154);
 char CHAT_INPUT_BUF[256] = { 0 };
 bool SCROLL_TO_BOTTOM = true;
@@ -64,7 +40,6 @@ ImVec2 OSDSIZE = ImVec2(400, 78);
 ImVec2 OSDPOS = ImVec2(MARGIN_SIZE, CHATPOS.y - MARGIN_SIZE - CHATSIZE.y);
 float CHAT_OPACITY = DEFAULT_OPACITY;
 float OSD_OPACITY = DEFAULT_OPACITY;
-char *HOME_DIR = NULL;
 bool FILE_LOADED = false;
 bool IS_PLAYLIST = false;
 int LAST_COMPLETED_TRACK = -1;
@@ -103,17 +78,26 @@ static void on_mpv_events(void *ctx)
 	SDL_PushEvent(&event);
 }
 
+bool is_fullscreen()
+{
+	return SDL_GetWindowFlags(WINDOW) & SDL_WINDOW_FULLSCREEN;
+}
+
 void toggle_fullscreen()
 {
-	bool is_fullscreen = SDL_GetWindowFlags(WINDOW) & SDL_WINDOW_FULLSCREEN;
 	SDL_SetWindowFullscreen(
-		WINDOW, is_fullscreen ? 0 : SDL_WINDOW_FULLSCREEN_DESKTOP);
+		WINDOW, is_fullscreen() ? 0 : SDL_WINDOW_FULLSCREEN_DESKTOP);
+	SDL_ShowCursor(SDL_ENABLE);
 }
 
 void osd()
 {
-	if (!(MOUSE_OVER_CONTROLS || CURRENT_TICK - LAST_MOUSE_MOVE < 1000))
+	if (!(MOUSE_OVER_CONTROLS || CURRENT_TICK - LAST_MOUSE_MOVE < 1000)) {
+		if (is_fullscreen())
+			SDL_ShowCursor(SDL_DISABLE);
 		return;
+	}
+	SDL_ShowCursor(SDL_ENABLE);
 
 	ImVec2 size = OSDSIZE;
 	ImVec2 pos;
@@ -242,18 +226,15 @@ void chatbox()
 	ImGui::BeginChild("LogRegion",
 			  ImVec2(0, -ImGui::GetItemsLineHeightWithSpacing()),
 			  false, ImGuiWindowFlags_NoScrollbar);
-	{
-		pthread_mutex_lock(&CHATLOG.mtx);
-		for (size_t i = 0; i < CHATLOG.msg_cnt; i++) {
-			Message *msg = &CHATLOG.msg[i];
-			tm *now = localtime(&msg->time);
-			char buf[20] = { 0 };
-			strftime(buf, sizeof(buf), "%X", now);
-			ImGui::TextWrapped("[%s] %s: %s", buf, msg->from,
-					   msg->text);
-		}
-		pthread_mutex_unlock(&CHATLOG.mtx);
+	pthread_mutex_lock(&CHATLOG.mtx);
+	for (size_t i = 0; i < CHATLOG.msg_cnt; i++) {
+		Message *msg = &CHATLOG.msg[i];
+		tm *now = localtime(&msg->time);
+		char buf[20] = { 0 };
+		strftime(buf, sizeof(buf), "%X", now);
+		ImGui::TextWrapped("[%s] %s: %s", buf, msg->from, msg->text);
 	}
+	pthread_mutex_unlock(&CHATLOG.mtx);
 	if (SCROLL_TO_BOTTOM) {
 		ImGui::SetScrollHere();
 		SCROLL_TO_BOTTOM = false;
@@ -262,11 +243,10 @@ void chatbox()
 	ImGui::PushItemWidth(size.x - 8 * 2);
 	if (ImGui::InputText("", CHAT_INPUT_BUF, 256,
 			     ImGuiInputTextFlags_EnterReturnsTrue, NULL,
-			     NULL)) {
-		if (strlen(CHAT_INPUT_BUF)) {
-			sendmsg(CHAT_INPUT_BUF);
-			strcpy(CHAT_INPUT_BUF, "");
-		}
+			     NULL) &&
+	    strlen(CHAT_INPUT_BUF)) {
+		sendmsg(CHAT_INPUT_BUF);
+		strcpy(CHAT_INPUT_BUF, "");
 	}
 	static bool mouse_down = false;
 	static int last_pos_x = MOUSE_X, last_pos_y = MOUSE_Y;
@@ -301,6 +281,7 @@ void ui()
 
 	osd();
 	chatbox();
+	//	draw_chatlog(&CHATLOG);
 
 	glViewport(0, 0, (int)ImGui::GetIO().DisplaySize.x,
 		   (int)ImGui::GetIO().DisplaySize.y);
@@ -319,17 +300,21 @@ void *stdin_loop(void *arg)
 		char c = getchar();
 		switch (c) {
 		case EOF:
-			die("eof");
+			//die("eof");
 			break;
 		case '\0':
-			parsemsg(&CHATLOG, MPV, buf, bufidx);
+			char *username, *text;
+			splitinput(buf, &username, &text);
+			logmsg(&CHATLOG, username, text);
+			handlecmd(text, MPV);
+			SCROLL_TO_BOTTOM = true;
 			memset(buf, 0, sizeof buf);
 			bufidx = 0;
 			break;
 		default:
-			bool leading_whitespace = bufidx == 0 && isspace(c);
+			bool significant = bufidx != 0 || !isspace(c);
 			bool space_available = bufidx < (sizeof buf) - 1;
-			if (!leading_whitespace && space_available)
+			if (significant && space_available)
 				buf[bufidx++] = c;
 			break;
 		}
@@ -340,18 +325,20 @@ void *stdin_loop(void *arg)
 
 char *playlistpath()
 {
-	size_t pathlen = strlen(HOME_DIR) + strlen("/.moov_playlist") + 1;
-	char *path = (char *)malloc(pathlen);
-	snprintf(path, pathlen, "%s/.moov_playlist", HOME_DIR);
+	char *path;
+	int err = asprintf(&path, "%s/.moov_playlist", getenv("HOME"));
+	if (err == -1)
+		die("asprintf failed");
 
 	return path;
 }
 
 char *trackpath()
 {
-	size_t pathlen = strlen(HOME_DIR) + strlen("/.moov_track") + 1;
-	char *path = (char *)malloc(pathlen);
-	snprintf(path, pathlen, "%s/.moov_track", HOME_DIR);
+	char *path;
+	int err = asprintf(&path, "%s/.moov_track", getenv("HOME"));
+	if (err == -1)
+		die("asprintf failed");
 
 	return path;
 }
@@ -419,38 +406,36 @@ void save_playlist(int numfiles, char **files)
 
 void handle_keydown(SDL_Event event)
 {
-	if (event.key.keysym.sym == SDLK_F11) {
+	if (event.key.keysym.sym == SDLK_F11)
 		toggle_fullscreen();
-	} else if (event.key.keysym.mod & KMOD_CTRL &&
-		   event.key.keysym.sym == SDLK_SPACE) {
+	else if (event.key.keysym.mod & KMOD_CTRL &&
+		 event.key.keysym.sym == SDLK_SPACE)
 		mpv_command_string(MPV, "cycle pause");
-	} else {
+	else
 		ImGui_ImplSdlGL3_ProcessEvent(&event);
-	}
 }
 
 void handle_mpv_events(bool *first_load, double seekto)
 {
 	while (1) {
 		mpv_event *mp_event = mpv_wait_event(MPV, 0);
-		if (mp_event->event_id == MPV_EVENT_NONE)
+		if (mp_event->event_id == MPV_EVENT_NONE) {
 			break;
-		if (mp_event->event_id == MPV_EVENT_FILE_LOADED) {
+		} else if (mp_event->event_id == MPV_EVENT_FILE_LOADED) {
 			mpv_command_string(MPV, "set pause yes");
-		}
-		if (mp_event->event_id == MPV_EVENT_PLAYBACK_RESTART) {
+		} else if (mp_event->event_id == MPV_EVENT_PLAYBACK_RESTART) {
 			FILE_LOADED = true;
 			if (*first_load && seekto) {
-				fprintf(stderr, "seeking to %f\n", seekto);
-				mpv_set_property(MPV, "time-pos", MPV_FORMAT_DOUBLE, &seekto);
+				mpv_set_property(MPV, "time-pos",
+						 MPV_FORMAT_DOUBLE, &seekto);
 				*first_load = false;
 			} else {
 				char statusbuf[50] = {};
 				writestatus(MPV, statusbuf);
 				sendmsg(statusbuf);
 			}
-		}
-		if (mp_event->event_id == MPV_EVENT_END_FILE && !FILE_LOADED) {
+		} else if (mp_event->event_id == MPV_EVENT_END_FILE &&
+			   !FILE_LOADED) {
 			sendmsg("moov: m̛̿̇al͒f̃un̩cͯt̿io̲n̙͌͢");
 			die("couldn't load file");
 		}
@@ -507,17 +492,18 @@ argconf parseargs(int argc, char *argv[])
 {
 	argconf conf;
 
-	if (argc <= 1) return conf;
+	if (argc <= 1)
+		return conf;
 
 	bool expecting_seekto = false;
-	for (size_t i = 1; i < argc; i++) {
+	for (int i = 1; i < argc; i++) {
+		fprintf(stderr, "arg: %s\n", argv[i]);
 		if (argv[i][0] == '-') {
 			switch (argv[i][1]) {
 			case 'r':
 				conf.resume = true;
 				break;
 			case 's':
-				fprintf(stderr, "found -s\n");
 				expecting_seekto = true;
 				break;
 			default:
@@ -526,7 +512,6 @@ argconf parseargs(int argc, char *argv[])
 			}
 		} else if (expecting_seekto) {
 			conf.seekto = parsetime(argv[i], strlen(argv[i]));
-			fprintf(stderr, "parsed -s param into %f\n", conf.seekto);
 		} else if (conf.uri_cnt < 100) {
 			conf.uri[conf.uri_cnt++] = argv[i];
 		}
@@ -538,8 +523,6 @@ argconf parseargs(int argc, char *argv[])
 int main(int argc, char *argv[])
 {
 	argconf conf = parseargs(argc, argv);
-
-	HOME_DIR = getenv("HOME");
 
 	MPV = mpv_create();
 	if (!MPV)
@@ -578,12 +561,13 @@ int main(int argc, char *argv[])
 	if (!GLCONTEXT)
 		die("failed to create SDL GL context");
 
-	gl3wInit();
+	glewInit();
 
 	ImGui_ImplSdlGL3_Init(WINDOW);
 
-	// ImGuiIO &io = ImGui::GetIO();
-	// io.Fonts->AddFontFromFileTTF("LiberationSans-Regular.ttf", 14.0f);
+	//ImGuiIO &io = ImGui::GetIO();
+	//io.Fonts->AddFontFromFileTTF(
+	//	"/usr/local/share/moov/liberation_sans.ttf", 14.0f);
 
 	if (mpv_opengl_cb_init_gl(MPV_GL, NULL, get_proc_address_mpv, NULL) < 0)
 		die("failed to initialize mpv GL context");
@@ -592,19 +576,16 @@ int main(int argc, char *argv[])
 		die("failed to set VO");
 
 	mpv_set_option_string(MPV, "ytdl", "yes");
-	mpv_set_option_string(MPV, "ytdl-raw-options",
-			      "format=\"bestvideo[height<="
-			      "720][ext=mp4]+bestaudio/"
-			      "best[height<=720]/best\"");
+	//	mpv_set_option_string(MPV, "ytdl-raw-options",
+	//			      "format=\"bestvideo[height<="
+	//			      "720][ext=mp4]+bestaudio/"
+	//			      "best[height<=720]/best\"");
 	mpv_set_option_string(MPV, "input-ipc-server", PIPE);
 
 	wakeup_on_mpv_events = SDL_RegisterEvents(1);
 	if (wakeup_on_mpv_events == (Uint32)-1)
 		die("could not register events");
 	mpv_set_wakeup_callback(MPV, on_mpv_events, NULL);
-
-	for (size_t i = 0; i < conf.uri_cnt; i++)
-		fprintf(stderr, "%s\n", conf.uri[i]);
 
 	if (conf.resume) {
 		IS_PLAYLIST = true;
@@ -613,9 +594,9 @@ int main(int argc, char *argv[])
 	} else if (conf.uri_cnt > 0) {
 		const char *cmd[] = { "loadfile", conf.uri[0], NULL };
 		mpv_command(MPV, cmd);
-		for (int i = 1; i < conf.uri_cnt; i++) {
-			const char *cmd2[] = { "loadfile", conf.uri[i], "append",
-					       NULL };
+		for (size_t i = 1; i < conf.uri_cnt; i++) {
+			const char *cmd2[] = { "loadfile", conf.uri[i],
+					       "append", NULL };
 			mpv_command(MPV, cmd2);
 		}
 		int64_t playlist_count;

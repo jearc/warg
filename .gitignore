@@ -1,5 +1,7 @@
 build/
 moov
+moovpidgin
+guide
 *.lst
 *.o
 *.eep

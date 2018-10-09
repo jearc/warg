@@ -1,7 +1,16 @@
-struct chatlog;
+struct Message {
+	time_t time;
+	char *from;
+	char *text;
+};
+
+struct chatlog {
+	Message *msg = NULL;
+	size_t msg_max = 0;
+	size_t msg_cnt = 0;
+	pthread_mutex_t mtx = PTHREAD_MUTEX_INITIALIZER;
+};
 
 void sendmsg(const char *text);
-void logmsg(chatlog *cl, char *username, size_t username_len, char *text, size_t text_len);
-int parsemsg(chatlog *cl, mpv_handle *mpv, char *buf, size_t len);
-void handlemsg(chatlog *cl, mpv_handle *mpv, char *username, 
-	size_t username_len, char *text, size_t text_len);
+void logmsg(chatlog *cl, char *username, char *text);
+int splitinput(char *buf, char **username, char **text);
