@@ -2,22 +2,13 @@ EXE = moov
 OBJS = main.o cmd.o chat.o mpv.o util.o ui.o
 OBJS += ./imgui/imgui_impl_sdl_gl3.o ./imgui/imgui.o ./imgui/imgui_draw.o
 
-LIBS = -lGL -ldl `sdl2-config --libs` `pkg-config --libs --cflags mpv` -pthread `pkg-config --libs --cflags glew`
+CFLAGS = -fPIC -pedantic -Wall -Wextra -Ofast -ffast-math
+LIBS = -lGL -ldl -lSDL2 -lmpv -lGLEW -lGLU
 
-CFLAGS = -fPIC -pedantic -Wall -Wextra -g
-MOOV_FLAGS += -I./imgui `sdl2-config --cflags`
-
-MOOVPIDGIN_EXE = moovpidgin
-MOOVPIDGIN_OBJS = moovpidgin.o
-MOOVPIDGIN_LIBS = -lsystemd -pthread
-
-all: $(EXE) $(MOOVPIDGIN_EXE)
+all: $(EXE)
 
 $(EXE): $(OBJS)
 	$(CXX) $(CFLAGS) $(MOOV_FLAGS) -o $(EXE) $(OBJS) $(LIBS)
-
-$(MOOVPIDGIN_EXE): $(MOOVPIDGIN_OBJS)
-	$(CC) $(CFLAGS) -o $(MOOVPIDGIN_EXE) $(MOOVPIDGIN_OBJS) $(MOOVPIDGIN_LIBS)
 
 clean:
 	rm $(EXE) $(MOOVPIDGIN_EXE) $(OBJS) $(MOOVPIDGIN_OBJS)

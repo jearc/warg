@@ -8,7 +8,6 @@ struct chatlog {
 	Message *msg = NULL;
 	size_t msg_max = 0;
 	size_t msg_cnt = 0;
-	pthread_mutex_t mtx = PTHREAD_MUTEX_INITIALIZER;
 };
 
 void sendmsg(const char *text);

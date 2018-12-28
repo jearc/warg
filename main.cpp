@@ -1,11 +1,12 @@
 #include <time.h>
 #include <stdio.h>
-#include <pthread.h>
 #include <errno.h>
 #include <GL/glew.h>
 #include <SDL2/SDL.h>
 #include <mpv/client.h>
 #include <mpv/opengl_cb.h>
+#include <unistd.h>
+#include <fcntl.h>
 
 #include "imgui/imgui.h"
 #include "imgui/imgui_impl_sdl_gl3.h"
@@ -226,7 +227,6 @@ void chatbox()
 	ImGui::BeginChild("LogRegion",
 			  ImVec2(0, -ImGui::GetItemsLineHeightWithSpacing()),
 			  false, ImGuiWindowFlags_NoScrollbar);
-	pthread_mutex_lock(&CHATLOG.mtx);
 	for (size_t i = 0; i < CHATLOG.msg_cnt; i++) {
 		Message *msg = &CHATLOG.msg[i];
 		tm *now = localtime(&msg->time);
@@ -234,7 +234,6 @@ void chatbox()
 		strftime(buf, sizeof(buf), "%X", now);
 		ImGui::TextWrapped("[%s] %s: %s", buf, msg->from, msg->text);
 	}
-	pthread_mutex_unlock(&CHATLOG.mtx);
 	if (SCROLL_TO_BOTTOM) {
 		ImGui::SetScrollHere();
 		SCROLL_TO_BOTTOM = false;
@@ -288,19 +287,17 @@ void ui()
 	ImGui::Render();
 }
 
-void *stdin_loop(void *arg)
+void readstdin()
 {
-	UNUSED(arg);
-
-	char buf[MAX_MSG_LEN];
+	static char buf[MAX_MSG_LEN];
 	memset(buf, 0, sizeof buf);
 	size_t bufidx = 0;
-
-	while (true) {
-		char c = getchar();
+	
+	char c;
+	long res;
+	while (read(0, &c, 1) != -1) {
 		switch (c) {
 		case EOF:
-			//die("eof");
 			break;
 		case '\0':
 			char *username, *text;
@@ -319,9 +316,7 @@ void *stdin_loop(void *arg)
 			break;
 		}
 	}
-
-	return NULL;
-}
+}			
 
 char *playlistpath()
 {
@@ -523,6 +518,8 @@ argconf parseargs(int argc, char *argv[])
 int main(int argc, char *argv[])
 {
 	argconf conf = parseargs(argc, argv);
+	
+	fcntl(0, F_SETFL, O_NONBLOCK);
 
 	MPV = mpv_create();
 	if (!MPV)
@@ -611,9 +608,6 @@ int main(int argc, char *argv[])
 		die("no uris");
 	}
 
-	pthread_t stdin_thread;
-	pthread_create(&stdin_thread, NULL, stdin_loop, NULL);
-
 	bool first_load = true;
 	while (1) {
 		SDL_Delay(10);
@@ -625,6 +619,8 @@ int main(int argc, char *argv[])
 		SDL_GetMouseState(&MOUSE_X, &MOUSE_Y);
 		if (old_mouse_x != MOUSE_X || old_mouse_y != MOUSE_Y)
 			LAST_MOUSE_MOVE = CURRENT_TICK;
+			
+		readstdin();
 
 		handle_events(&first_load, conf.seekto);
 
