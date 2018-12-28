@@ -643,19 +643,20 @@ int main(int argc, char *argv[])
 		readstdin();
 		
 		REDRAW = 0;
+		
+		if (SDL_GetWindowFlags(WINDOW) & SDL_WINDOW_INPUT_FOCUS)
+			REDRAW = true;
 
 		handle_events(&first_load, conf.seekto);
 
-		int w, h;
-		SDL_GetWindowSize(WINDOW, &w, &h);
-		glClearColor(CLEAR_COLOR.x, CLEAR_COLOR.y, CLEAR_COLOR.z,
-			     CLEAR_COLOR.w);
-		glClear(GL_COLOR_BUFFER_BIT);
-		if (REDRAW)
+		if (REDRAW) {
+			int w, h;
+			SDL_GetWindowSize(WINDOW, &w, &h);
+			glClear(GL_COLOR_BUFFER_BIT);
 			mpv_opengl_cb_draw(MPV_GL, 0, w, -h);
-		ui();
-		SDL_GL_SwapWindow(WINDOW);
-
+			ui();
+			SDL_GL_SwapWindow(WINDOW);
+		}
 		save_playlist_state();
 	}
 
