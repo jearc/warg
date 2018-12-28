@@ -1,101 +1,66 @@
-#include <mpv/client.h>
 #include <string.h>
 #include <ctype.h>
 #include <math.h>
 #include <pthread.h>
 
+#include "mpvhandler.h"
 #include "util.h"
 #include "cmd.h"
 #include "chat.h"
-#include "mpv.h"
 
-void cmd_pp(char *args, mpv_handle *mpv);
-void cmd_status(char *args, mpv_handle *mpv);
-void cmd_seek(char *args, mpv_handle *mpv);
-void cmd_seekplus(char *args, mpv_handle *mpv);
-void cmd_seekminus(char *args, mpv_handle *mpv);
-void cmd_index(char *args, mpv_handle *mpv);
-void cmd_prev(char *args, mpv_handle *mpv);
-void cmd_next(char *args, mpv_handle *mpv);
+void cmd_pp(char *args, mpvhandler *mpvh);
+void cmd_status(char *args, mpvhandler *mpvh);
+void cmd_seek(char *args, mpvhandler *mpvh);
+void cmd_seekplus(char *args, mpvhandler *mpvh);
+void cmd_seekminus(char *args, mpvhandler *mpvh);
 
 struct {
 	const char *name;
-	void (*fn)(char *, mpv_handle *);
+	void (*fn)(char *, mpvhandler *);
 } cmdtab[] = {
 	{ "pp", cmd_pp },
 	{ "STATUS", cmd_status },
 	{ "SEEK", cmd_seek },
 	{ "SEEK+", cmd_seekplus },
 	{ "SEEK-", cmd_seekminus },
-	{ "INDEX", cmd_index },
-	{ "PREV", cmd_prev },
-	{ "NEXT", cmd_next }
 };
 
-void cmd_pp(char *args, mpv_handle *mpv)
+void cmd_pp(char *args, mpvhandler *mpvh)
 {
 	UNUSED(args);
 
-	mpv_command_string(mpv, "cycle pause");
-	char statusbuf[50] = {};
-	writestatus(mpv, statusbuf);
-	sendmsg(statusbuf);
+	mpvh_pp(mpvh);
+	statusstr status = mpvh_statusstr(mpvh);
+	sendmsg(status.str);
 }
 
-void cmd_status(char *args, mpv_handle *mpv)
+void cmd_status(char *args, mpvhandler *mpvh)
 {
 	UNUSED(args);
 
-	char statusbuf[50] = {};
-	writestatus(mpv, statusbuf);
-	sendmsg(statusbuf);
+	statusstr status = mpvh_statusstr(mpvh);
+	sendmsg(status.str);
 }
 
-void cmd_seek(char *args, mpv_handle *mpv)
+void cmd_seek(char *args, mpvhandler *mpvh)
 {
 	double time = parsetime(args, strlen(args));
-	mpv_set_property(mpv, "time-pos", MPV_FORMAT_DOUBLE, &time);
+	mpvh_seek(mpvh, time);
 }
 
-void cmd_seekplus(char *args, mpv_handle *mpv)
+void cmd_seekplus(char *args, mpvhandler *mpvh)
 {
 	double time = parsetime(args, strlen(args));
-	double current_time;
-	mpv_get_property(mpv, "time-pos", MPV_FORMAT_DOUBLE, &current_time);
-	double new_time = current_time + time;
-	mpv_set_property(mpv, "time-pos", MPV_FORMAT_DOUBLE, &new_time);
+	mpvh_seekplus(mpvh, time);
 }
 
-void cmd_seekminus(char *args, mpv_handle *mpv)
+void cmd_seekminus(char *args, mpvhandler *mpvh)
 {
 	double time = parsetime(args, strlen(args));
-	double current_time;
-	mpv_get_property(mpv, "time-pos", MPV_FORMAT_DOUBLE, &current_time);
-	double new_time = current_time - time;
-	mpv_set_property(mpv, "time-pos", MPV_FORMAT_DOUBLE, &new_time);
+	mpvh_seekminus(mpvh, time);
 }
 
-void cmd_index(char *args, mpv_handle *mpv)
-{
-	int64_t index = atoi(args) - 1;
-	mpv_set_property(mpv, "playlist-pos", MPV_FORMAT_INT64, &index);
-}
-
-void cmd_prev(char *args, mpv_handle *mpv)
-{
-	UNUSED(args);
-
-	mpv_command_string(mpv, "playlist-prev");
-}
-
-void cmd_next(char *args, mpv_handle *mpv)
-{
-	UNUSED(args);
-
-	mpv_command_string(mpv, "playlist-next");
-}
-
-void handlecmd(char *text, mpv_handle *mpv)
+void handlecmd(char *text, mpvhandler *mpvh)
 {
 	static size_t ncmd = sizeof cmdtab / sizeof cmdtab[0];
 
@@ -115,7 +80,7 @@ void handlecmd(char *text, mpv_handle *mpv)
 			continue;
 		if (cmdlen != strlen(cmdtab[i].name))
 			continue;
-		cmdtab[i].fn(args, mpv);
+		cmdtab[i].fn(args, mpvh);
 		break;
 	}
 }

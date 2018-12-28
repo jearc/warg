@@ -1,5 +1,5 @@
 EXE = moov
-OBJS = main.o cmd.o chat.o mpv.o util.o ui.o
+OBJS = main.o mpvhandler.o cmd.o chat.o mpv.o util.o ui.o
 OBJS += ./imgui/imgui_impl_sdl_gl3.o ./imgui/imgui.o ./imgui/imgui_draw.o
 
 CFLAGS = -fPIC -pedantic -Wall -Wextra -Ofast -ffast-math

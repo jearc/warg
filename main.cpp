@@ -8,6 +8,7 @@
 #include <unistd.h>
 #include <fcntl.h>
 
+#include "mpvhandler.h"
 #include "imgui/imgui.h"
 #include "imgui/imgui_impl_sdl_gl3.h"
 #include "util.h"
@@ -90,13 +91,13 @@ void chatbox(chatlog *chatlog, bool scroll_to_bottom)
 	ImGui::End();
 }
 
-bool readstdin(chatlog *chatlog, mpv_handle *mpv)
+bool readstdin(chatlog *chatlog, mpvhandler *mpvh)
 {
 	bool new_msg = false;
 
 	static char buf[MAX_MSG_LEN];
 	memset(buf, 0, sizeof buf);
-	size_t bufidx = 0;
+	static size_t bufidx = 0;
 	
 	char c;
 	long res;
@@ -108,7 +109,7 @@ bool readstdin(chatlog *chatlog, mpv_handle *mpv)
 			char *username, *text;
 			splitinput(buf, &username, &text);
 			logmsg(chatlog, username, text);
-			handlecmd(text, mpv);
+			handlecmd(text, mpvh);
 			new_msg = true;
 			memset(buf, 0, sizeof buf);
 			bufidx = 0;
@@ -155,26 +156,6 @@ bool handle_sdl_events(SDL_Window *win)
 	return redraw;
 }
 
-void handle_mpv_events(mpv_handle *mpv)
-{
-	mpv_event *e;
-	while (e = mpv_wait_event(mpv, 0), e->event_id != MPV_EVENT_NONE) {
-		switch (e->event_id) {
-		case MPV_EVENT_FILE_LOADED:
-			mpv_command_string(mpv, "set pause yes");
-			break;
-		case MPV_EVENT_PLAYBACK_RESTART: {
-			char statusbuf[50] = {};
-			writestatus(mpv, statusbuf);
-			sendmsg(statusbuf);
-			break;
-		}
-		default:
-			break;
-		}
-	}
-}
-
 struct argconf {
 	double seekto = 0.0;
 	bool resume = false;
@@ -214,22 +195,10 @@ argconf parseargs(int argc, char *argv[])
 	return conf;
 }
 
-int main(int argc, char *argv[])
+SDL_Window *init_window()
 {
-	argconf conf = parseargs(argc, argv);
-	
-	fcntl(0, F_SETFL, O_NONBLOCK);
-
-	mpv_handle *mpv = mpv_create();
-	if (!mpv)
-		die("context init failed");
-
-	if (mpv_initialize(mpv) < 0)
-		die("mpv init failed");
-
 	if (SDL_Init(SDL_INIT_VIDEO) < 0)
 		die("SDL init failed");
-
 	SDL_GL_SetAttribute(SDL_GL_CONTEXT_FLAGS,
 			    SDL_GL_CONTEXT_FORWARD_COMPATIBLE_FLAG);
 	SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK,
@@ -246,39 +215,35 @@ int main(int argc, char *argv[])
 				  SDL_WINDOWPOS_CENTERED, 1280, 720,
 				  SDL_WINDOW_OPENGL | SDL_WINDOW_SHOWN |
 					  SDL_WINDOW_RESIZABLE);
-	if (!window)
-		die("failed to create SDL window");
-
-	mpv_opengl_cb_context *mpv_gl;
-	mpv_gl = (mpv_opengl_cb_context *)mpv_get_sub_api(
-		mpv, MPV_SUB_API_OPENGL_CB);
-	if (!mpv_gl)
-		die("failed to create mpv GL API handle");
-
-	SDL_GLContext glcontext;
-	glcontext = SDL_GL_CreateContext(window);
-	if (!glcontext)
-		die("failed to create SDL GL context");
-
+	SDL_GL_CreateContext(window);
 	glewInit();
-
 	ImGui_ImplSdlGL3_Init(window);
+	
+	return window;
+}
+
+int main(int argc, char *argv[])
+{
+	argconf conf = parseargs(argc, argv);
+	
+	fcntl(0, F_SETFL, O_NONBLOCK);
+
+	SDL_Window *window = init_window();
+	mpvhandler *mpvh = mpvh_create();
+	mpv_opengl_cb_context *mpv_gl = mpvh_get_opengl_cb_api(mpvh);
 
 	ImGuiIO &io = ImGui::GetIO();
 	io.Fonts->AddFontFromFileTTF(
 		"/usr/local/share/moov/liberation_sans.ttf", 14.0f);
 
 	mpv_opengl_cb_init_gl(mpv_gl, NULL, get_proc_address_mpv, NULL);
-	mpv_set_option_string(mpv, "vo", "opengl-cb");
-	mpv_set_option_string(mpv, "ytdl", "yes");
 
 	bool mpv_redraw = false;
 	mpv_opengl_cb_set_update_callback(mpv_gl, on_mpv_redraw, &mpv_redraw);
 
 	if (conf.uri_cnt == 0)
 		die("no uris");
-	const char *cmd[] = { "loadfile", conf.uri[0], NULL };
-	mpv_command(mpv, cmd);
+	mpvh_loadfile(mpvh, argv[1]);
 	
 	chatlog chatlog;
 
@@ -290,7 +255,7 @@ int main(int argc, char *argv[])
 			continue;
 		last_tick = current_tick;
 
-		bool scroll_to_bottom = readstdin(&chatlog, mpv);
+		bool scroll_to_bottom = readstdin(&chatlog, mpvh);
 
 		bool redraw = false;
 		if (mpv_redraw) {
@@ -302,10 +267,11 @@ int main(int argc, char *argv[])
 
 		if (handle_sdl_events(window))
 			redraw = true;
-		handle_mpv_events(mpv);
+		mpvh_update(mpvh);
 
 		if (!redraw)
 			continue;
+			
 		int w, h;
 		SDL_GetWindowSize(window, &w, &h);
 		glClear(GL_COLOR_BUFFER_BIT);

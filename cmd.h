@@ -1,1 +1,1 @@
-void handlecmd(char *text, mpv_handle *mpv);
+void handlecmd(char *text, mpvhandler *mpvh);
