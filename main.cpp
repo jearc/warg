@@ -19,6 +19,7 @@
 #define MAX_MSG_LEN 1000
 
 static Uint32 wakeup_on_mpv_events;
+static Uint32 wakeup_on_mpv_redraw;
 const char *PIPE = "/tmp/mpvpipe";
 const uint16_t MARGIN_SIZE = 8;
 const float DEFAULT_OPACITY = 0.7;
@@ -44,6 +45,7 @@ float OSD_OPACITY = DEFAULT_OPACITY;
 bool FILE_LOADED = false;
 bool IS_PLAYLIST = false;
 int LAST_COMPLETED_TRACK = -1;
+bool REDRAW = 0;
 
 void cleanup()
 {
@@ -76,6 +78,15 @@ static void on_mpv_events(void *ctx)
 
 	SDL_Event event;
 	event.type = wakeup_on_mpv_events;
+	SDL_PushEvent(&event);
+}
+
+static void on_mpv_redraw(void *ctx)
+{
+	UNUSED(ctx);
+
+	SDL_Event event;
+	event.type = wakeup_on_mpv_redraw;
 	SDL_PushEvent(&event);
 }
 
@@ -446,6 +457,11 @@ void handle_events(bool *first_load, double seekto)
 			exit(0);
 		} else if (event.type == SDL_KEYDOWN) {
 			handle_keydown(event);
+		} else if (event.type == SDL_WINDOWEVENT &&
+		           event.window.event == SDL_WINDOWEVENT_EXPOSED) {
+			REDRAW = true;
+		} else if (event.type == wakeup_on_mpv_redraw) {
+			REDRAW = true;
 		} else if (event.type == wakeup_on_mpv_events) {
 			handle_mpv_events(first_load, seekto);
 		} else {
@@ -580,9 +596,13 @@ int main(int argc, char *argv[])
 	mpv_set_option_string(MPV, "input-ipc-server", PIPE);
 
 	wakeup_on_mpv_events = SDL_RegisterEvents(1);
-	if (wakeup_on_mpv_events == (Uint32)-1)
+	wakeup_on_mpv_redraw = SDL_RegisterEvents(1);
+	
+	if (wakeup_on_mpv_events == (Uint32)-1 ||
+	    wakeup_on_mpv_redraw == (Uint32)-1)
 		die("could not register events");
 	mpv_set_wakeup_callback(MPV, on_mpv_events, NULL);
+	mpv_opengl_cb_set_update_callback(MPV_GL, on_mpv_redraw, NULL);
 
 	if (conf.resume) {
 		IS_PLAYLIST = true;
@@ -621,6 +641,8 @@ int main(int argc, char *argv[])
 			LAST_MOUSE_MOVE = CURRENT_TICK;
 			
 		readstdin();
+		
+		REDRAW = 0;
 
 		handle_events(&first_load, conf.seekto);
 
@@ -629,7 +651,8 @@ int main(int argc, char *argv[])
 		glClearColor(CLEAR_COLOR.x, CLEAR_COLOR.y, CLEAR_COLOR.z,
 			     CLEAR_COLOR.w);
 		glClear(GL_COLOR_BUFFER_BIT);
-		mpv_opengl_cb_draw(MPV_GL, 0, w, -h);
+		if (REDRAW)
+			mpv_opengl_cb_draw(MPV_GL, 0, w, -h);
 		ui();
 		SDL_GL_SwapWindow(WINDOW);
 
