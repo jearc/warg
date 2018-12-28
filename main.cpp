@@ -562,9 +562,9 @@ int main(int argc, char *argv[])
 
 	ImGui_ImplSdlGL3_Init(WINDOW);
 
-	//ImGuiIO &io = ImGui::GetIO();
-	//io.Fonts->AddFontFromFileTTF(
-	//	"/usr/local/share/moov/liberation_sans.ttf", 14.0f);
+	ImGuiIO &io = ImGui::GetIO();
+	io.Fonts->AddFontFromFileTTF(
+		"/usr/local/share/moov/liberation_sans.ttf", 14.0f);
 
 	if (mpv_opengl_cb_init_gl(MPV_GL, NULL, get_proc_address_mpv, NULL) < 0)
 		die("failed to initialize mpv GL context");
