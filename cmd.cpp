@@ -51,13 +51,14 @@ void cmd_seek(char *args, mpvhandler *mpvh)
 void cmd_seekplus(char *args, mpvhandler *mpvh)
 {
 	double time = parsetime(args, strlen(args));
-	mpvh_seekplus(mpvh, time);
+	mpvh_seekrel(mpvh, time);
 }
 
 void cmd_seekminus(char *args, mpvhandler *mpvh)
 {
 	double time = parsetime(args, strlen(args));
-	mpvh_seekminus(mpvh, time);
+	time *= -1;
+	mpvh_seekrel(mpvh, time);
 }
 
 void handlecmd(char *text, mpvhandler *mpvh)

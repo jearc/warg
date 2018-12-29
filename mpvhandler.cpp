@@ -4,16 +4,25 @@
 #include <stdio.h>
 #include <string.h>
 #include <math.h>
+#include <SDL2/SDL.h>
 
 #include "mpvhandler.h"
-#include "mpv.h"
 #include "chat.h"
+
+enum { playing, paused };
+struct state {
+	int pstatus;
+	double time;
+};
 
 struct mpvhandler {
 	mpv_handle *mpv;
+	char *file;
+	state s_canon;
+	int64_t last_time;
 };
 
-mpvhandler *mpvh_create()
+mpvhandler *mpvh_create(char *uri)
 {
 	mpvhandler *h = (mpvhandler *)malloc(sizeof *h);
 
@@ -21,6 +30,15 @@ mpvhandler *mpvh_create()
 	mpv_initialize(h->mpv);
 	mpv_set_option_string(h->mpv, "vo", "opengl-cb");
 	mpv_set_option_string(h->mpv, "ytdl", "yes");
+	
+	h->file = strdup(uri);
+	const char *cmd[] = { "loadfile", h->file, NULL };
+	mpv_command(h->mpv, cmd);
+	
+	h->s_canon.pstatus = paused;
+	h->s_canon.time = 0;
+	
+	h->last_time = SDL_GetPerformanceCounter();
 
 	return h;
 }
@@ -30,14 +48,15 @@ mpv_opengl_cb_context *mpvh_get_opengl_cb_api(mpvhandler *h)
 	return (mpv_opengl_cb_context *)mpv_get_sub_api(h->mpv, MPV_SUB_API_OPENGL_CB);
 }
 
-void mpvh_loadfile(mpvhandler *h, char *uri)
-{
-	const char *cmd[] = { "loadfile", uri, NULL };
-	mpv_command(h->mpv, cmd);
-}
-
 void mpvh_update(mpvhandler *h)
 {
+	int64_t current_time = SDL_GetPerformanceCounter();
+	double dt = (double)((current_time - h->last_time) /
+	                     (double)SDL_GetPerformanceFrequency());
+	if (h->s_canon.pstatus == playing)
+		h->s_canon.time += dt;
+	h->last_time = current_time;
+	
 	mpv_event *e;
 	while (e = mpv_wait_event(h->mpv, 0), e->event_id != MPV_EVENT_NONE) {
 		switch (e->event_id) {
@@ -45,9 +64,8 @@ void mpvh_update(mpvhandler *h)
 			mpv_command_string(h->mpv, "set pause yes");
 			break;
 		case MPV_EVENT_PLAYBACK_RESTART: {
-			char statusbuf[50] = {};
-			writestatus(h->mpv, statusbuf);
-			sendmsg(statusbuf);
+			statusstr status = mpvh_statusstr(h);
+			sendmsg(status.str);
 			break;
 		}
 		default:
@@ -56,66 +74,42 @@ void mpvh_update(mpvhandler *h)
 	}
 }
 
+void mpvh_syncmpv(mpvhandler *h, state *s)
+{
+	mpv_set_property(h->mpv, "pause", MPV_FORMAT_FLAG, &s->pstatus);
+	mpv_set_property(h->mpv, "time-pos", MPV_FORMAT_DOUBLE, &s->time);
+}
+
 void mpvh_pp(mpvhandler *h)
 {
-	mpv_command_string(h->mpv, "cycle pause");
+	h->s_canon.pstatus = h->s_canon.pstatus == playing ? paused : playing;
+	mpvh_syncmpv(h, &h->s_canon);
 }
 
 void mpvh_seek(mpvhandler *h, double time)
 {
-	mpv_set_property(h->mpv, "time-pos", MPV_FORMAT_DOUBLE, &time);
+	h->s_canon.time = time;
+	mpvh_syncmpv(h, &h->s_canon);
 }
 
-void mpvh_seekplus(mpvhandler *h, double time)
+void mpvh_seekrel(mpvhandler *h, double offset)
 {
-	double current_time;
-	mpv_get_property(h->mpv, "time-pos", MPV_FORMAT_DOUBLE, &current_time);
-	double new_time = current_time + time;
-	mpv_set_property(h->mpv, "time-pos", MPV_FORMAT_DOUBLE, &new_time);
-}
-
-void mpvh_seekminus(mpvhandler *h, double time)
-{
-	double current_time;
-	mpv_get_property(h->mpv, "time-pos", MPV_FORMAT_DOUBLE, &current_time);
-	double new_time = current_time - time;
-	mpv_set_property(h->mpv, "time-pos", MPV_FORMAT_DOUBLE, &new_time);
+	h->s_canon.time += offset;
+	mpvh_syncmpv(h, &h->s_canon);
 }
 
 statusstr mpvh_statusstr(mpvhandler *h)
 {
 	statusstr s;
+	
+	int64_t t, hh, mm, ss;
+	t = round(h->s_canon.time);
+	hh = t / 3600;
+	mm = (t % 3600) / 60;
+	ss = t % 60;
+	
+	snprintf(s.str, 50, "moov: %s %ld:%02ld:%02ld",
+	         h->s_canon.pstatus == paused ? "paused" : "playing", hh, mm, ss);
 
-	double time;
-	double duration;
-	int64_t pos;
-	int64_t count;
-	bool paused;
-
-	int64_t time_int, time_h, time_m, time_s;
-
-	if (mpv_get_property(h->mpv, "playback-time", MPV_FORMAT_DOUBLE, &time))
-		goto error;
-	if (mpv_get_property(h->mpv, "duration", MPV_FORMAT_DOUBLE, &duration))
-		goto error;
-	if (mpv_get_property(h->mpv, "playlist-pos-1", MPV_FORMAT_INT64, &pos))
-		goto error;
-	if (mpv_get_property(h->mpv, "playlist-count", MPV_FORMAT_INT64, &count))
-		goto error;
-	if (mpv_get_property(h->mpv, "pause", MPV_FORMAT_FLAG, &paused))
-		goto error;
-
-	time_int = round(time);
-	time_h = time_int / 3600;
-	time_m = (time_int % 3600) / 60;
-	time_s = time_int % 60;
-
-	snprintf(s.str, 50, "moov: [%ld/%ld] %s %ld:%02ld:%02ld", pos, count,
-		 paused ? "paused" : "playing", time_h, time_m, time_s);
-
-	return s;
-
-error:
-	sprintf(s.str, "moov: not playing");
 	return s;
 }

@@ -6,6 +6,7 @@
 #include <time.h>
 
 #include "chat.h"
+#include "mpvhandler.h"
 #include "cmd.h"
 
 void sendmsg(const char *text)

@@ -12,7 +12,6 @@
 #include "imgui/imgui.h"
 #include "imgui/imgui_impl_sdl_gl3.h"
 #include "util.h"
-#include "mpv.h"
 #include "chat.h"
 #include "cmd.h"
 #include "ui.h"
@@ -222,14 +221,16 @@ SDL_Window *init_window()
 	return window;
 }
 
-int main(int argc, char *argv[])
+int main(int argc, char **argv)
 {
 	argconf conf = parseargs(argc, argv);
+	if (conf.uri_cnt == 0)
+		die("no uris");
 	
 	fcntl(0, F_SETFL, O_NONBLOCK);
 
 	SDL_Window *window = init_window();
-	mpvhandler *mpvh = mpvh_create();
+	mpvhandler *mpvh = mpvh_create(conf.uri[0]);
 	mpv_opengl_cb_context *mpv_gl = mpvh_get_opengl_cb_api(mpvh);
 
 	ImGuiIO &io = ImGui::GetIO();
@@ -240,10 +241,6 @@ int main(int argc, char *argv[])
 
 	bool mpv_redraw = false;
 	mpv_opengl_cb_set_update_callback(mpv_gl, on_mpv_redraw, &mpv_redraw);
-
-	if (conf.uri_cnt == 0)
-		die("no uris");
-	mpvh_loadfile(mpvh, argv[1]);
 	
 	chatlog chatlog;
 
