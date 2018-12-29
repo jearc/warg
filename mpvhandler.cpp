@@ -4,7 +4,6 @@
 #include <stdio.h>
 #include <string.h>
 #include <math.h>
-#include <SDL2/SDL.h>
 
 #include "mpvhandler.h"
 #include "chat.h"
@@ -38,7 +37,7 @@ mpvhandler *mpvh_create(char *uri)
 	h->s_canon.pstatus = paused;
 	h->s_canon.time = 0;
 	
-	h->last_time = SDL_GetPerformanceCounter();
+	h->last_time = mpv_get_time_us(h->mpv);
 
 	return h;
 }
@@ -50,9 +49,8 @@ mpv_opengl_cb_context *mpvh_get_opengl_cb_api(mpvhandler *h)
 
 void mpvh_update(mpvhandler *h)
 {
-	int64_t current_time = SDL_GetPerformanceCounter();
-	double dt = (double)((current_time - h->last_time) /
-	                     (double)SDL_GetPerformanceFrequency());
+	int64_t current_time = mpv_get_time_us(h->mpv);
+	double dt = (double)(current_time - h->last_time) / 1000000;
 	if (h->s_canon.pstatus == playing)
 		h->s_canon.time += dt;
 	h->last_time = current_time;
