@@ -58,14 +58,40 @@ void mpvh_update(mpvhandler *h)
 	mpv_event *e;
 	while (e = mpv_wait_event(h->mpv, 0), e->event_id != MPV_EVENT_NONE) {
 		switch (e->event_id) {
+		case MPV_EVENT_SHUTDOWN:
+			break;
+		case MPV_EVENT_LOG_MESSAGE:
+			break;
+		case MPV_EVENT_GET_PROPERTY_REPLY:
+			break;
+		case MPV_EVENT_SET_PROPERTY_REPLY:
+			break;
+		case MPV_EVENT_COMMAND_REPLY:
+			break;
+		case MPV_EVENT_START_FILE:
+			break;
+		case MPV_EVENT_END_FILE:
+			break;
 		case MPV_EVENT_FILE_LOADED:
 			mpv_command_string(h->mpv, "set pause yes");
 			break;
-		case MPV_EVENT_PLAYBACK_RESTART: {
-			statusstr status = mpvh_statusstr(h);
-			sendmsg(status.str);
+		case MPV_EVENT_IDLE:
 			break;
-		}
+		case MPV_EVENT_TICK:
+			break;
+		case MPV_EVENT_CLIENT_MESSAGE:
+			break;
+		case MPV_EVENT_VIDEO_RECONFIG:
+			break;
+		case MPV_EVENT_SEEK:
+			break;
+		case MPV_EVENT_PLAYBACK_RESTART:
+			sendmsg(mpvh_statusstr(h).str);
+			break;
+		case MPV_EVENT_PROPERTY_CHANGE:
+			break;
+		case MPV_EVENT_QUEUE_OVERFLOW:
+			break;
 		default:
 			break;
 		}
