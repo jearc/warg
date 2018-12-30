@@ -11,3 +11,4 @@ statusstr mpvh_statusstr(mpvhandler *h);
 void mpvh_pp(mpvhandler *h);
 void mpvh_seek(mpvhandler *h, double time);
 void mpvh_seekrel(mpvhandler *h, double offset);
+statusstr mpvh_mpvstatusstr(mpvhandler *h);

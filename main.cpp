@@ -125,6 +125,15 @@ bool readstdin(chatlog *chatlog, mpvhandler *mpvh)
 	return new_msg;
 }
 
+void dbgwin(mpvhandler *mpvh)
+{
+	static bool display = true;
+	ImGui::Begin("Debug", &display);
+	ImGui::Text("%s		(canon)", mpvh_statusstr(mpvh).str);
+	ImGui::Text("%s		(mpv)", mpvh_mpvstatusstr(mpvh).str);
+	ImGui::End();
+}
+
 bool handle_sdl_events(SDL_Window *win)
 {
 	bool redraw = false;
@@ -275,6 +284,7 @@ int main(int argc, char **argv)
 		mpv_opengl_cb_draw(mpv_gl, 0, w, -h);
 		ImGui_ImplSdlGL3_NewFrame(window);
 		chatbox(&chatlog, scroll_to_bottom);
+		dbgwin(mpvh);
 		glViewport(0, 0, (int)ImGui::GetIO().DisplaySize.x,
 			   (int)ImGui::GetIO().DisplaySize.y);
 		ImGui::Render();
