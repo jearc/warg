@@ -12,6 +12,9 @@ $(EXE): $(OBJS)
 
 clean:
 	rm $(EXE) $(MOOVPIDGIN_EXE) $(OBJS) $(MOOVPIDGIN_OBJS)
+	
+test: all
+	@./test.py
 
 install: all
 	@mkdir -p /usr/local/bin
