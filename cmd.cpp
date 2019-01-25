@@ -30,7 +30,8 @@ void cmd_pp(char *args, mpvhandler *mpvh)
 	UNUSED(args);
 
 	mpvh_pp(mpvh);
-	statusstr status = mpvh_statusstr(mpvh);
+	mpvinfo i = mpvh_getinfo(mpvh);
+	statusstr status = statestr(i.state);
 	sendmsg(status.str);
 }
 
@@ -38,7 +39,8 @@ void cmd_status(char *args, mpvhandler *mpvh)
 {
 	UNUSED(args);
 
-	statusstr status = mpvh_statusstr(mpvh);
+	mpvinfo i = mpvh_getinfo(mpvh);
+	statusstr status = statestr(i.state);
 	sendmsg(status.str);
 }
 

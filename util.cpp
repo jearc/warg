@@ -1,5 +1,8 @@
 #include <math.h>
 #include <ctype.h>
+#include <stdio.h>
+
+#include "util.h"
 
 double parsetime(char *str, size_t len)
 {
@@ -32,4 +35,20 @@ double parsetime(char *str, size_t len)
 		seconds += tok[i] * pow(60, tokidx - i - 1);
 
 	return seconds;
+}
+
+timestr sec_to_timestr(int seconds)
+{
+	timestr ts;
+	
+	int hh = seconds / 3600;
+	int mm = (seconds % 3600) / 60;
+	int ss = seconds % 60;
+	
+	if (hh)
+		snprintf(ts.str, 39, "%d:%02d:%02d", hh, mm, ss);
+	else
+		snprintf(ts.str, 39, "%d:%02d", mm, ss);
+		
+	return ts;
 }

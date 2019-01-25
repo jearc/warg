@@ -7,61 +7,78 @@
 
 #include "mpvhandler.h"
 #include "chat.h"
-
-enum { playing, paused };
-struct state {
-	int pstatus;
-	double time;
-};
+#include "util.h"
 
 struct mpvhandler {
 	mpv_handle *mpv;
 	char *file;
-	state s_canon;
 	int64_t last_time;
+	mpvinfo info;
 };
 
 mpvhandler *mpvh_create(char *uri)
 {
-	mpvhandler *h = (mpvhandler *)malloc(sizeof *h);
+	mpvhandler *h = (mpvhandler *)calloc(sizeof *h, 1);
 
 	h->mpv = mpv_create();
 	mpv_initialize(h->mpv);
 	mpv_set_option_string(h->mpv, "vo", "opengl-cb");
 	mpv_set_option_string(h->mpv, "ytdl", "yes");
-	
+
 	h->file = strdup(uri);
 	const char *cmd[] = { "loadfile", h->file, NULL };
 	mpv_command(h->mpv, cmd);
-	
-	h->s_canon.pstatus = paused;
-	h->s_canon.time = 152.0;
-	
+
 	h->last_time = mpv_get_time_us(h->mpv);
+	
+	h->info.track_curr = 0;
+	h->info.track_cnt = 1;
+	h->info.delay = 0;
+	h->info.state.time = 0;
+	h->info.state.paused = true;
+	h->info.audio_curr = 1;
+	h->info.audio_cnt = 1;
+	h->info.sub_curr = 1;
+	h->info.sub_cnt = 1;
+	mpv_get_property(h->mpv, "ao-mute", MPV_FORMAT_FLAG, &h->info.muted);
+	h->info.exploring = false;
 
 	return h;
 }
 
 mpv_opengl_cb_context *mpvh_get_opengl_cb_api(mpvhandler *h)
 {
-	return (mpv_opengl_cb_context *)mpv_get_sub_api(h->mpv, MPV_SUB_API_OPENGL_CB);
+	return (mpv_opengl_cb_context *)
+	           mpv_get_sub_api(h->mpv, MPV_SUB_API_OPENGL_CB);
 }
 
 void mpvh_syncmpv(mpvhandler *h)
 {
-	state *s = &h->s_canon;
-	mpv_set_property(h->mpv, "pause", MPV_FORMAT_FLAG, &s->pstatus);
+	playstate *s = h->info.exploring ? &h->info.explore_state
+	                                 : &h->info.state;
+	mpv_set_property(h->mpv, "pause", MPV_FORMAT_FLAG, &s->paused);
+	double mpv_time;
+	mpv_get_property(h->mpv, "time-pos", MPV_FORMAT_DOUBLE, &mpv_time);
+	if (abs(mpv_time - s->time) < 5)
+		return;
 	mpv_set_property(h->mpv, "time-pos", MPV_FORMAT_DOUBLE, &s->time);
+}
+
+mpvinfo mpvh_getinfo(mpvhandler *h)
+{
+	return h->info;
 }
 
 void mpvh_update(mpvhandler *h)
 {
 	int64_t current_time = mpv_get_time_us(h->mpv);
 	double dt = (double)(current_time - h->last_time) / 1000000;
-	if (h->s_canon.pstatus == playing)
-		h->s_canon.time += dt;
 	h->last_time = current_time;
-	
+	if (!h->info.state.paused)
+		h->info.state.time += dt;
+	if (h->info.exploring && !h->info.explore_state.paused)
+		h->info.explore_state.time += dt;
+
 	mpv_event *e;
 	while (e = mpv_wait_event(h->mpv, 0), e->event_id != MPV_EVENT_NONE) {
 		switch (e->event_id) {
@@ -79,9 +96,17 @@ void mpvh_update(mpvhandler *h)
 			break;
 		case MPV_EVENT_END_FILE:
 			break;
-		case MPV_EVENT_FILE_LOADED:
+		case MPV_EVENT_FILE_LOADED: {
 			mpvh_syncmpv(h);
+			mpv_get_property(h->mpv, "duration", MPV_FORMAT_DOUBLE,
+			                 &h->info.duration);
+			char *title = NULL;
+			mpv_get_property(h->mpv, "media-title", MPV_FORMAT_STRING,
+			                 &title);
+			strncpy(h->info.title, title, 99);
+			mpv_free(title);
 			break;
+		}
 		case MPV_EVENT_IDLE:
 			break;
 		case MPV_EVENT_TICK:
@@ -106,52 +131,64 @@ void mpvh_update(mpvhandler *h)
 
 void mpvh_pp(mpvhandler *h)
 {
-	h->s_canon.pstatus = h->s_canon.pstatus == playing ? paused : playing;
-	mpvh_syncmpv(h);
+	h->info.state.paused = !h->info.state.paused;
+	if (!h->info.exploring)
+		mpvh_syncmpv(h);
 }
 
 void mpvh_seek(mpvhandler *h, double time)
 {
-	h->s_canon.time = time;
-	mpvh_syncmpv(h);
+	h->info.state.time = time;
+	if (!h->info.exploring)
+		mpvh_syncmpv(h);
 }
 
 void mpvh_seekrel(mpvhandler *h, double offset)
 {
-	h->s_canon.time += offset;
-	mpvh_syncmpv(h);
+	h->info.state.time += offset;
+	if (!h->info.exploring)
+		mpvh_syncmpv(h);
 }
 
-state mpvh_mpvstate(mpvhandler *h)
-{
-	state st;
-	mpv_get_property(h->mpv, "playback-time", MPV_FORMAT_DOUBLE, &st.time);
-	mpv_get_property(h->mpv, "pause", MPV_FORMAT_FLAG, &st.pstatus);
-	return st;
-}
-
-statusstr statestr(state st)
+statusstr statestr(playstate st)
 {
 	statusstr s;
-	
-	int64_t t, hh, mm, ss;
-	t = round(st.time);
-	hh = t / 3600;
-	mm = (t % 3600) / 60;
-	ss = t % 60;
-	
-	snprintf(s.str, 50, "%s %ld:%02ld:%02ld",
-	         st.pstatus == paused ? "paused" : "playing", hh, mm, ss);
-
+	timestr ts = sec_to_timestr(round(st.time));
+	snprintf(s.str, 50, "%s %s",
+		 st.paused ? "paused" : "playing", ts.str);
 	return s;
 }
 
-statusstr mpvh_statusstr(mpvhandler *h)
+void mpvh_explore(mpvhandler *h)
 {
-	return statestr(h->s_canon);
+	h->info.exploring = true;
+	h->info.explore_state = h->info.state;;
 }
 
-statusstr mpvh_mpvstatusstr(mpvhandler *h)
+void mpvh_explore_seek(mpvhandler *h, double time)
 {
-	return statestr(mpvh_mpvstate(h));
+	h->info.explore_state.time = time;
+	mpvh_syncmpv(h);
+}
+
+void mpvh_explore_accept(mpvhandler *h)
+{
+	h->info.exploring = false;
+	h->info.state = h->info.explore_state;
+	
+	timestr ts = sec_to_timestr(round(h->info.state.time));
+	printf("SEEK %s\n", ts.str);
+	fflush(stdout);
+}
+
+void mpvh_explore_cancel(mpvhandler *h)
+{
+	h->info.exploring = false;
+	mpvh_syncmpv(h);
+}
+
+void mpvh_toggle_mute(mpvhandler *h)
+{
+	h->info.muted = !h->info.muted;
+	mpv_set_property(h->mpv, "ao-mute", MPV_FORMAT_FLAG, &h->info.muted);
 }
