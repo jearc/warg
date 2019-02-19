@@ -324,13 +324,14 @@ int main(int argc, char **argv)
 	
 	chatlog chatlog;
 
-	int64_t last_tick = 0, current_tick = 0;
+	int64_t t_last = 0, t_now = 0;
 	while (1) {
 		SDL_Delay(10);
-		current_tick = SDL_GetTicks();
-		if (current_tick - last_tick <= 16)
+		t_now = SDL_GetPerformanceCounter();
+		double delta = (t_now - t_last)/(double)SDL_GetPerformanceFrequency();
+		if (delta <= 1/60.0)
 			continue;
-		last_tick = current_tick;
+		t_last = t_now;
 
 		bool scroll_to_bottom = readstdin(&chatlog, mpvh);
 
