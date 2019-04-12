@@ -1,1 +1,0 @@
-void draw_chatlog(chatlog *cl);
