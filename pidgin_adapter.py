@@ -64,7 +64,8 @@ def parse_command(account, conversation, message, from_self):
         split = message.split()
         url = split[1]
         if len(split) > 2:
-            handle_moov_command(account, conversation, [url, "-s", split[2]], from_self)
+            time_str = ":".join(split[2:])
+            handle_moov_command(account, conversation, [url, "-s", time_str], from_self)
         else:
             handle_moov_command(account, conversation, [url], from_self)
     if message == "RESUME":
