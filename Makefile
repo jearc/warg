@@ -1,5 +1,5 @@
 EXE = moov
-OBJS = main.o mpvhandler.o cmd.o chat.o util.o ui.o
+OBJS = main.o mpvh.o cmd.o chat.o util.o
 OBJS += ./imgui/imgui_impl_sdl_gl3.o ./imgui/imgui.o ./imgui/imgui_draw.o
 
 CFLAGS = -fPIC -pedantic -Wall -Wextra -Ofast -ffast-math
@@ -22,11 +22,9 @@ install: all
 	@cp -f moov /usr/local/bin
 	@chmod 755 /usr/local/bin/moov
 	@echo 'Installing pidgin adapter script (moovpidgin) to /usr/local/bin.'
-	@cp -f pidgin_adapter.py /usr/local/bin/moovpidgin
+	@cp -f moovpidgin.py /usr/local/bin/moovpidgin
 	@chmod 755 /usr/local/bin/moovpidgin
 	@mkdir -p /usr/local/share/moov
-	@echo 'Installing Liberation Sans font to /usr/local/share/moov.'
-	@cp -f liberation_sans.ttf /usr/local/share/moov
 	@echo 'Installing systemd user unit for pidgin adapter script.'
 	@cp -f moovpidgin.service /etc/systemd/user
 

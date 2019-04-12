@@ -1,17 +1,17 @@
 #include <stdio.h>
 #include <string.h>
-#include <stdlib.h>
-#include <mpv/client.h>
-#include <ctype.h>
 #include <time.h>
+#include <stdarg.h>
+#include <stdlib.h>
 
-#include "chat.h"
-#include "mpvhandler.h"
-#include "cmd.h"
+#include "moov.h"
 
-void sendmsg(const char *text)
+void sendmsg(const char *fmt, ...)
 {
-	fputs(text, stdout);
+	va_list args;
+	va_start(args, fmt);
+	vprintf(fmt, args);
+	va_end(args);
 	fputc('\0', stdout);
 	fflush(stdout);
 }

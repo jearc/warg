@@ -3,18 +3,13 @@
 #include <errno.h>
 #include <GL/glew.h>
 #include <SDL2/SDL.h>
-#include <mpv/client.h>
 #include <mpv/opengl_cb.h>
 #include <unistd.h>
 #include <fcntl.h>
 
-#include "mpvhandler.h"
 #include "imgui/imgui.h"
 #include "imgui/imgui_impl_sdl_gl3.h"
-#include "util.h"
-#include "chat.h"
-#include "cmd.h"
-#include "ui.h"
+#include "moov.h"
 
 #define MAX_MSG_LEN 1000
 
@@ -99,7 +94,6 @@ bool readstdin(chatlog *chatlog, mpvhandler *mpvh)
 	static size_t bufidx = 0;
 	
 	char c;
-	long res;
 	while (read(0, &c, 1) != -1) {
 		switch (c) {
 		case EOF:
@@ -129,9 +123,16 @@ void explorewin(mpvhandler *mpvh, mpvinfo info)
 {
 	static bool display = true;
 	ImGui::Begin("Explore", &display);
-	playstate s = info.explore_state;
-	float progress = s.time / info.duration;
 	
+	playstate s = info.explore_state;
+	
+	if (ImGui::Button("Play/Pause")) {
+		playstate s = info.explore_state;
+		s.paused = !s.paused;
+		mpvh_explore_set_state(mpvh, s);
+	}
+	
+	float progress = s.time / info.duration;
 	ImGui::ProgressBar(progress, ImVec2(380, 20));
 	if (ImGui::IsItemClicked() && info.duration) {
 		auto min = ImGui::GetItemRectMin();
@@ -141,7 +142,9 @@ void explorewin(mpvhandler *mpvh, mpvinfo info)
 		float fraction = (mouse.x - min.x) / (max.x - min.x);
 		double time = fraction * info.duration;
 
-		mpvh_explore_seek(mpvh, time);
+		playstate s = info.explore_state;
+		s.time = time;
+		mpvh_explore_set_state(mpvh, s);
 	}
 	
 	statusstr str = statestr(s);
@@ -169,9 +172,11 @@ void dbgwin(mpvhandler *mpvh, mpvinfo info)
 	
 	ImGui::Text("%s", info.title);
 	
-	ImGui::Button("Play");
+	if (ImGui::Button("Play"))
+		sendmsg("PLAY");
 	ImGui::SameLine();
-	ImGui::Button("Pause");
+	if (ImGui::Button("Pause"))
+		sendmsg("PAUSE");
 	
 	ImGui::Text("%s", statestr(info.state).str);
 	
@@ -179,13 +184,13 @@ void dbgwin(mpvhandler *mpvh, mpvinfo info)
 	
 	ImGui::Button("<");
 	ImGui::SameLine();
-	ImGui::Text("S: %d/%d", 1, 1);
+	ImGui::Text("S: %ld/%ld", info.sub_curr, info.sub_cnt);
 	ImGui::SameLine();
 	ImGui::Button(">");
 	
 	ImGui::Button("<");
 	ImGui::SameLine();
-	ImGui::Text("A: %d/%d", 1, 1);
+	ImGui::Text("A: %ld/%ld", info.audio_curr, info.audio_cnt);
 	ImGui::SameLine();
 	ImGui::Button(">");
 	
@@ -195,7 +200,7 @@ void dbgwin(mpvhandler *mpvh, mpvinfo info)
 	ImGui::Text("Exploring: %d", info.exploring);
 	if (info.exploring)
 		explorewin(mpvh, info);
-		
+	
 	if (ImGui::Button("Mute"))
 		mpvh_toggle_mute(mpvh);
 	ImGui::SameLine();
@@ -243,7 +248,7 @@ struct argconf {
 	size_t uri_cnt = 0;
 };
 
-argconf parseargs(int argc, char *argv[])
+argconf parseargs(int argc, char **argv)
 {
 	argconf conf;
 
@@ -265,7 +270,7 @@ argconf parseargs(int argc, char *argv[])
 				break;
 			}
 		} else if (expecting_seekto) {
-			conf.seekto = parsetime(argv[i], strlen(argv[i]));
+			conf.seekto = parsetime(argv[i]);
 		} else if (conf.uri_cnt < 100) {
 			conf.uri[conf.uri_cnt++] = argv[i];
 		}
@@ -314,8 +319,7 @@ int main(int argc, char **argv)
 	mpv_opengl_cb_context *mpv_gl = mpvh_get_opengl_cb_api(mpvh);
 
 	ImGuiIO &io = ImGui::GetIO();
-	io.Fonts->AddFontFromFileTTF(
-		"Inter-UI-Regular.ttf", 16.0f);
+	io.Fonts->AddFontFromFileTTF("Inter-UI-Regular.ttf", 16.0f);
 
 	mpv_opengl_cb_init_gl(mpv_gl, NULL, get_proc_address_mpv, NULL);
 
@@ -328,7 +332,8 @@ int main(int argc, char **argv)
 	while (1) {
 		SDL_Delay(10);
 		t_now = SDL_GetPerformanceCounter();
-		double delta = (t_now - t_last)/(double)SDL_GetPerformanceFrequency();
+		double delta = (t_now - t_last)/
+		  (double)SDL_GetPerformanceFrequency();
 		if (delta <= 1/60.0)
 			continue;
 		t_last = t_now;
@@ -363,6 +368,6 @@ int main(int argc, char **argv)
 		ImGui::Render();
 		SDL_GL_SwapWindow(window);
 	}
-
+	
 	return 0;
 }

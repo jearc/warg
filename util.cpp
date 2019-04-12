@@ -1,21 +1,20 @@
 #include <math.h>
 #include <ctype.h>
 #include <stdio.h>
+#include <string.h>
 
-#include "util.h"
+#include "moov.h"
 
-double parsetime(char *str, size_t len)
+double parsetime(char *str)
 {
-	char *strend = str + len + 1;
-
 	long tok[3];
 	size_t tokidx = 0;
 
 	char *tokstart = str;
 	while (1) {
-		while (tokstart != strend && !isdigit(*tokstart))
+		while (*tokstart && !isdigit(*tokstart))
 			tokstart++;
-		if (tokstart == strend)
+		if (!*tokstart)
 			break;
 		
 		char *tokend = tokstart;

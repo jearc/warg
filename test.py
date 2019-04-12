@@ -13,4 +13,4 @@ while moov and moov.poll() is None:
 		moov.stdin.flush()
 		msg = ''
 	else:
-		msg = msg + char
+		msg += char

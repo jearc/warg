@@ -3,34 +3,86 @@
 #include <math.h>
 #include <pthread.h>
 
-#include "mpvhandler.h"
-#include "util.h"
-#include "cmd.h"
-#include "chat.h"
+#include "moov.h"
 
 void cmd_pp(char *args, mpvhandler *mpvh);
+void cmd_play(char *args, mpvhandler *mpvh);
+void cmd_pause(char *args, mpvhandler *mpvh);
 void cmd_status(char *args, mpvhandler *mpvh);
 void cmd_seek(char *args, mpvhandler *mpvh);
 void cmd_seekplus(char *args, mpvhandler *mpvh);
 void cmd_seekminus(char *args, mpvhandler *mpvh);
 
-struct {
+#define CMD(str) str, sizeof str - 1
+static struct {
 	const char *name;
-	void (*fn)(char *, mpvhandler *);
+	size_t len;
+	void (*func)(char *, mpvhandler *);
 } cmdtab[] = {
-	{ "pp", cmd_pp },
-	{ "STATUS", cmd_status },
-	{ "SEEK", cmd_seek },
-	{ "SEEK+", cmd_seekplus },
-	{ "SEEK-", cmd_seekminus },
+	{ CMD("pp"), cmd_pp },
+	{ CMD("PLAY"), cmd_play },
+	{ CMD("PAUSE"), cmd_pause },
+	{ CMD("STATUS"), cmd_status },
+	{ CMD("SEEK"), cmd_seek },
+	{ CMD("SEEK+"), cmd_seekplus },
+	{ CMD("SEEK-"), cmd_seekminus },
 };
+size_t cmdcnt = sizeof cmdtab / sizeof cmdtab[0];
+
+void handlecmd(char *text, mpvhandler *mpvh)
+{
+	char *cmd = text;
+	while (*cmd && isspace(*cmd))
+		cmd++;
+	char *cmdend = cmd;
+	while (*cmdend && !isspace(*cmdend))
+		cmdend++;
+	char *args = cmdend;
+	while (*args && isspace(*args))
+		args++;
+	
+	size_t cmdlen = cmdend - cmd;
+	for (size_t i = 0; i < cmdcnt; i++) {
+		int cmplen = max(cmdlen, cmdtab[i].len);
+		if (strncmp(cmd, cmdtab[i].name, cmplen) == 0) {
+			cmdtab[i].func(args, mpvh);
+			break;
+		}
+	}
+}
 
 void cmd_pp(char *args, mpvhandler *mpvh)
 {
 	UNUSED(args);
 
-	mpvh_pp(mpvh);
 	mpvinfo i = mpvh_getinfo(mpvh);
+	i.state.paused = !i.state.paused;
+	mpvh_set_state(mpvh, i.state);
+	i = mpvh_getinfo(mpvh);
+	statusstr status = statestr(i.state);
+	sendmsg(status.str);
+}
+
+void cmd_play(char *args, mpvhandler *mpvh)
+{
+	UNUSED(args);
+	
+	mpvinfo i = mpvh_getinfo(mpvh);
+	i.state.paused = false;
+	mpvh_set_state(mpvh, i.state);
+	i = mpvh_getinfo(mpvh);
+	statusstr status = statestr(i.state);
+	sendmsg(status.str);
+}
+
+void cmd_pause(char *args, mpvhandler *mpvh)
+{
+	UNUSED(args);
+	
+	mpvinfo i = mpvh_getinfo(mpvh);
+	i.state.paused = true;
+	mpvh_set_state(mpvh, i.state);
+	i = mpvh_getinfo(mpvh);
 	statusstr status = statestr(i.state);
 	sendmsg(status.str);
 }
@@ -46,44 +98,24 @@ void cmd_status(char *args, mpvhandler *mpvh)
 
 void cmd_seek(char *args, mpvhandler *mpvh)
 {
-	double time = parsetime(args, strlen(args));
-	mpvh_seek(mpvh, time);
+	double time = parsetime(args);
+	mpvinfo i = mpvh_getinfo(mpvh);
+	i.state.time = time;
+	mpvh_set_state(mpvh, i.state);
 }
 
 void cmd_seekplus(char *args, mpvhandler *mpvh)
 {
-	double time = parsetime(args, strlen(args));
-	mpvh_seekrel(mpvh, time);
+	double time = parsetime(args);
+	mpvinfo i = mpvh_getinfo(mpvh);
+	i.state.time += time;
+	mpvh_set_state(mpvh, i.state);
 }
 
 void cmd_seekminus(char *args, mpvhandler *mpvh)
 {
-	double time = parsetime(args, strlen(args));
-	time *= -1;
-	mpvh_seekrel(mpvh, time);
-}
-
-void handlecmd(char *text, mpvhandler *mpvh)
-{
-	static size_t ncmd = sizeof cmdtab / sizeof cmdtab[0];
-
-	while (isspace(*text))
-		text++;
-
-	size_t cmdlen = 0;
-	while (text[cmdlen] && !isspace(text[cmdlen]))
-		cmdlen++;
-
-	char *args = text + cmdlen;
-	while (*args != '\0' && isspace(*args))
-		args++;
-
-	for (size_t i = 0; i < ncmd; i++) {
-		if (strstr(text, cmdtab[i].name) != text)
-			continue;
-		if (cmdlen != strlen(cmdtab[i].name))
-			continue;
-		cmdtab[i].fn(args, mpvh);
-		break;
-	}
+	double time = parsetime(args);
+	mpvinfo i = mpvh_getinfo(mpvh);
+	i.state.time -= time;
+	mpvh_set_state(mpvh, i.state);
 }

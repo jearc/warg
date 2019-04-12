@@ -5,9 +5,7 @@
 #include <string.h>
 #include <math.h>
 
-#include "mpvhandler.h"
-#include "chat.h"
-#include "util.h"
+#include "moov.h"
 
 struct mpvhandler {
 	mpv_handle *mpv;
@@ -15,6 +13,8 @@ struct mpvhandler {
 	int64_t last_time;
 	mpvinfo info;
 };
+
+void mpvh_update_track_counts(mpvhandler *h);
 
 mpvhandler *mpvh_create(char *uri)
 {
@@ -98,13 +98,22 @@ void mpvh_update(mpvhandler *h)
 			break;
 		case MPV_EVENT_FILE_LOADED: {
 			mpvh_syncmpv(h);
+			
 			mpv_get_property(h->mpv, "duration", MPV_FORMAT_DOUBLE,
 			                 &h->info.duration);
+			                 
 			char *title = NULL;
 			mpv_get_property(h->mpv, "media-title", MPV_FORMAT_STRING,
 			                 &title);
 			strncpy(h->info.title, title, 99);
 			mpv_free(title);
+			
+			mpvh_update_track_counts(h);
+			
+			mpv_get_property(h->mpv, "sub", MPV_FORMAT_INT64,
+			                 &h->info.sub_curr);
+			mpv_get_property(h->mpv, "audio", MPV_FORMAT_INT64,
+			                 &h->info.audio_curr);
 			break;
 		}
 		case MPV_EVENT_IDLE:
@@ -129,23 +138,9 @@ void mpvh_update(mpvhandler *h)
 	}
 }
 
-void mpvh_pp(mpvhandler *h)
+void mpvh_set_state(mpvhandler *h, playstate s)
 {
-	h->info.state.paused = !h->info.state.paused;
-	if (!h->info.exploring)
-		mpvh_syncmpv(h);
-}
-
-void mpvh_seek(mpvhandler *h, double time)
-{
-	h->info.state.time = time;
-	if (!h->info.exploring)
-		mpvh_syncmpv(h);
-}
-
-void mpvh_seekrel(mpvhandler *h, double offset)
-{
-	h->info.state.time += offset;
+	h->info.state = s;
 	if (!h->info.exploring)
 		mpvh_syncmpv(h);
 }
@@ -162,12 +157,12 @@ statusstr statestr(playstate st)
 void mpvh_explore(mpvhandler *h)
 {
 	h->info.exploring = true;
-	h->info.explore_state = h->info.state;;
+	h->info.explore_state = h->info.state;
 }
 
-void mpvh_explore_seek(mpvhandler *h, double time)
+void mpvh_explore_set_state(mpvhandler *h, playstate s)
 {
-	h->info.explore_state.time = time;
+	h->info.explore_state = s;
 	mpvh_syncmpv(h);
 }
 
@@ -177,8 +172,7 @@ void mpvh_explore_accept(mpvhandler *h)
 	h->info.state = h->info.explore_state;
 	
 	timestr ts = sec_to_timestr(round(h->info.state.time));
-	printf("SEEK %s\n", ts.str);
-	fflush(stdout);
+	sendmsg("SEEK %s", ts.str);
 }
 
 void mpvh_explore_cancel(mpvhandler *h)
@@ -191,4 +185,24 @@ void mpvh_toggle_mute(mpvhandler *h)
 {
 	h->info.muted = !h->info.muted;
 	mpv_set_property(h->mpv, "ao-mute", MPV_FORMAT_FLAG, &h->info.muted);
+}
+
+void mpvh_update_track_counts(mpvhandler *h)
+{
+	h->info.audio_cnt = h->info.sub_cnt = 0;
+	
+	int64_t cnt;
+	mpv_get_property(h->mpv, "track-list/count", MPV_FORMAT_INT64, &cnt);
+	
+	for (int i = 0; i < cnt; i++) {
+		char buf[100];
+		snprintf(buf, 99, "track-list/%d/type", i);
+		char *type = NULL;
+		mpv_get_property(h->mpv, buf, MPV_FORMAT_STRING, &type);
+		if (strcmp(type, "audio") == 0)
+			h->info.audio_cnt++;
+		if (strcmp(type, "sub") == 0)
+			h->info.sub_cnt++;
+		mpv_free(type);
+	}
 }
