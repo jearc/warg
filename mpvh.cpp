@@ -17,7 +17,7 @@ struct mpvhandler {
 
 void mpvh_update_track_counts(mpvhandler *h);
 
-mpvhandler *mpvh_create(int filec, char **filev)
+mpvhandler *mpvh_create(int filec, char **filev, int track)
 {
 	mpvhandler *h = (mpvhandler *)calloc(sizeof *h, 1);
 
@@ -36,7 +36,7 @@ mpvhandler *mpvh_create(int filec, char **filev)
 	h->last_time = mpv_get_time_us(h->mpv);
 
 	h->info.track_cnt = filec;
-	h->info.state.track = 0;
+	h->info.state.track = track;
 	mpv_set_property(
 		h->mpv, "playlist-pos", MPV_FORMAT_INT64, &h->info.state.track);
 	h->info.delay = 0;

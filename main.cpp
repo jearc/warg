@@ -264,10 +264,14 @@ SDL_Window *init_window()
 
 int main(int argc, char **argv)
 {
+	int start_track = 0;
 	double start_time = 0;
 	int opt;
-	while ((opt = getopt(argc, argv, "s:")) != -1) {
+	while ((opt = getopt(argc, argv, "s:i:")) != -1) {
 		switch (opt) {
+		case 'i':
+			start_track = atoi(optarg);
+			break;
 		case 's':
 			start_time = parsetime(optarg);
 			break;
@@ -283,7 +287,7 @@ int main(int argc, char **argv)
 	fcntl(0, F_SETFL, O_NONBLOCK);
 
 	SDL_Window *window = init_window();
-	mpvhandler *mpvh = mpvh_create(filec, filev);
+	mpvhandler *mpvh = mpvh_create(filec, filev, start_track);
 	mpv_opengl_cb_context *mpv_gl = mpvh_get_opengl_cb_api(mpvh);
 	mpv_opengl_cb_init_gl(mpv_gl, NULL, get_proc_address_mpv, NULL);
 
