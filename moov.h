@@ -52,3 +52,4 @@ void mpvh_toggle_mute(mpvhandler *h);
 struct timestr { char str[40]; };
 double parsetime(char *str);
 timestr sec_to_timestr(int seconds);
+void die(const char *fmt, ...);

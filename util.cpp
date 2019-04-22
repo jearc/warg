@@ -2,8 +2,18 @@
 #include <ctype.h>
 #include <stdio.h>
 #include <string.h>
+#include <stdarg.h>
 
 #include "moov.h"
+
+void die(const char *fmt, ...)
+{
+	va_list args;
+	va_start(args, fmt);
+	vfprintf(stderr, fmt, args);
+	va_end(args);
+	exit(EXIT_FAILURE);
+}
 
 double parsetime(char *str)
 {

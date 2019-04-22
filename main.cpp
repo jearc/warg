@@ -13,12 +13,6 @@
 
 #define MAX_MSG_LEN 1000
 
-void die(const char *msg)
-{
-	fprintf(stderr, "error: %s\n", msg);
-	exit(1);
-}
-
 void *get_proc_address_mpv(void *fn_ctx, const char *name)
 {
 	UNUSED(fn_ctx);
