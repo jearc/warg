@@ -11,7 +11,7 @@ $(EXE): $(OBJS)
 	$(CXX) $(CFLAGS) $(MOOV_FLAGS) -o $(EXE) $(OBJS) $(LIBS)
 
 clean:
-	rm $(EXE) $(MOOVPIDGIN_EXE) $(OBJS) $(MOOVPIDGIN_OBJS)
+	rm $(EXE) $(OBJS)
 	
 test: all
 	@./test.py
