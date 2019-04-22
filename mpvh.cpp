@@ -16,8 +16,9 @@ struct mpvhandler {
 };
 
 void mpvh_update_track_counts(mpvhandler *h);
+void mpvh_syncmpv(mpvhandler *h);
 
-mpvhandler *mpvh_create(int filec, char **filev, int track)
+mpvhandler *mpvh_create(int filec, char **filev, int track, double time)
 {
 	mpvhandler *h = (mpvhandler *)calloc(sizeof *h, 1);
 
@@ -37,10 +38,8 @@ mpvhandler *mpvh_create(int filec, char **filev, int track)
 
 	h->info.track_cnt = filec;
 	h->info.state.track = track;
-	mpv_set_property(
-		h->mpv, "playlist-pos", MPV_FORMAT_INT64, &h->info.state.track);
 	h->info.delay = 0;
-	h->info.state.time = 0;
+	h->info.state.time = time;
 	h->info.state.paused = true;
 	h->info.audio_curr = 1;
 	h->info.audio_cnt = 1;
@@ -48,6 +47,7 @@ mpvhandler *mpvh_create(int filec, char **filev, int track)
 	h->info.sub_cnt = 1;
 	mpv_get_property(h->mpv, "ao-mute", MPV_FORMAT_FLAG, &h->info.muted);
 	h->info.exploring = false;
+	mpvh_syncmpv(h);
 
 	return h;
 }
@@ -67,12 +67,14 @@ void mpvh_syncmpv(mpvhandler *h)
 	if (mpv_track != s->track)
 		mpv_set_property(
 			h->mpv, "playlist-pos", MPV_FORMAT_INT64, &s->track);
-	mpv_set_property(h->mpv, "pause", MPV_FORMAT_FLAG, &s->paused);
+	bool paused;
+	mpv_get_property(h->mpv, "pause", MPV_FORMAT_FLAG, &paused);
+	if (paused != s->paused)
+		mpv_set_property(h->mpv, "pause", MPV_FORMAT_FLAG, &s->paused);
 	double mpv_time;
 	mpv_get_property(h->mpv, "time-pos", MPV_FORMAT_DOUBLE, &mpv_time);
-	if (abs(mpv_time - s->time) < 5)
-		return;
-	mpv_set_property(h->mpv, "time-pos", MPV_FORMAT_DOUBLE, &s->time);
+	if (abs(mpv_time - s->time) > 5)
+		mpv_set_property(h->mpv, "time-pos", MPV_FORMAT_DOUBLE, &s->time);
 }
 
 mpvinfo mpvh_getinfo(mpvhandler *h)
@@ -108,8 +110,6 @@ void mpvh_update(mpvhandler *h)
 		case MPV_EVENT_END_FILE:
 			break;
 		case MPV_EVENT_FILE_LOADED: {
-			mpvh_syncmpv(h);
-
 			mpv_get_property(h->mpv, "duration", MPV_FORMAT_DOUBLE,
 				&h->info.duration);
 
@@ -125,6 +125,8 @@ void mpvh_update(mpvhandler *h)
 				&h->info.sub_curr);
 			mpv_get_property(h->mpv, "audio", MPV_FORMAT_INT64,
 				&h->info.audio_curr);
+				
+			mpvh_syncmpv(h);
 			break;
 		}
 		case MPV_EVENT_IDLE:
@@ -138,6 +140,7 @@ void mpvh_update(mpvhandler *h)
 		case MPV_EVENT_SEEK:
 			break;
 		case MPV_EVENT_PLAYBACK_RESTART:
+			mpvh_syncmpv(h);
 			break;
 		case MPV_EVENT_PROPERTY_CHANGE:
 			break;

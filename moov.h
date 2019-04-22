@@ -43,7 +43,7 @@ void sendmsg(const char *fmt, ...);
 void logmsg(chatlog *cl, char *username, char *text);
 int splitinput(char *buf, char **username, char **text);
 void handlecmd(char *text, mpvhandler *mpvh);
-mpvhandler *mpvh_create(int filec, char **filev, int track);
+mpvhandler *mpvh_create(int filec, char **filev, int track, double time);
 mpv_opengl_cb_context *mpvh_get_opengl_cb_api(mpvhandler *h);
 mpvinfo mpvh_getinfo(mpvhandler *h);
 void mpvh_update(mpvhandler *h);
