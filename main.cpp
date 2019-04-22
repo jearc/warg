@@ -263,9 +263,6 @@ SDL_Window *init_window()
 int main(int argc, char **argv)
 {
 	double start_time = 0;
-	int filec = 0;
-	char **filev;
-
 	int opt;
 	while ((opt = getopt(argc, argv, "s:")) != -1) {
 		switch (opt) {
@@ -276,8 +273,8 @@ int main(int argc, char **argv)
 			exit(EXIT_FAILURE);
 		}
 	}
-	filec = argc - optind;
-	filev = argv + optind;
+	int filec = argc - optind;
+	char **filev = argv + optind;
 	if (!filec)
 		die("no files\n");
 
