@@ -225,3 +225,18 @@ void mpvh_update_track_counts(mpvhandler *h)
 		mpv_free(type);
 	}
 }
+
+void mpvh_set_audio(mpvhandler *h, int64_t track)
+{
+	if (0 < track && track <= h->info.audio_cnt)
+		mpv_set_property(h->mpv, "audio", MPV_FORMAT_INT64, &track);
+	mpv_get_property(
+		h->mpv, "audio", MPV_FORMAT_INT64, &h->info.audio_curr);
+}
+
+void mpvh_set_sub(mpvhandler *h, int64_t track)
+{
+	if (0 < track && track <= h->info.sub_cnt)
+		mpv_set_property(h->mpv, "sub", MPV_FORMAT_INT64, &track);
+	mpv_get_property(h->mpv, "sub", MPV_FORMAT_INT64, &h->info.sub_curr);
+}

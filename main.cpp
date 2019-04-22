@@ -176,17 +176,25 @@ void dbgwin(SDL_Window *win, mpvhandler *mpvh, mpvinfo info)
 
 	ImGui::Text("Delay: %.f", info.delay);
 
-	ImGui::Button("<");
-	ImGui::SameLine();
-	ImGui::Text("S: %ld/%ld", info.sub_curr, info.sub_cnt);
-	ImGui::SameLine();
-	ImGui::Button(">");
+	if (info.sub_cnt > 1) {
+		if (ImGui::Button("<"))
+			mpvh_set_sub(mpvh, info.sub_curr - 1);
+		ImGui::SameLine();
+		ImGui::Text("S: %ld/%ld", info.sub_curr, info.sub_cnt);
+		ImGui::SameLine();
+		if (ImGui::Button(">"))
+			mpvh_set_sub(mpvh, info.sub_curr + 1);
+	}
 
-	ImGui::Button("<");
-	ImGui::SameLine();
-	ImGui::Text("A: %ld/%ld", info.audio_curr, info.audio_cnt);
-	ImGui::SameLine();
-	ImGui::Button(">");
+	if (info.audio_cnt > 1) {
+		if (ImGui::Button("<"))
+			mpvh_set_audio(mpvh, info.audio_curr - 1);
+		ImGui::SameLine();
+		ImGui::Text("A: %ld/%ld", info.audio_curr, info.audio_cnt);
+		ImGui::SameLine();
+		if (ImGui::Button(">"))
+			mpvh_set_audio(mpvh, info.audio_curr + 1);
+	}
 
 	if (ImGui::Button("Explore"))
 		mpvh_explore(mpvh);

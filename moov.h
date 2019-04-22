@@ -57,3 +57,5 @@ void mpvh_toggle_mute(mpvhandler *h);
 double parsetime(char *str);
 timestr sec_to_timestr(int seconds);
 void die(const char *fmt, ...);
+void mpvh_set_audio(mpvhandler *h, int64_t track);
+void mpvh_set_sub(mpvhandler *h, int64_t track);
