@@ -235,44 +235,6 @@ bool handle_sdl_events(SDL_Window *win)
 	return redraw;
 }
 
-struct argconf {
-	double seekto = 0.0;
-	bool resume = false;
-	char *uri[100] = {};
-	size_t uri_cnt = 0;
-};
-
-argconf parseargs(int argc, char **argv)
-{
-	argconf conf;
-
-	if (argc <= 1)
-		return conf;
-
-	bool expecting_seekto = false;
-	for (int i = 1; i < argc; i++) {
-		if (argv[i][0] == '-') {
-			switch (argv[i][1]) {
-			case 'r':
-				conf.resume = true;
-				break;
-			case 's':
-				expecting_seekto = true;
-				break;
-			default:
-				die("invalid arg");
-				break;
-			}
-		} else if (expecting_seekto) {
-			conf.seekto = parsetime(argv[i]);
-		} else if (conf.uri_cnt < 100) {
-			conf.uri[conf.uri_cnt++] = argv[i];
-		}
-	}
-
-	return conf;
-}
-
 SDL_Window *init_window()
 {
 	if (SDL_Init(SDL_INIT_VIDEO) < 0)
@@ -302,16 +264,30 @@ SDL_Window *init_window()
 
 int main(int argc, char **argv)
 {
-	argconf conf = parseargs(argc, argv);
-	if (conf.uri_cnt == 0)
-		die("no uris");
+	double start_time = 0;
+	int filec = 0;
+	char **filev;
+	
+	int opt;
+	while ((opt = getopt(argc, argv, "s:")) != -1) {
+		switch (opt) {
+		case 's':
+			start_time = parsetime(optarg);
+			break;
+		default:
+			exit(EXIT_FAILURE);
+		}
+	}
+	filec = argc - optind;
+	filev = argv + optind;
+	if (!filec)
+		die("no files\n");
 	
 	fcntl(0, F_SETFL, O_NONBLOCK);
 
 	SDL_Window *window = init_window();
-	mpvhandler *mpvh = mpvh_create(conf.uri[0]);
+	mpvhandler *mpvh = mpvh_create(filev[0]);
 	mpv_opengl_cb_context *mpv_gl = mpvh_get_opengl_cb_api(mpvh);
-
 	mpv_opengl_cb_init_gl(mpv_gl, NULL, get_proc_address_mpv, NULL);
 
 	bool mpv_redraw = false;
