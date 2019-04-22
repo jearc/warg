@@ -151,7 +151,7 @@ void explorewin(mpvhandler *mpvh, mpvinfo info)
 	ImGui::End();
 }
 
-void dbgwin(mpvhandler *mpvh, mpvinfo info)
+void dbgwin(SDL_Window *win, mpvhandler *mpvh, mpvinfo info)
 {
 	static bool display = true;
 	ImGui::Begin("Debug", &display);
@@ -200,7 +200,8 @@ void dbgwin(mpvhandler *mpvh, mpvinfo info)
 	ImGui::SameLine();
 	ImGui::Text("Muted: %d", info.muted);
 
-	ImGui::Button("Fullscreen");
+	if (ImGui::Button("Fullscreen"))
+		toggle_fullscreen(win);
 
 	ImGui::End();
 }
@@ -330,7 +331,7 @@ int main(int argc, char **argv)
 		ImGui_ImplSdlGL3_NewFrame(window);
 		chatbox(&chatlog, scroll_to_bottom);
 		mpvinfo info = mpvh_getinfo(mpvh);
-		dbgwin(mpvh, info);
+		dbgwin(window, mpvh, info);
 		glViewport(0, 0, (int)ImGui::GetIO().DisplaySize.x,
 			(int)ImGui::GetIO().DisplaySize.y);
 		ImGui::Render();
