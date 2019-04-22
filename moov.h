@@ -7,13 +7,13 @@ struct statusstr {
 	char str[50];
 };
 struct playstate {
+	int64_t track;
 	double time;
 	int paused;
 };
 struct mpvinfo {
 	char title[100];
-	int track_curr;
-	int track_cnt;
+	int64_t track_cnt;
 	double delay;
 	double duration;
 	playstate state;
@@ -43,12 +43,12 @@ void sendmsg(const char *fmt, ...);
 void logmsg(chatlog *cl, char *username, char *text);
 int splitinput(char *buf, char **username, char **text);
 void handlecmd(char *text, mpvhandler *mpvh);
-mpvhandler *mpvh_create(char *uri);
+mpvhandler *mpvh_create(int filec, char **filev);
 mpv_opengl_cb_context *mpvh_get_opengl_cb_api(mpvhandler *h);
 mpvinfo mpvh_getinfo(mpvhandler *h);
 void mpvh_update(mpvhandler *h);
 void mpvh_set_state(mpvhandler *h, playstate s);
-statusstr statestr(playstate st);
+statusstr statestr(mpvinfo info, playstate st);
 void mpvh_explore(mpvhandler *h);
 void mpvh_explore_set_state(mpvhandler *h, playstate s);
 void mpvh_explore_accept(mpvhandler *h);

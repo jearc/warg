@@ -139,7 +139,7 @@ void explorewin(mpvhandler *mpvh, mpvinfo info)
 		mpvh_explore_set_state(mpvh, s);
 	}
 
-	statusstr str = statestr(s);
+	statusstr str = statestr(info, s);
 	ImGui::Text("%s", str.str);
 
 	if (ImGui::Button("Accept"))
@@ -156,11 +156,13 @@ void dbgwin(mpvhandler *mpvh, mpvinfo info)
 	static bool display = true;
 	ImGui::Begin("Debug", &display);
 
-	ImGui::Button("<");
+	if (ImGui::Button("<"))
+		sendmsg("PREV");
 	ImGui::SameLine();
-	ImGui::Text("T: %d/%d", 1, 1);
+	ImGui::Text("T: %d/%d", info.state.track + 1, info.track_cnt);
 	ImGui::SameLine();
-	ImGui::Button(">");
+	if (ImGui::Button(">"))
+		sendmsg("NEXT");
 
 	ImGui::Text("%s", info.title);
 
@@ -170,7 +172,7 @@ void dbgwin(mpvhandler *mpvh, mpvinfo info)
 	if (ImGui::Button("Pause"))
 		sendmsg("PAUSE");
 
-	ImGui::Text("%s", statestr(info.state).str);
+	ImGui::Text("%s", statestr(info, info.state).str);
 
 	ImGui::Text("Delay: %f", 0.);
 
@@ -281,7 +283,7 @@ int main(int argc, char **argv)
 	fcntl(0, F_SETFL, O_NONBLOCK);
 
 	SDL_Window *window = init_window();
-	mpvhandler *mpvh = mpvh_create(filev[0]);
+	mpvhandler *mpvh = mpvh_create(filec, filev);
 	mpv_opengl_cb_context *mpv_gl = mpvh_get_opengl_cb_api(mpvh);
 	mpv_opengl_cb_init_gl(mpv_gl, NULL, get_proc_address_mpv, NULL);
 

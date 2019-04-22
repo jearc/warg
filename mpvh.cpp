@@ -9,14 +9,15 @@
 
 struct mpvhandler {
 	mpv_handle *mpv;
-	char *file;
+	int filec;
+	char **filev;
 	int64_t last_time;
 	mpvinfo info;
 };
 
 void mpvh_update_track_counts(mpvhandler *h);
 
-mpvhandler *mpvh_create(char *uri)
+mpvhandler *mpvh_create(int filec, char **filev)
 {
 	mpvhandler *h = (mpvhandler *)calloc(sizeof *h, 1);
 
@@ -25,14 +26,19 @@ mpvhandler *mpvh_create(char *uri)
 	mpv_set_option_string(h->mpv, "vo", "opengl-cb");
 	mpv_set_option_string(h->mpv, "ytdl", "yes");
 
-	h->file = strdup(uri);
-	const char *cmd[] = { "loadfile", h->file, NULL };
-	mpv_command(h->mpv, cmd);
+	h->filec = filec;
+	h->filev = filev;
+	for (int i = 0; i < h->filec; i++) {
+		const char *cmd[] = { "loadfile", h->filev[i], "append", NULL };
+		mpv_command(h->mpv, cmd);
+	}
 
 	h->last_time = mpv_get_time_us(h->mpv);
 
-	h->info.track_curr = 0;
-	h->info.track_cnt = 1;
+	h->info.track_cnt = filec;
+	h->info.state.track = 0;
+	mpv_set_property(
+		h->mpv, "playlist-pos", MPV_FORMAT_INT64, &h->info.state.track);
 	h->info.delay = 0;
 	h->info.state.time = 0;
 	h->info.state.paused = true;
@@ -56,6 +62,11 @@ void mpvh_syncmpv(mpvhandler *h)
 {
 	playstate *s =
 		h->info.exploring ? &h->info.explore_state : &h->info.state;
+	int64_t mpv_track;
+	mpv_get_property(h->mpv, "playlist-pos", MPV_FORMAT_INT64, &mpv_track);
+	if (mpv_track != s->track)
+		mpv_set_property(
+			h->mpv, "playlist-pos", MPV_FORMAT_INT64, &s->track);
 	mpv_set_property(h->mpv, "pause", MPV_FORMAT_FLAG, &s->paused);
 	double mpv_time;
 	mpv_get_property(h->mpv, "time-pos", MPV_FORMAT_DOUBLE, &mpv_time);
@@ -145,11 +156,12 @@ void mpvh_set_state(mpvhandler *h, playstate s)
 		mpvh_syncmpv(h);
 }
 
-statusstr statestr(playstate st)
+statusstr statestr(mpvinfo i, playstate st)
 {
 	statusstr s;
 	timestr ts = sec_to_timestr(round(st.time));
-	snprintf(s.str, 50, "%s %s", st.paused ? "paused" : "playing", ts.str);
+	snprintf(s.str, 50, "%ld/%ld %s %s", st.track + 1, i.track_cnt,
+		st.paused ? "paused" : "playing", ts.str);
 	return s;
 }
 

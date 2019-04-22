@@ -12,6 +12,9 @@ void cmd_status(char *args, mpvhandler *mpvh);
 void cmd_seek(char *args, mpvhandler *mpvh);
 void cmd_seekplus(char *args, mpvhandler *mpvh);
 void cmd_seekminus(char *args, mpvhandler *mpvh);
+void cmd_prev(char *args, mpvhandler *mpvh);
+void cmd_next(char *args, mpvhandler *mpvh);
+void cmd_index(char *args, mpvhandler *mpvh);
 
 #define CMD(str) str, sizeof str - 1
 static struct {
@@ -26,6 +29,9 @@ static struct {
 	{ CMD("SEEK"), cmd_seek },
 	{ CMD("SEEK+"), cmd_seekplus },
 	{ CMD("SEEK-"), cmd_seekminus },
+	{ CMD("PREV"), cmd_prev },
+	{ CMD("NEXT"), cmd_next },
+	{ CMD("INDEX"), cmd_index }
 };
 size_t cmdcnt = sizeof cmdtab / sizeof cmdtab[0];
 
@@ -59,7 +65,7 @@ void cmd_pp(char *args, mpvhandler *mpvh)
 	i.state.paused = !i.state.paused;
 	mpvh_set_state(mpvh, i.state);
 	i = mpvh_getinfo(mpvh);
-	statusstr status = statestr(i.state);
+	statusstr status = statestr(i, i.state);
 	sendmsg(status.str);
 }
 
@@ -71,7 +77,7 @@ void cmd_play(char *args, mpvhandler *mpvh)
 	i.state.paused = false;
 	mpvh_set_state(mpvh, i.state);
 	i = mpvh_getinfo(mpvh);
-	statusstr status = statestr(i.state);
+	statusstr status = statestr(i, i.state);
 	sendmsg(status.str);
 }
 
@@ -83,7 +89,7 @@ void cmd_pause(char *args, mpvhandler *mpvh)
 	i.state.paused = true;
 	mpvh_set_state(mpvh, i.state);
 	i = mpvh_getinfo(mpvh);
-	statusstr status = statestr(i.state);
+	statusstr status = statestr(i, i.state);
 	sendmsg(status.str);
 }
 
@@ -92,7 +98,7 @@ void cmd_status(char *args, mpvhandler *mpvh)
 	UNUSED(args);
 
 	mpvinfo i = mpvh_getinfo(mpvh);
-	statusstr status = statestr(i.state);
+	statusstr status = statestr(i, i.state);
 	sendmsg(status.str);
 }
 
@@ -118,4 +124,38 @@ void cmd_seekminus(char *args, mpvhandler *mpvh)
 	mpvinfo i = mpvh_getinfo(mpvh);
 	i.state.time -= time;
 	mpvh_set_state(mpvh, i.state);
+}
+
+void cmd_prev(char *args, mpvhandler *mpvh)
+{
+	mpvinfo i = mpvh_getinfo(mpvh);
+	if (i.state.track - 1 < 0)
+		return;
+	playstate s = {};
+	s.track = i.state.track - 1;
+	s.paused = true;
+	mpvh_set_state(mpvh, s);
+}
+
+void cmd_next(char *args, mpvhandler *mpvh)
+{
+	mpvinfo i = mpvh_getinfo(mpvh);
+	if (i.state.track + 1 >= i.track_cnt)
+		return;
+	playstate s = {};
+	s.track = i.state.track + 1;
+	s.paused = true;
+	mpvh_set_state(mpvh, s);
+}
+
+void cmd_index(char *args, mpvhandler *mpvh)
+{
+	mpvinfo i = mpvh_getinfo(mpvh);
+	int track = atoi(args) - 1;
+	if (!(0 <= track && track < i.track_cnt))
+		return;
+	playstate s = {};
+	s.track = track;
+	s.paused = true;
+	mpvh_set_state(mpvh, s);
 }
