@@ -178,13 +178,13 @@ void dbgwin(SDL_Window *win, mpvhandler *mpvh, mpvinfo info)
 
 	ImGui::Button("<");
 	ImGui::SameLine();
-	ImGui::Text("S: %ld/%ld", info.sub_curr + 1, info.sub_cnt);
+	ImGui::Text("S: %ld/%ld", info.sub_curr, info.sub_cnt);
 	ImGui::SameLine();
 	ImGui::Button(">");
 
 	ImGui::Button("<");
 	ImGui::SameLine();
-	ImGui::Text("A: %ld/%ld", info.audio_curr + 1, info.audio_cnt);
+	ImGui::Text("A: %ld/%ld", info.audio_curr, info.audio_cnt);
 	ImGui::SameLine();
 	ImGui::Button(">");
 
