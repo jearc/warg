@@ -174,7 +174,7 @@ void dbgwin(mpvhandler *mpvh, mpvinfo info)
 
 	ImGui::Text("%s", statestr(info, info.state).str);
 
-	ImGui::Text("Delay: %f", 0.);
+	ImGui::Text("Delay: %.f", info.delay);
 
 	ImGui::Button("<");
 	ImGui::SameLine();

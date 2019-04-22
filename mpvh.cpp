@@ -91,6 +91,11 @@ void mpvh_update(mpvhandler *h)
 		h->info.state.time += dt;
 	if (h->info.exploring && !h->info.explore_state.paused)
 		h->info.explore_state.time += dt;
+	double mpv_time;
+	mpv_get_property(h->mpv, "time-pos", MPV_FORMAT_DOUBLE, &mpv_time);
+	h->info.delay = (h->info.exploring ? h->info.explore_state.time :
+					     h->info.state.time) -
+			mpv_time;
 
 	mpv_event *e;
 	while (e = mpv_wait_event(h->mpv, 0), e->event_id != MPV_EVENT_NONE) {
