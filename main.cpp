@@ -159,7 +159,7 @@ void dbgwin(mpvhandler *mpvh, mpvinfo info)
 	if (ImGui::Button("<"))
 		sendmsg("PREV");
 	ImGui::SameLine();
-	ImGui::Text("T: %d/%d", info.state.track + 1, info.track_cnt);
+	ImGui::Text("T: %ld/%ld", info.state.track + 1, info.track_cnt);
 	ImGui::SameLine();
 	if (ImGui::Button(">"))
 		sendmsg("NEXT");
