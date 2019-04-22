@@ -312,9 +312,6 @@ int main(int argc, char **argv)
 	mpvhandler *mpvh = mpvh_create(conf.uri[0]);
 	mpv_opengl_cb_context *mpv_gl = mpvh_get_opengl_cb_api(mpvh);
 
-	ImGuiIO &io = ImGui::GetIO();
-	io.Fonts->AddFontFromFileTTF("Inter-UI-Regular.ttf", 16.0f);
-
 	mpv_opengl_cb_init_gl(mpv_gl, NULL, get_proc_address_mpv, NULL);
 
 	bool mpv_redraw = false;
