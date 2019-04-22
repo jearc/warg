@@ -3,7 +3,9 @@
 
 struct mpvhandler;
 struct mpv_opengl_cb_context;
-struct statusstr { char str[50]; };
+struct statusstr {
+	char str[50];
+};
 struct playstate {
 	double time;
 	int paused;
@@ -33,6 +35,9 @@ struct chatlog {
 	size_t msg_max = 0;
 	size_t msg_cnt = 0;
 };
+struct timestr {
+	char str[40];
+};
 
 void sendmsg(const char *fmt, ...);
 void logmsg(chatlog *cl, char *username, char *text);
@@ -49,7 +54,6 @@ void mpvh_explore_set_state(mpvhandler *h, playstate s);
 void mpvh_explore_accept(mpvhandler *h);
 void mpvh_explore_cancel(mpvhandler *h);
 void mpvh_toggle_mute(mpvhandler *h);
-struct timestr { char str[40]; };
 double parsetime(char *str);
 timestr sec_to_timestr(int seconds);
 void die(const char *fmt, ...);

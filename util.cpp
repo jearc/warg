@@ -26,7 +26,7 @@ double parsetime(char *str)
 			tokstart++;
 		if (!*tokstart)
 			break;
-		
+
 		char *tokend = tokstart;
 		while (isdigit(*tokend + 1))
 			tokend++;
@@ -35,7 +35,7 @@ double parsetime(char *str)
 
 		if (tokidx > 2)
 			break;
-		
+
 		tokstart = tokend + 1;
 	}
 
@@ -49,15 +49,15 @@ double parsetime(char *str)
 timestr sec_to_timestr(int seconds)
 {
 	timestr ts;
-	
+
 	int hh = seconds / 3600;
 	int mm = (seconds % 3600) / 60;
 	int ss = seconds % 60;
-	
+
 	if (hh)
 		snprintf(ts.str, 39, "%d:%02d:%02d", hh, mm, ss);
 	else
 		snprintf(ts.str, 39, "%d:%02d", mm, ss);
-		
+
 	return ts;
 }

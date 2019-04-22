@@ -40,7 +40,7 @@ void handlecmd(char *text, mpvhandler *mpvh)
 	char *args = cmdend;
 	while (*args && isspace(*args))
 		args++;
-	
+
 	size_t cmdlen = cmdend - cmd;
 	for (size_t i = 0; i < cmdcnt; i++) {
 		int cmplen = max(cmdlen, cmdtab[i].len);
@@ -66,7 +66,7 @@ void cmd_pp(char *args, mpvhandler *mpvh)
 void cmd_play(char *args, mpvhandler *mpvh)
 {
 	UNUSED(args);
-	
+
 	mpvinfo i = mpvh_getinfo(mpvh);
 	i.state.paused = false;
 	mpvh_set_state(mpvh, i.state);
@@ -78,7 +78,7 @@ void cmd_play(char *args, mpvhandler *mpvh)
 void cmd_pause(char *args, mpvhandler *mpvh)
 {
 	UNUSED(args);
-	
+
 	mpvinfo i = mpvh_getinfo(mpvh);
 	i.state.paused = true;
 	mpvh_set_state(mpvh, i.state);

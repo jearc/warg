@@ -39,19 +39,18 @@ void chatbox(chatlog *chatlog, bool scroll_to_bottom)
 	ImVec2 size = ImVec2(400, 200);
 	ImVec2 display_size = ImGui::GetIO().DisplaySize;
 	ImVec2 pos = ImVec2((int)display_size.x - size.x - margin,
-	                    (int)display_size.y - size.y - margin);
+		(int)display_size.y - size.y - margin);
 
 	bool display = true;
 	ImGui::SetNextWindowSize(size, ImGuiSetCond_FirstUseEver);
 	ImGui::SetNextWindowPos(pos);
 	ImGui::Begin("ChatBox", &display, size, 0.7f,
-		     ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize |
-			     ImGuiWindowFlags_NoMove |
-			     ImGuiWindowFlags_NoScrollbar |
-			     ImGuiWindowFlags_NoSavedSettings);
+		ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize |
+			ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoScrollbar |
+			ImGuiWindowFlags_NoSavedSettings);
 	ImGui::BeginChild("LogRegion",
-			  ImVec2(0, -ImGui::GetItemsLineHeightWithSpacing()),
-			  false, ImGuiWindowFlags_NoScrollbar);
+		ImVec2(0, -ImGui::GetItemsLineHeightWithSpacing()), false,
+		ImGuiWindowFlags_NoScrollbar);
 	for (size_t i = 0; i < chatlog->msg_cnt; i++) {
 		Message *msg = &chatlog->msg[i];
 		tm *now = localtime(&msg->time);
@@ -65,16 +64,15 @@ void chatbox(chatlog *chatlog, bool scroll_to_bottom)
 	ImGui::PushItemWidth(size.x - 8 * 2);
 	static char CHAT_INPUT_BUF[256] = { 0 };
 	if (ImGui::InputText("", CHAT_INPUT_BUF, 256,
-			     ImGuiInputTextFlags_EnterReturnsTrue, NULL,
-			     NULL) &&
-	    strlen(CHAT_INPUT_BUF)) {
+		    ImGuiInputTextFlags_EnterReturnsTrue, NULL, NULL) &&
+		strlen(CHAT_INPUT_BUF)) {
 		sendmsg(CHAT_INPUT_BUF);
 		strcpy(CHAT_INPUT_BUF, "");
 	}
 	ImGui::PopItemWidth();
 	if (ImGui::IsItemHovered() ||
-	    (ImGui::IsRootWindowOrAnyChildFocused() &&
-	     !ImGui::IsAnyItemActive() && !ImGui::IsMouseClicked(0)))
+		(ImGui::IsRootWindowOrAnyChildFocused() &&
+			!ImGui::IsAnyItemActive() && !ImGui::IsMouseClicked(0)))
 		ImGui::SetKeyboardFocusHere(-1);
 	ImGui::End();
 }
@@ -86,7 +84,7 @@ bool readstdin(chatlog *chatlog, mpvhandler *mpvh)
 	static char buf[MAX_MSG_LEN];
 	memset(buf, 0, sizeof buf);
 	static size_t bufidx = 0;
-	
+
 	char c;
 	while (read(0, &c, 1) != -1) {
 		switch (c) {
@@ -109,7 +107,7 @@ bool readstdin(chatlog *chatlog, mpvhandler *mpvh)
 			break;
 		}
 	}
-	
+
 	return new_msg;
 }
 
@@ -117,15 +115,15 @@ void explorewin(mpvhandler *mpvh, mpvinfo info)
 {
 	static bool display = true;
 	ImGui::Begin("Explore", &display);
-	
+
 	playstate s = info.explore_state;
-	
+
 	if (ImGui::Button("Play/Pause")) {
 		playstate s = info.explore_state;
 		s.paused = !s.paused;
 		mpvh_explore_set_state(mpvh, s);
 	}
-	
+
 	float progress = s.time / info.duration;
 	ImGui::ProgressBar(progress, ImVec2(380, 20));
 	if (ImGui::IsItemClicked() && info.duration) {
@@ -140,16 +138,16 @@ void explorewin(mpvhandler *mpvh, mpvinfo info)
 		s.time = time;
 		mpvh_explore_set_state(mpvh, s);
 	}
-	
+
 	statusstr str = statestr(s);
 	ImGui::Text("%s", str.str);
-	
+
 	if (ImGui::Button("Accept"))
 		mpvh_explore_accept(mpvh);
 	ImGui::SameLine();
 	if (ImGui::Button("Cancel"))
 		mpvh_explore_cancel(mpvh);
-	
+
 	ImGui::End();
 }
 
@@ -157,58 +155,58 @@ void dbgwin(mpvhandler *mpvh, mpvinfo info)
 {
 	static bool display = true;
 	ImGui::Begin("Debug", &display);
-	
+
 	ImGui::Button("<");
 	ImGui::SameLine();
 	ImGui::Text("T: %d/%d", 1, 1);
 	ImGui::SameLine();
 	ImGui::Button(">");
-	
+
 	ImGui::Text("%s", info.title);
-	
+
 	if (ImGui::Button("Play"))
 		sendmsg("PLAY");
 	ImGui::SameLine();
 	if (ImGui::Button("Pause"))
 		sendmsg("PAUSE");
-	
+
 	ImGui::Text("%s", statestr(info.state).str);
-	
+
 	ImGui::Text("Delay: %f", 0.);
-	
+
 	ImGui::Button("<");
 	ImGui::SameLine();
 	ImGui::Text("S: %ld/%ld", info.sub_curr, info.sub_cnt);
 	ImGui::SameLine();
 	ImGui::Button(">");
-	
+
 	ImGui::Button("<");
 	ImGui::SameLine();
 	ImGui::Text("A: %ld/%ld", info.audio_curr, info.audio_cnt);
 	ImGui::SameLine();
 	ImGui::Button(">");
-	
+
 	if (ImGui::Button("Explore"))
 		mpvh_explore(mpvh);
 	ImGui::SameLine();
 	ImGui::Text("Exploring: %d", info.exploring);
 	if (info.exploring)
 		explorewin(mpvh, info);
-	
+
 	if (ImGui::Button("Mute"))
 		mpvh_toggle_mute(mpvh);
 	ImGui::SameLine();
 	ImGui::Text("Muted: %d", info.muted);
-	
+
 	ImGui::Button("Fullscreen");
-	
+
 	ImGui::End();
 }
 
 bool handle_sdl_events(SDL_Window *win)
 {
 	bool redraw = false;
-	
+
 	SDL_Event e;
 	while (SDL_PollEvent(&e)) {
 		switch (e.type) {
@@ -231,7 +229,7 @@ bool handle_sdl_events(SDL_Window *win)
 			ImGui_ImplSdlGL3_ProcessEvent(&e);
 		}
 	}
-	
+
 	return redraw;
 }
 
@@ -239,10 +237,10 @@ SDL_Window *init_window()
 {
 	if (SDL_Init(SDL_INIT_VIDEO) < 0)
 		die("SDL init failed");
-	SDL_GL_SetAttribute(SDL_GL_CONTEXT_FLAGS,
-			    SDL_GL_CONTEXT_FORWARD_COMPATIBLE_FLAG);
-	SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK,
-			    SDL_GL_CONTEXT_PROFILE_CORE);
+	SDL_GL_SetAttribute(
+		SDL_GL_CONTEXT_FLAGS, SDL_GL_CONTEXT_FORWARD_COMPATIBLE_FLAG);
+	SDL_GL_SetAttribute(
+		SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
 	SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
 	SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 24);
 	SDL_GL_SetAttribute(SDL_GL_STENCIL_SIZE, 8);
@@ -251,14 +249,14 @@ SDL_Window *init_window()
 	SDL_DisplayMode current;
 	SDL_GetCurrentDisplayMode(0, &current);
 	SDL_Window *window;
+
 	window = SDL_CreateWindow("Moov", SDL_WINDOWPOS_CENTERED,
-				  SDL_WINDOWPOS_CENTERED, 1280, 720,
-				  SDL_WINDOW_OPENGL | SDL_WINDOW_SHOWN |
-					  SDL_WINDOW_RESIZABLE);
+		SDL_WINDOWPOS_CENTERED, 1280, 720,
+		SDL_WINDOW_OPENGL | SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE);
 	SDL_GL_CreateContext(window);
 	glewInit();
 	ImGui_ImplSdlGL3_Init(window);
-	
+
 	return window;
 }
 
@@ -267,7 +265,7 @@ int main(int argc, char **argv)
 	double start_time = 0;
 	int filec = 0;
 	char **filev;
-	
+
 	int opt;
 	while ((opt = getopt(argc, argv, "s:")) != -1) {
 		switch (opt) {
@@ -282,7 +280,7 @@ int main(int argc, char **argv)
 	filev = argv + optind;
 	if (!filec)
 		die("no files\n");
-	
+
 	fcntl(0, F_SETFL, O_NONBLOCK);
 
 	SDL_Window *window = init_window();
@@ -292,16 +290,16 @@ int main(int argc, char **argv)
 
 	bool mpv_redraw = false;
 	mpv_opengl_cb_set_update_callback(mpv_gl, on_mpv_redraw, &mpv_redraw);
-	
+
 	chatlog chatlog;
 
 	int64_t t_last = 0, t_now = 0;
 	while (1) {
 		SDL_Delay(10);
 		t_now = SDL_GetPerformanceCounter();
-		double delta = (t_now - t_last)/
-		  (double)SDL_GetPerformanceFrequency();
-		if (delta <= 1/60.0)
+		double delta = (t_now - t_last) /
+			       (double)SDL_GetPerformanceFrequency();
+		if (delta <= 1 / 60.0)
 			continue;
 		t_last = t_now;
 
@@ -321,7 +319,7 @@ int main(int argc, char **argv)
 
 		//if (!redraw)
 		//	continue;
-			
+
 		int w, h;
 		SDL_GetWindowSize(window, &w, &h);
 		glClear(GL_COLOR_BUFFER_BIT);
@@ -331,10 +329,10 @@ int main(int argc, char **argv)
 		mpvinfo info = mpvh_getinfo(mpvh);
 		dbgwin(mpvh, info);
 		glViewport(0, 0, (int)ImGui::GetIO().DisplaySize.x,
-			   (int)ImGui::GetIO().DisplaySize.y);
+			(int)ImGui::GetIO().DisplaySize.y);
 		ImGui::Render();
 		SDL_GL_SwapWindow(window);
 	}
-	
+
 	return 0;
 }

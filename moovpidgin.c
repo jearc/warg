@@ -40,12 +40,8 @@ void cmd_sure(struct state *state, int acc, int conv, char *args, bool self);
 struct {
 	const char *name;
 	void (*fn)(struct state *, int, int, char *, bool);
-} cmdtab[] = {
-	{ "MOOV", cmd_moov },
-	{ "YT", cmd_yt },
-	{ "RESUME", cmd_resume },
-	{ "sure", cmd_sure }
-};
+} cmdtab[] = { { "MOOV", cmd_moov }, { "YT", cmd_yt }, { "RESUME", cmd_resume },
+	{ "sure", cmd_sure } };
 
 void cmd_moov(struct state *state, int acc, int conv, char *args, bool self)
 {
@@ -60,10 +56,10 @@ char *advance_to(char *str, char chr)
 {
 	if (!str)
 		return NULL;
-	
+
 	while (*str != '\0' && *str != chr)
 		str++;
-	
+
 	return str;
 }
 
@@ -159,7 +155,7 @@ void launchmoov(struct state *state, size_t argc, char **argv)
 
 	if (moovpid > 0) {
 		state->moovpid = moovpid;
-		
+
 		close(state->moovin[0]);
 		close(state->moovout[1]);
 
@@ -167,7 +163,7 @@ void launchmoov(struct state *state, size_t argc, char **argv)
 
 		return;
 	}
-	
+
 	close(0);
 	close(1);
 	close(state->moovin[1]);
@@ -187,7 +183,7 @@ void launchmoov(struct state *state, size_t argc, char **argv)
 	while (argv__++)
 		fprintf(stderr, "%s\n", *argv__);
 	*/
-	
+
 	execv("./moov", "https://www.youtube.com/watch?v=AbOdvJkMt0E");
 }
 
@@ -206,7 +202,8 @@ char *getalias(sd_bus *bus, int account)
 	char *alias;
 	r = sd_bus_message_read(m, "s", &alias);
 	if (r < 0)
-		fprintf(strerror, "failed to read PurpleAccountGetAlias response: %s.\n",
+		fprintf(strerror,
+			"failed to read PurpleAccountGetAlias response: %s.\n",
 			strerror(-r));
 
 	//sd_bus_message_unref(m);
@@ -222,14 +219,15 @@ int getconvim(sd_bus *bus, int conversation)
 	sd_bus_message *m = NULL;
 
 	int convim;
-	r = sd_bus_call_method(bus, purple_service, purple_object, NULL, "PurpleConvIm",
-		&err, &m, "i", conversation);
+	r = sd_bus_call_method(bus, purple_service, purple_object, NULL,
+		"PurpleConvIm", &err, &m, "i", conversation);
 	if (r < 0)
 		fprintf(stderr, "failed to call PurpleConvIm method: %s.\n",
 			strerror(-r));
 	r = sd_bus_message_read(m, "i", &convim);
 	if (r < 0)
-		fprintf(stderr, "failed to read message from PurpleConvIm: %s.\n",
+		fprintf(stderr,
+			"failed to read message from PurpleConvIm: %s.\n",
 			strerror(-r));
 
 	//sd_bus_message_unref(m);
@@ -247,14 +245,17 @@ char *getconvtitle(sd_bus *bus, int conversation)
 	r = sd_bus_call_method(bus, purple_service, purple_object, NULL,
 		"PurpleConversationGetTitle", &err, &m, "i", conversation);
 	if (r < 0)
-		fprintf(strerror, "failed to call PurpleConversationGetTitle: %s.\n",
+		fprintf(strerror,
+			"failed to call PurpleConversationGetTitle: %s.\n",
 			strerror(-r));
 
 	char *convtitle;
 	r = sd_bus_message_read(m, "s", &convtitle);
 	if (r < 0)
-		fprintf(strerror, "failed to read response from PurpleConversationGetTitle"
-			": %s.\n", strerror(-r));
+		fprintf(strerror,
+			"failed to read response from PurpleConversationGetTitle"
+			": %s.\n",
+			strerror(-r));
 
 	//sd_bus_message_unref(m);
 	//sd_bus_error_free(&err);
@@ -277,7 +278,8 @@ int convofrecp(sd_bus *bus, char *recp)
 	size_t nconv;
 	r = sd_bus_message_read_array(m, 'i', (const void **)&conv, &nconv);
 	if (r < 0)
-		fprintf(stderr, "failed to read PurpleGetConversations response: %s\n",
+		fprintf(stderr,
+			"failed to read PurpleGetConversations response: %s\n",
 			strerror(-r));
 
 	for (size_t i = 0; i < nconv; i++) {
@@ -285,13 +287,16 @@ int convofrecp(sd_bus *bus, char *recp)
 		r = sd_bus_call_method(bus, purple_service, purple_object, NULL,
 			"PurpleConversationGetName", &err, &m1, "i", conv[i]);
 		if (r < 0)
-			fprintf(stderr, "failed to call PurpleConversationGetName: %s\n",
+			fprintf(stderr,
+				"failed to call PurpleConversationGetName: %s\n",
 				strerror(-r));
 		char *name;
 		r = sd_bus_message_read(m1, "s", &name);
 		if (r < 0)
-			fprintf(stderr, "failed to read PurpleConversationGetName"
-				"response: %s.\n", strerror(-r));
+			fprintf(stderr,
+				"failed to read PurpleConversationGetName"
+				"response: %s.\n",
+				strerror(-r));
 		if (strcmp(recp, name) == 0)
 			return conv[i];
 	}
@@ -307,9 +312,10 @@ int sent_cb(sd_bus_message *m, void *data, sd_bus_error *err)
 	int r;
 	int account;
 	char *recipient, *message;
- 	r = sd_bus_message_read(m, "iss", &account, &recipient, &message);
+	r = sd_bus_message_read(m, "iss", &account, &recipient, &message);
 	if (r < 0)
-		fprintf(stderr, "failed to read sent message: %s.\n", strerror(-r));
+		fprintf(stderr, "failed to read sent message: %s.\n",
+			strerror(-r));
 
 	fprintf(stderr, "prestrip: %s\n", message);
 	striphtml(message);
@@ -318,7 +324,7 @@ int sent_cb(sd_bus_message *m, void *data, sd_bus_error *err)
 	char *alias = getalias(state->bus, account);
 	int conv = convofrecp(state->bus, recipient);
 	if (conv == state->conv && kill(state->moovpid, 0))
-        	sendmoov(state->moovin[1], alias, message);
+		sendmoov(state->moovin[1], alias, message);
 	handlecmd(state, account, conv, message, true);
 
 	pthread_mutex_unlock(&state->mtx);
@@ -330,13 +336,14 @@ int received_cb(sd_bus_message *m, void *data, sd_bus_error *err)
 	pthread_mutex_lock(&state->mtx);
 
 	int r;
-	
+
 	int acc, conv;
 	char *sender, *msg;
 	uint32_t flags;
 	r = sd_bus_message_read(m, "issiu", &acc, &sender, &msg, &conv, &flags);
 	if (r < 0)
-		fprintf(stderr, "failed to read received message: %s.\n", strerror(-r));
+		fprintf(stderr, "failed to read received message: %s.\n",
+			strerror(-r));
 
 	striphtml(msg);
 
@@ -354,17 +361,18 @@ int send_purple(sd_bus *bus, int im, const char *msg)
 	sd_bus_error err = SD_BUS_ERROR_NULL;
 	sd_bus_message *m = NULL;
 
-	r = sd_bus_call_method(bus, purple_service, purple_object, NULL, "PurpleConvImSend",
-		&err, &m, "is", im, msg);
+	r = sd_bus_call_method(bus, purple_service, purple_object, NULL,
+		"PurpleConvImSend", &err, &m, "is", im, msg);
 	if (r < 0)
-		fprintf(stderr, "failed to send purple message: %s.", strerror(-r));
+		fprintf(stderr, "failed to send purple message: %s.",
+			strerror(-r));
 
 	return r;
 }
 
 int sendmoov(int f, char *alias, char *msg)
 {
-        write(f, alias, strlen(alias));
+	write(f, alias, strlen(alias));
 	write(f, ":", 1);
 	write(f, msg, strlen(msg) + 1);
 }
@@ -398,7 +406,7 @@ void *handlemoov(void *data)
 {
 	struct state *state = data;
 
-	char buf[1000] = {0};
+	char buf[1000] = { 0 };
 	size_t bufidx = 0;
 	for (;;) {
 		char c;
@@ -408,8 +416,7 @@ void *handlemoov(void *data)
 			//send_purple(state->bus, getconvim(state->bus, state->conv), buf);
 			memset(buf, 0, 1000);
 			bufidx = 0;
-		}
-		else if (bufidx < 998)
+		} else if (bufidx < 998)
 			buf[bufidx++] = c;
 	}
 }
@@ -417,12 +424,10 @@ void *handlemoov(void *data)
 int main(int argc, char *argv[])
 {
 	int r;
-	struct state state = {
-		.mtx = PTHREAD_MUTEX_INITIALIZER,
+	struct state state = { .mtx = PTHREAD_MUTEX_INITIALIZER,
 		.bus = NULL,
 		.acc = -1,
-		.conv = -1
-	};
+		.conv = -1 };
 
 	fprintf(stderr, "Starting moovpidgin.\n");
 
@@ -435,14 +440,17 @@ int main(int argc, char *argv[])
 
 	r = sd_bus_add_match(state.bus, NULL, sent_match_rule, sent_cb, &state);
 	if (r < 0) {
-		fprintf(stderr, "Error: failed to set sent message callback: %s.\n",
+		fprintf(stderr,
+			"Error: failed to set sent message callback: %s.\n",
 			strerror(-1));
 		goto finish;
 	}
 
-	r = sd_bus_add_match(state.bus, NULL, received_match_rule, received_cb, &state);
+	r = sd_bus_add_match(
+		state.bus, NULL, received_match_rule, received_cb, &state);
 	if (r < 0) {
-		fprintf(stderr, "Error: failed to set received message callback: %s.\n",
+		fprintf(stderr,
+			"Error: failed to set received message callback: %s.\n",
 			strerror(-r));
 		goto finish;
 	}
@@ -450,7 +458,8 @@ int main(int argc, char *argv[])
 	for (;;) {
 		r = sd_bus_process(state.bus, NULL);
 		if (r < 0) {
-			fprintf(stderr, "Failed to process bus: %s.\n", strerror(-r));
+			fprintf(stderr, "Failed to process bus: %s.\n",
+				strerror(-r));
 			goto finish;
 		}
 		if (r > 0)
@@ -458,7 +467,8 @@ int main(int argc, char *argv[])
 
 		r = sd_bus_wait(state.bus, (uint64_t)-1);
 		if (r < 0) {
-			fprintf(stderr, "Failed to wait on bus: %s.\n", strerror(-r));
+			fprintf(stderr, "Failed to wait on bus: %s.\n",
+				strerror(-r));
 			goto finish;
 		}
 	}

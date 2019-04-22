@@ -26,8 +26,8 @@ void logmsg(chatlog *cl, char *username, char *text)
 
 	if (cl->msg_cnt >= cl->msg_max) {
 		cl->msg_max += 100;
-		cl->msg = (Message *)realloc(cl->msg,
-					     cl->msg_max * sizeof(*cl->msg));
+		cl->msg = (Message *)realloc(
+			cl->msg, cl->msg_max * sizeof(*cl->msg));
 	}
 	cl->msg[cl->msg_cnt++] = msg;
 }

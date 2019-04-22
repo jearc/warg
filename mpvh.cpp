@@ -30,7 +30,7 @@ mpvhandler *mpvh_create(char *uri)
 	mpv_command(h->mpv, cmd);
 
 	h->last_time = mpv_get_time_us(h->mpv);
-	
+
 	h->info.track_curr = 0;
 	h->info.track_cnt = 1;
 	h->info.delay = 0;
@@ -48,14 +48,14 @@ mpvhandler *mpvh_create(char *uri)
 
 mpv_opengl_cb_context *mpvh_get_opengl_cb_api(mpvhandler *h)
 {
-	return (mpv_opengl_cb_context *)
-	           mpv_get_sub_api(h->mpv, MPV_SUB_API_OPENGL_CB);
+	return (mpv_opengl_cb_context *)mpv_get_sub_api(
+		h->mpv, MPV_SUB_API_OPENGL_CB);
 }
 
 void mpvh_syncmpv(mpvhandler *h)
 {
-	playstate *s = h->info.exploring ? &h->info.explore_state
-	                                 : &h->info.state;
+	playstate *s =
+		h->info.exploring ? &h->info.explore_state : &h->info.state;
 	mpv_set_property(h->mpv, "pause", MPV_FORMAT_FLAG, &s->paused);
 	double mpv_time;
 	mpv_get_property(h->mpv, "time-pos", MPV_FORMAT_DOUBLE, &mpv_time);
@@ -98,22 +98,22 @@ void mpvh_update(mpvhandler *h)
 			break;
 		case MPV_EVENT_FILE_LOADED: {
 			mpvh_syncmpv(h);
-			
+
 			mpv_get_property(h->mpv, "duration", MPV_FORMAT_DOUBLE,
-			                 &h->info.duration);
-			                 
+				&h->info.duration);
+
 			char *title = NULL;
-			mpv_get_property(h->mpv, "media-title", MPV_FORMAT_STRING,
-			                 &title);
+			mpv_get_property(h->mpv, "media-title",
+				MPV_FORMAT_STRING, &title);
 			strncpy(h->info.title, title, 99);
 			mpv_free(title);
-			
+
 			mpvh_update_track_counts(h);
-			
+
 			mpv_get_property(h->mpv, "sub", MPV_FORMAT_INT64,
-			                 &h->info.sub_curr);
+				&h->info.sub_curr);
 			mpv_get_property(h->mpv, "audio", MPV_FORMAT_INT64,
-			                 &h->info.audio_curr);
+				&h->info.audio_curr);
 			break;
 		}
 		case MPV_EVENT_IDLE:
@@ -149,8 +149,7 @@ statusstr statestr(playstate st)
 {
 	statusstr s;
 	timestr ts = sec_to_timestr(round(st.time));
-	snprintf(s.str, 50, "%s %s",
-		 st.paused ? "paused" : "playing", ts.str);
+	snprintf(s.str, 50, "%s %s", st.paused ? "paused" : "playing", ts.str);
 	return s;
 }
 
@@ -170,7 +169,7 @@ void mpvh_explore_accept(mpvhandler *h)
 {
 	h->info.exploring = false;
 	h->info.state = h->info.explore_state;
-	
+
 	timestr ts = sec_to_timestr(round(h->info.state.time));
 	sendmsg("SEEK %s", ts.str);
 }
@@ -190,10 +189,10 @@ void mpvh_toggle_mute(mpvhandler *h)
 void mpvh_update_track_counts(mpvhandler *h)
 {
 	h->info.audio_cnt = h->info.sub_cnt = 0;
-	
+
 	int64_t cnt;
 	mpv_get_property(h->mpv, "track-list/count", MPV_FORMAT_INT64, &cnt);
-	
+
 	for (int i = 0; i < cnt; i++) {
 		char buf[100];
 		snprintf(buf, 99, "track-list/%d/type", i);
