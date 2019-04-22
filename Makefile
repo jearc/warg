@@ -7,7 +7,7 @@ LIBS = -lGL -ldl -lSDL2 -lmpv -lGLEW -lGLU
 
 all: $(EXE)
 
-$(EXE): $(OBJS)
+$(EXE): $(OBJS) moov.h
 	$(CXX) $(CFLAGS) $(MOOV_FLAGS) -o $(EXE) $(OBJS) $(LIBS)
 
 clean:
