@@ -49,6 +49,7 @@ mpvinfo mpvh_getinfo(mpvhandler *h);
 void mpvh_update(mpvhandler *h);
 void mpvh_set_state(mpvhandler *h, playstate s);
 statusstr statestr(mpvinfo info, playstate st);
+void mpvh_sendstatus(mpvhandler *h);
 void mpvh_explore(mpvhandler *h);
 void mpvh_explore_set_state(mpvhandler *h, playstate s);
 void mpvh_explore_accept(mpvhandler *h);

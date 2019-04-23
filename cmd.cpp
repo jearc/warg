@@ -65,8 +65,7 @@ void cmd_pp(char *args, mpvhandler *mpvh)
 	i.state.paused = !i.state.paused;
 	mpvh_set_state(mpvh, i.state);
 	i = mpvh_getinfo(mpvh);
-	statusstr status = statestr(i, i.state);
-	sendmsg(status.str);
+	mpvh_sendstatus(mpvh);
 }
 
 void cmd_play(char *args, mpvhandler *mpvh)
@@ -77,8 +76,7 @@ void cmd_play(char *args, mpvhandler *mpvh)
 	i.state.paused = false;
 	mpvh_set_state(mpvh, i.state);
 	i = mpvh_getinfo(mpvh);
-	statusstr status = statestr(i, i.state);
-	sendmsg(status.str);
+	mpvh_sendstatus(mpvh);
 }
 
 void cmd_pause(char *args, mpvhandler *mpvh)
@@ -89,8 +87,7 @@ void cmd_pause(char *args, mpvhandler *mpvh)
 	i.state.paused = true;
 	mpvh_set_state(mpvh, i.state);
 	i = mpvh_getinfo(mpvh);
-	statusstr status = statestr(i, i.state);
-	sendmsg(status.str);
+	mpvh_sendstatus(mpvh);
 }
 
 void cmd_status(char *args, mpvhandler *mpvh)
@@ -98,8 +95,7 @@ void cmd_status(char *args, mpvhandler *mpvh)
 	UNUSED(args);
 
 	mpvinfo i = mpvh_getinfo(mpvh);
-	statusstr status = statestr(i, i.state);
-	sendmsg(status.str);
+	mpvh_sendstatus(mpvh);
 }
 
 void cmd_seek(char *args, mpvhandler *mpvh)

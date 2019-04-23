@@ -173,6 +173,11 @@ statusstr statestr(mpvinfo i, playstate st)
 	return s;
 }
 
+void mpvh_sendstatus(mpvhandler *h)
+{
+	sendmsg("moov: %s", statestr(h->info, h->info.state).str);
+}
+
 void mpvh_explore(mpvhandler *h)
 {
 	h->info.exploring = true;
