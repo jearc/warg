@@ -222,7 +222,7 @@ bool handle_sdl_events(SDL_Window *win)
 	while (SDL_PollEvent(&e)) {
 		switch (e.type) {
 		case SDL_QUIT:
-			exit(0);
+			exit(EXIT_SUCCESS);
 		case SDL_KEYDOWN:
 			switch (e.key.keysym.sym) {
 			case SDLK_F11:
