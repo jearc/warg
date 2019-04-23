@@ -15,6 +15,7 @@ void cmd_seekminus(char *args, mpvhandler *mpvh);
 void cmd_prev(char *args, mpvhandler *mpvh);
 void cmd_next(char *args, mpvhandler *mpvh);
 void cmd_index(char *args, mpvhandler *mpvh);
+void cmd_set(char *args, mpvhandler *mpvh);
 
 #define CMD(str) str, sizeof str - 1
 static struct {
@@ -31,7 +32,8 @@ static struct {
 	{ CMD("SEEK-"), cmd_seekminus },
 	{ CMD("PREV"), cmd_prev },
 	{ CMD("NEXT"), cmd_next },
-	{ CMD("INDEX"), cmd_index }
+	{ CMD("INDEX"), cmd_index },
+	{ CMD("SET"), cmd_set }
 };
 size_t cmdcnt = sizeof cmdtab / sizeof cmdtab[0];
 
@@ -158,6 +160,44 @@ void cmd_index(char *args, mpvhandler *mpvh)
 	playstate s = {};
 	s.track = track;
 	s.paused = true;
+	mpvh_set_state(mpvh, s);
+	mpvh_sendstatus(mpvh);
+}
+
+void cmd_set(char *args, mpvhandler *mpvh)
+{
+	long tok[5];
+	size_t tokidx = 0;
+	char *tokstart = args;
+	while (1) {
+		while (*tokstart && !isdigit(*tokstart))
+			tokstart++;
+		if (!*tokstart)
+			break;
+
+		char *tokend = tokstart;
+		while (isdigit(*tokend + 1))
+			tokend++;
+
+		tok[tokidx++] = strtol(tokstart, &tokend, 10);
+
+		if (tokidx > 4)
+			break;
+
+		tokstart = tokend + 1;
+	}
+	if (tokidx < 5) {
+		sendmsg("moov: bad cmd");
+		return;
+	}
+
+	playstate s;
+	s.track = tok[0] - 1;
+	s.time += 3600 * tok[1];
+	s.time += 60 * tok[2];
+	s.time += tok[3];
+	s.paused = tok[4];
+
 	mpvh_set_state(mpvh, s);
 	mpvh_sendstatus(mpvh);
 }
