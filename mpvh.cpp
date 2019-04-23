@@ -198,7 +198,8 @@ void mpvh_explore_accept(mpvhandler *h)
 	h->info.state = h->info.explore_state;
 
 	timestr ts = sec_to_timestr(round(h->info.state.time));
-	sendmsg("SEEK %s", ts.str);
+	sendmsg("SET %ld %s %d", h->info.explore_state.track + 1, ts.str,
+		h->info.explore_state.paused);
 }
 
 void mpvh_explore_cancel(mpvhandler *h)
