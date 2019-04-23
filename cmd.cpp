@@ -96,7 +96,6 @@ void cmd_status(char *args, mpvhandler *mpvh)
 {
 	UNUSED(args);
 
-	mpvinfo i = mpvh_getinfo(mpvh);
 	mpvh_sendstatus(mpvh);
 }
 
