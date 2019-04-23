@@ -10,3 +10,4 @@ guide
 *.sym
 *~
 .vscode
+imgui.ini
