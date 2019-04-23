@@ -49,6 +49,8 @@ mpvhandler *mpvh_create(int filec, char **filev, int track, double time)
 	h->info.exploring = false;
 	mpvh_syncmpv(h);
 
+	mpvh_sendstatus(h);
+
 	return h;
 }
 

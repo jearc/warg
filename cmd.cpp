@@ -104,6 +104,7 @@ void cmd_seek(char *args, mpvhandler *mpvh)
 	mpvinfo i = mpvh_getinfo(mpvh);
 	i.state.time = time;
 	mpvh_set_state(mpvh, i.state);
+	mpvh_sendstatus(mpvh);
 }
 
 void cmd_seekplus(char *args, mpvhandler *mpvh)
@@ -112,6 +113,7 @@ void cmd_seekplus(char *args, mpvhandler *mpvh)
 	mpvinfo i = mpvh_getinfo(mpvh);
 	i.state.time += time;
 	mpvh_set_state(mpvh, i.state);
+	mpvh_sendstatus(mpvh);
 }
 
 void cmd_seekminus(char *args, mpvhandler *mpvh)
@@ -120,6 +122,7 @@ void cmd_seekminus(char *args, mpvhandler *mpvh)
 	mpvinfo i = mpvh_getinfo(mpvh);
 	i.state.time -= time;
 	mpvh_set_state(mpvh, i.state);
+	mpvh_sendstatus(mpvh);
 }
 
 void cmd_prev(char *args, mpvhandler *mpvh)
@@ -131,6 +134,7 @@ void cmd_prev(char *args, mpvhandler *mpvh)
 	s.track = i.state.track - 1;
 	s.paused = true;
 	mpvh_set_state(mpvh, s);
+	mpvh_sendstatus(mpvh);
 }
 
 void cmd_next(char *args, mpvhandler *mpvh)
@@ -142,6 +146,7 @@ void cmd_next(char *args, mpvhandler *mpvh)
 	s.track = i.state.track + 1;
 	s.paused = true;
 	mpvh_set_state(mpvh, s);
+	mpvh_sendstatus(mpvh);
 }
 
 void cmd_index(char *args, mpvhandler *mpvh)
@@ -154,4 +159,5 @@ void cmd_index(char *args, mpvhandler *mpvh)
 	s.track = track;
 	s.paused = true;
 	mpvh_set_state(mpvh, s);
+	mpvh_sendstatus(mpvh);
 }
