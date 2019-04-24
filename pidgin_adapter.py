@@ -19,6 +19,7 @@ purple_contact = None
 purple = None
 video_filetypes = ["mp4", "mkv", "avi", "ogm"]
 
+
 def get_video_filepaths(keywords):
     videos = []
     for root, subdirs, files in walk(video_dir):
@@ -34,8 +35,10 @@ def get_video_filepaths(keywords):
                 videos.append(join(root, file))
     return sorted(videos, key=str.lower)
 
+
 def send_purple_message(conversation, message):
     purple.PurpleConvImSend(purple.PurpleConvIm(conversation), message)
+
 
 def handle_moov_command(account, conversation, args, from_self):
     global purple_conversation
@@ -47,6 +50,7 @@ def handle_moov_command(account, conversation, args, from_self):
     else:
         pending_open = (conversation, args)
         send_purple_message(conversation, "moov: awaiting confirmation...")
+
 
 def parse_command(account, conversation, message, from_self):
     global pending_open
@@ -65,7 +69,8 @@ def parse_command(account, conversation, message, from_self):
         url = split[1]
         if len(split) > 2:
             time_str = ":".join(split[2:])
-            handle_moov_command(account, conversation, [url, "-s", time_str], from_self)
+            handle_moov_command(account, conversation, [url, "-s", time_str],
+                                from_self)
         else:
             handle_moov_command(account, conversation, [url], from_self)
     if message == "RESUME":
@@ -74,20 +79,25 @@ def parse_command(account, conversation, message, from_self):
         handle_moov_command(account, conversation, pending_open[1], True)
         pending_open = None
 
-def on_purple_message_receive_cb(account, sender, message, conversation, flags):
+
+def on_received(account, sender, message, conversation, flags):
     parse_command(account, conversation, message, False)
     if conversation == purple_conversation:
-        send_moov_message(purple.PurpleConversationGetTitle(conversation), message)
+        send_moov_message(purple.PurpleConversationGetTitle(conversation),
+                          message)
 
-def on_purple_message_sent_cb(account, recipient, message):
+
+def on_sent(account, recipient, message):
     conversation = None
     username = purple.PurpleAccountGetAlias(account)
     for conv in purple.PurpleGetConversations():
-        if recipient.split('/')[0] == purple.PurpleConversationGetName(conv).split('/')[0]:
+        if recipient.split('/')[0] == purple.PurpleConversationGetName(
+                conv).split('/')[0]:
             conversation = conv
     if conversation and conversation == purple_conversation:
         send_moov_message(username, message)
     parse_command(account, conversation, message, True)
+
 
 def kill_moov():
     global moov_proc
@@ -95,6 +105,7 @@ def kill_moov():
         moov_proc.terminate()
     moov_proc = None
     purple_conversation = None
+
 
 def moov_handler_thread_f():
     global purple_conversation
@@ -108,6 +119,7 @@ def moov_handler_thread_f():
             partial = partial + char
     purple_conversation = None
 
+
 def open_moov(args):
     global moov_proc
     kill_moov()
@@ -116,8 +128,9 @@ def open_moov(args):
                       stdout=PIPE,
                       bufsize=1,
                       universal_newlines=True)
-    moov_handler_thread = Thread(target=moov_handler_thread_f, args = ())
+    moov_handler_thread = Thread(target=moov_handler_thread_f, args=())
     moov_handler_thread.start()
+
 
 def send_moov_message(alias, message):
     h = HTML2Text()
@@ -127,17 +140,20 @@ def send_moov_message(alias, message):
     if moov_proc and moov_proc.poll() is None:
         moov_proc.stdin.write(command)
         moov_proc.stdin.flush()
-        
+
+
 def on_pidgin_appeared(con=None, name=None, name_owner=None):
     global purple
     purple = bus.get("im.pidgin.purple.PurpleService",
                      "/im/pidgin/purple/PurpleObject")
-    purple.ReceivedImMsg.connect(on_purple_message_receive_cb)
-    purple.SentImMsg.connect(on_purple_message_sent_cb)
+    purple.ReceivedImMsg.connect(on_received)
+    purple.SentImMsg.connect(on_sent)
+
 
 def on_pidgin_vanished(con=None, name=None):
     global purple
     purple = None
+
 
 dir_filepath = getenv("HOME") + "/.moov_dir"
 if not isfile(dir_filepath):
@@ -146,8 +162,9 @@ if not isfile(dir_filepath):
 dir_file = open(dir_filepath, "r")
 video_dir = dir_file.readline().strip()
 if not isdir(video_dir):
-    print("Error: directory path specified in ~/.moov_dir is invalid.\nAborting.",
-          file=stderr)
+    print(
+        "Error: directory path specified in ~/.moov_dir is invalid.\nAborting.",
+        file=stderr)
     exit(2)
 
 bus = SessionBus()
