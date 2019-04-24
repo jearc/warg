@@ -6,6 +6,7 @@
 #include <mpv/opengl_cb.h>
 #include <unistd.h>
 #include <fcntl.h>
+#include <math.h>
 
 #include "imgui/imgui.h"
 #include "imgui/imgui_impl_sdl_gl3.h"
@@ -305,6 +306,8 @@ int main(int argc, char **argv)
 
 	chatlog chatlog;
 
+	ui_data ui_data = ui_init();
+
 	int64_t t_last = 0, t_now = 0;
 	while (1) {
 		SDL_Delay(10);
@@ -343,6 +346,40 @@ int main(int argc, char **argv)
 		glViewport(0, 0, (int)ImGui::GetIO().DisplaySize.x,
 			(int)ImGui::GetIO().DisplaySize.y);
 		ImGui::Render();
+
+		glUseProgram(ui_data.shader);
+		glBindVertexArray(ui_data.vao);
+
+		double time = t_now / (double)SDL_GetPerformanceFrequency();
+		// clang-format off
+		float transform0[16] = {
+			-1+sin(time), 0, 0, 0,
+			-1+0, sin(time), 0, 0,
+			-1+0, 0, sin(time), 0,
+			0, 0, 0, 1
+		};
+		// clang-format on
+		glUniformMatrix4fv(ui_data.vertex_transform_location, 1,
+			GL_FALSE, transform0);
+		glDrawArrays(GL_TRIANGLES, 0, 3);
+
+		// clang-format off
+		float transform1[16] = {
+			cos(time), 0, 0, 0,
+			0, cos(time), 0, 0,
+			0, 0, cos(time), 0,
+			0, 0, 0, 1
+		};
+		// clang-format on
+		glUniformMatrix4fv(ui_data.vertex_transform_location, 1,
+			GL_FALSE, transform1);
+		glDrawArrays(GL_TRIANGLES, 0, 3);
+
+		int x, y;
+		SDL_GetMouseState(&x, &y);
+		glUniform2f(ui_data.mouse_location, ((float)x - 640) / 640,
+			-((float)y - 360) / 360);
+
 		SDL_GL_SwapWindow(window);
 	}
 

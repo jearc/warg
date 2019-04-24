@@ -38,6 +38,9 @@ struct chatlog {
 struct timestr {
 	char str[40];
 };
+struct ui_data {
+	GLuint buf[2], vao, shader, vertex_transform_location, mouse_location;
+};
 
 void sendmsg(const char *fmt, ...);
 void logmsg(chatlog *cl, char *username, char *text);
@@ -60,3 +63,4 @@ timestr sec_to_timestr(int seconds);
 void die(const char *fmt, ...);
 void mpvh_set_audio(mpvhandler *h, int64_t track);
 void mpvh_set_sub(mpvhandler *h, int64_t track);
+ui_data ui_init();
