@@ -354,9 +354,9 @@ int main(int argc, char **argv)
 		double time = t_now / (double)SDL_GetPerformanceFrequency();
 		// clang-format off
 		float transform0[16] = {
-			-1+sin(time), 0, 0, 0,
-			-1+0, sin(time), 0, 0,
-			-1+0, 0, sin(time), 0,
+			-1+(float)sin(time), 0, 0, 0,
+			-1+0, (float)sin(time), 0, 0,
+			-1+0, 0, (float)sin(time), 0,
 			0, 0, 0, 1
 		};
 		// clang-format on
@@ -366,9 +366,9 @@ int main(int argc, char **argv)
 
 		// clang-format off
 		float transform1[16] = {
-			cos(time), 0, 0, 0,
-			0, cos(time), 0, 0,
-			0, 0, cos(time), 0,
+			(float)cos(time), 0, 0, 0,
+			0, (float)cos(time), 0, 0,
+			0, 0, (float)cos(time), 0,
 			0, 0, 0, 1
 		};
 		// clang-format on
