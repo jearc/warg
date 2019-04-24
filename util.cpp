@@ -17,19 +17,18 @@ void die(const char *fmt, ...)
 
 double parsetime(char *str)
 {
-	double seconds = 0;
-	char *tokstart = str;
+	double sec = 0;
 	for (int i = 0; i < 3; i++) {
-		while (*tokstart && !isdigit(*tokstart))
-			tokstart++;
-		if (!*tokstart)
+		while (*str && !isdigit(*str))
+			str++;
+		if (!*str)
 			break;
 
-		seconds *= 60;
-		seconds += strtol(tokstart, &tokstart, 10);
-		tokstart++;
+		sec *= 60;
+		sec += strtol(str, &str, 10);
+		str++;
 	}
-	return seconds;
+	return sec;
 }
 
 timestr sec_to_timestr(int seconds)
