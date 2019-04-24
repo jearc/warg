@@ -39,17 +39,16 @@ size_t cmdcnt = sizeof cmdtab / sizeof cmdtab[0];
 
 void handlecmd(char *text, mpvhandler *mpvh)
 {
+	while (*text && isspace(*text))
+		text++;
 	char *cmd = text;
-	while (*cmd && isspace(*cmd))
-		cmd++;
-	char *cmdend = cmd;
-	while (*cmdend && !isspace(*cmdend))
-		cmdend++;
-	char *args = cmdend;
-	while (*args && isspace(*args))
-		args++;
+	size_t cmdlen = 0;
+	while (*text && !isspace(*text))
+		text++, cmdlen++;
+	while (*text && isspace(*text))
+		text++;
+	char *args = text;
 
-	size_t cmdlen = cmdend - cmd;
 	for (size_t i = 0; i < cmdcnt; i++) {
 		int cmplen = max(cmdlen, cmdtab[i].len);
 		if (strncmp(cmd, cmdtab[i].name, cmplen) == 0) {
