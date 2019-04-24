@@ -166,28 +166,16 @@ void cmd_index(char *args, mpvhandler *mpvh)
 void cmd_set(char *args, mpvhandler *mpvh)
 {
 	long tok[5];
-	size_t tokidx = 0;
 	char *tokstart = args;
-	while (1) {
+	for (size_t i = 0; i < 5; i++) {
 		while (*tokstart && !isdigit(*tokstart))
 			tokstart++;
-		if (!*tokstart)
-			break;
-
-		char *tokend = tokstart;
-		while (isdigit(*tokend + 1))
-			tokend++;
-
-		tok[tokidx++] = strtol(tokstart, &tokend, 10);
-
-		if (tokidx > 4)
-			break;
-
-		tokstart = tokend + 1;
-	}
-	if (tokidx < 5) {
-		sendmsg("moov: bad cmd");
-		return;
+		if (!*tokstart) {
+			sendmsg("moov: bad cmd");
+			return;
+		}
+		tok[i] = strtol(tokstart, &tokstart, 10);
+		tokstart++;
 	}
 
 	playstate s;

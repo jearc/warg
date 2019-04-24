@@ -17,32 +17,18 @@ void die(const char *fmt, ...)
 
 double parsetime(char *str)
 {
-	long tok[3];
-	size_t tokidx = 0;
-
+	double seconds = 0;
 	char *tokstart = str;
-	while (1) {
+	for (int i = 0; i < 3; i++) {
 		while (*tokstart && !isdigit(*tokstart))
 			tokstart++;
 		if (!*tokstart)
 			break;
 
-		char *tokend = tokstart;
-		while (isdigit(*tokend + 1))
-			tokend++;
-
-		tok[tokidx++] = strtol(tokstart, &tokend, 10);
-
-		if (tokidx > 2)
-			break;
-
-		tokstart = tokend + 1;
+		seconds *= 60;
+		seconds += strtol(tokstart, &tokstart, 10);
+		tokstart++;
 	}
-
-	double seconds = 0;
-	for (size_t i = 0; i < tokidx; i++)
-		seconds += tok[i] * pow(60, tokidx - i - 1);
-
 	return seconds;
 }
 
