@@ -127,6 +127,17 @@ def send_moov_message(alias, message):
     if moov_proc and moov_proc.poll() is None:
         moov_proc.stdin.write(command)
         moov_proc.stdin.flush()
+        
+def on_pidgin_appeared(con=None, name=None, name_owner=None):
+    global purple
+    purple = bus.get("im.pidgin.purple.PurpleService",
+                     "/im/pidgin/purple/PurpleObject")
+    purple.ReceivedImMsg.connect(on_purple_message_receive_cb)
+    purple.SentImMsg.connect(on_purple_message_sent_cb)
+
+def on_pidgin_vanished(con=None, name=None):
+    global purple
+    purple = None
 
 dir_filepath = getenv("HOME") + "/.moov_dir"
 if not isfile(dir_filepath):
@@ -140,8 +151,7 @@ if not isdir(video_dir):
     exit(2)
 
 bus = SessionBus()
-purple = bus.get("im.pidgin.purple.PurpleService", "/im/pidgin/purple/PurpleObject")
-purple.ReceivedImMsg.connect(on_purple_message_receive_cb)
-purple.SentImMsg.connect(on_purple_message_sent_cb)
-
+bus.watch_name("im.pidgin.purple.PurpleService",
+               name_appeared=on_pidgin_appeared,
+               name_vanished=on_pidgin_vanished)
 GObject.MainLoop().run()
