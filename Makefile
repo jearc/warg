@@ -1,4 +1,4 @@
-OBJS = main.o mpvh.o cmd.o chat.o util.o ui.o data.s
+OBJS = main.o mpvh.o cmd.o chat.o util.o ui.o
 OBJS += ./imgui/imgui_impl_sdl_gl3.o ./imgui/imgui.o ./imgui/imgui_draw.o
 CFLAGS = -fPIC -pedantic -Wall -Wextra -Ofast -ffast-math
 LIBS = -lGL -ldl -lSDL2 -lmpv -lGLEW -lGLU
@@ -6,7 +6,7 @@ LIBS = -lGL -ldl -lSDL2 -lmpv -lGLEW -lGLU
 all: moov
 
 moov: $(OBJS) moov.h data.s meme.vert meme.frag
-	$(CXX) $(CFLAGS) -o moov $(OBJS) $(LIBS)
+	$(CXX) $(CFLAGS) -o moov data.s $(OBJS) $(LIBS)
 
 clean:
 	rm moov $(OBJS)
