@@ -127,6 +127,8 @@ void cmd_seekminus(char *args, mpvhandler *mpvh)
 
 void cmd_prev(char *args, mpvhandler *mpvh)
 {
+	UNUSED(args);
+
 	mpvinfo i = mpvh_getinfo(mpvh);
 	if (i.state.track - 1 < 0)
 		return;
@@ -139,6 +141,8 @@ void cmd_prev(char *args, mpvhandler *mpvh)
 
 void cmd_next(char *args, mpvhandler *mpvh)
 {
+	UNUSED(args);
+
 	mpvinfo i = mpvh_getinfo(mpvh);
 	if (i.state.track + 1 >= i.track_cnt)
 		return;
