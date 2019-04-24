@@ -11,6 +11,7 @@
 #include "imgui/imgui.h"
 #include "imgui/imgui_impl_sdl_gl3.h"
 #include "moov.h"
+#include "ui.h"
 
 #define MAX_MSG_LEN 1000
 

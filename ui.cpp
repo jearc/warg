@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include "moov.h"
+#include "ui.h"
 
 extern const char vert[];
 extern const char frag[];
