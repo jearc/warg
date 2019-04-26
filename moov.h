@@ -1,5 +1,7 @@
 #define UNUSED(x) (void)(x)
 #define max(a, b) ((a) > (b) ? (a) : (b))
+// the timestr of 2^32 sec is "1193046:28:16"
+#define TIMESTR_BUF_LEN 14
 
 struct mpvhandler;
 struct mpv_opengl_cb_context;
@@ -36,7 +38,7 @@ struct chatlog {
 	size_t msg_cnt = 0;
 };
 struct timestr {
-	char str[40];
+	char str[TIMESTR_BUF_LEN];
 };
 
 void sendmsg(const char *fmt, ...);
@@ -56,7 +58,7 @@ void mpvh_explore_accept(mpvhandler *h);
 void mpvh_explore_cancel(mpvhandler *h);
 void mpvh_toggle_mute(mpvhandler *h);
 double parsetime(char *str);
-timestr sec_to_timestr(int seconds);
+timestr sec_to_timestr(unsigned int seconds);
 void die(const char *fmt, ...);
 void mpvh_set_audio(mpvhandler *h, int64_t track);
 void mpvh_set_sub(mpvhandler *h, int64_t track);
