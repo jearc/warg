@@ -31,18 +31,17 @@ double parsetime(char *str)
 	return sec;
 }
 
-timestr sec_to_timestr(unsigned int seconds)
+timestr sec_to_timestr(unsigned int sec)
 {
+	unsigned int h, m, s;
+	h = sec / 3600;
+	m = (sec % 3600) / 60;
+	s = sec % 60;
+
 	timestr ts;
-
-	unsigned int hh = seconds / 3600;
-	unsigned int mm = (seconds % 3600) / 60;
-	unsigned int ss = seconds % 60;
-
-	if (hh)
-		snprintf(ts.str, TIMESTR_BUF_LEN, "%u:%02u:%02u", hh, mm, ss);
+	if (h)
+		snprintf(ts.str, TIMESTR_BUF_LEN, "%u:%02u:%02u", h, m, s);
 	else
-		snprintf(ts.str, TIMESTR_BUF_LEN, "%u:%02u", mm, ss);
-
+		snprintf(ts.str, TIMESTR_BUF_LEN, "%u:%02u", m, s);
 	return ts;
 }
