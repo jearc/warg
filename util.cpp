@@ -40,8 +40,8 @@ timestr sec_to_timestr(unsigned int sec)
 
 	timestr ts;
 	if (h)
-		snprintf(ts.str, TIMESTR_BUF_LEN, "%u:%02u:%02u", h, m, s);
+		sprintf(ts.str, "%u:%02u:%02u", h, m, s);
 	else
-		snprintf(ts.str, TIMESTR_BUF_LEN, "%u:%02u", m, s);
+		sprintf(ts.str, "%u:%02u", m, s);
 	return ts;
 }
