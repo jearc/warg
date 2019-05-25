@@ -15,17 +15,17 @@ struct playstate {
 };
 struct mpvinfo {
 	char title[100];
-	int64_t track_cnt;
+	playstate state;
+	playstate explore_state;
 	double delay;
 	double duration;
-	playstate state;
+	int64_t track_cnt;
 	int64_t audio_curr;
 	int64_t audio_cnt;
 	int64_t sub_curr;
 	int64_t sub_cnt;
 	int muted;
 	bool exploring;
-	playstate explore_state;
 };
 struct Message {
 	time_t time;

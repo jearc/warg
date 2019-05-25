@@ -7,6 +7,8 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <math.h>
+#include "ft2build.h"
+#include FT_FREETYPE_H
 
 #include "imgui/imgui.h"
 #include "imgui/imgui_impl_sdl_gl3.h"
@@ -309,6 +311,10 @@ int main(int argc, char **argv)
 
 	ui_data ui_data = ui_init();
 
+	ImGui::GetIO().Fonts->AddFontFromFileTTF(
+		"/usr/share/fonts/truetype/liberation2/LiberationSans-Regular.ttf",
+		14.0f);
+
 	int64_t t_last = 0, t_now = 0;
 	while (1) {
 		SDL_Delay(10);
@@ -322,6 +328,7 @@ int main(int argc, char **argv)
 		bool scroll_to_bottom = readstdin(&chatlog, mpvh);
 
 		bool redraw = false;
+		UNUSED(redraw);
 		if (mpv_redraw) {
 			redraw = true;
 			mpv_redraw = false;
@@ -349,14 +356,15 @@ int main(int argc, char **argv)
 		ImGui::Render();
 
 		glUseProgram(ui_data.shader);
-		glBindVertexArray(ui_data.vao);
+
+		glBindVertexArray(ui_data.trivao);
 
 		double time = t_now / (double)SDL_GetPerformanceFrequency();
 		// clang-format off
 		float transform0[16] = {
-			-1+(float)sin(time), 0, 0, 0,
-			-1+0, (float)sin(time), 0, 0,
-			-1+0, 0, (float)sin(time), 0,
+			0.5*(float)sin(time)+0.5, 0, 0, 0,
+			0, 0.5*(float)sin(time)+0.5, 0, 0,
+			0, 0, 0.5*(float)sin(time)+0.5, 0,
 			0, 0, 0, 1
 		};
 		// clang-format on
@@ -366,9 +374,9 @@ int main(int argc, char **argv)
 
 		// clang-format off
 		float transform1[16] = {
-			(float)cos(time), 0, 0, 0,
-			0, (float)cos(time), 0, 0,
-			0, 0, (float)cos(time), 0,
+			0.5*(float)cos(time)+0.5, 0, 0, 0,
+			0, 0.5*(float)cos(time)+0.5, 0, 0,
+			0, 0, 0.5*(float)cos(time)+0.5, 0,
 			0, 0, 0, 1
 		};
 		// clang-format on
@@ -376,10 +384,28 @@ int main(int argc, char **argv)
 			GL_FALSE, transform1);
 		glDrawArrays(GL_TRIANGLES, 0, 3);
 
+		glBindVertexArray(0);
+
 		int x, y;
 		SDL_GetMouseState(&x, &y);
-		glUniform2f(ui_data.mouse_location, ((float)x - 640) / 640,
-			-((float)y - 360) / 360);
+		glUniform2f(ui_data.mouse_location,
+			((float)x - w / 2) / (w / 2),
+			-((float)y - h / 2) / (h / 2));
+
+		glUniform1i(ui_data.texture0_location, 0);
+		glActiveTexture(GL_TEXTURE0);
+		glBindTexture(GL_TEXTURE_2D, ui_data.img_handle);
+
+		glBindVertexArray(ui_data.quadvao);
+		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ui_data.quadbuf[1]);
+		glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+
+		//glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+		glBindVertexArray(0);
+		glBindTexture(GL_TEXTURE_2D, 0);
+
+		float aspect_ratio = (float)w / h;
+		glUniform1f(ui_data.aspect_ratio_location, aspect_ratio);
 
 		SDL_GL_SwapWindow(window);
 	}

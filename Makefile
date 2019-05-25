@@ -1,12 +1,12 @@
-OBJS = main.o mpvh.o cmd.o chat.o util.o ui.o
-OBJS += ./imgui/imgui_impl_sdl_gl3.o ./imgui/imgui.o ./imgui/imgui_draw.o
+SRC = main.cpp mpvh.cpp cmd.cpp chat.cpp util.cpp ui.cpp
+SRC += ./imgui/imgui_impl_sdl_gl3.cpp ./imgui/imgui.cpp ./imgui/imgui_draw.cpp
 CFLAGS = -fPIC -pedantic -Wall -Wextra -Ofast -ffast-math
-LIBS = -lGL -ldl -lSDL2 -lmpv -lGLEW -lGLU
+LIBS = -lGL -ldl -lSDL2 -lmpv -lGLEW -lGLU -lfreetype
 
 all: moov
 
-moov: $(OBJS) moov.h ui.h data.s meme.vert meme.frag
-	$(CXX) $(CFLAGS) -o moov data.s $(OBJS) $(LIBS)
+moov: $(SRC) moov.h ui.h data.s meme.vert meme.frag
+	$(CXX) $(CFLAGS) -o moov data.s $(SRC) $(LIBS) -I/usr/include/freetype2
 
 clean:
 	rm moov $(OBJS)
