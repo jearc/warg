@@ -51,12 +51,13 @@ void chatbox(chatlog *chatlog, bool scroll_to_bottom)
 	ImGui::BeginChild("LogRegion",
 		ImVec2(0, -ImGui::GetItemsLineHeightWithSpacing()), false,
 		ImGuiWindowFlags_NoScrollbar);
-	for (size_t i = 0; i < chatlog->msg_cnt; i++) {
-		Message *msg = &chatlog->msg[i];
+	for (size_t i = chatlog->msgfirst; i != chatlog->msgnext;
+	     i = (i + 1) % CHAT_MAX_MESSAGE_COUNT) {
+		message *msg = &chatlog->msgs[i];
 		tm *now = localtime(&msg->time);
 		char buf[20] = { 0 };
 		strftime(buf, sizeof(buf), "%X", now);
-		ImGui::TextWrapped("[%s] %s: %s", buf, msg->from, msg->text);
+		ImGui::TextWrapped("(%s) %s: %s", buf, msg->name, msg->text);
 	}
 	if (scroll_to_bottom)
 		ImGui::SetScrollHere();
@@ -90,15 +91,14 @@ bool readstdin(chatlog *chatlog, mpvhandler *mpvh)
 		switch (c) {
 		case EOF:
 			break;
-		case '\0':
-			char *username, *text;
-			splitinput(buf, &username, &text);
-			logmsg(chatlog, username, text);
+		case '\0': {
+			char *text = logmsg(chatlog, buf, bufidx + 1);
 			handlecmd(text, mpvh);
 			new_msg = true;
 			memset(buf, 0, sizeof buf);
 			bufidx = 0;
 			break;
+		}
 		default:
 			bool significant = bufidx != 0 || !isspace(c);
 			bool space_available = bufidx < (sizeof buf) - 1;
@@ -303,7 +303,7 @@ int main(int argc, char **argv)
 	bool mpv_redraw = false;
 	mpv_opengl_cb_set_update_callback(mpv_gl, on_mpv_redraw, &mpv_redraw);
 
-	chatlog chatlog;
+	chatlog chatlog = init_chatlog();
 
 	int64_t t_last = 0, t_now = 0;
 	while (1) {

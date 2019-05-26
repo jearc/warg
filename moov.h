@@ -2,6 +2,8 @@
 #define max(a, b) ((a) > (b) ? (a) : (b))
 // the timestr of 2^32 sec is "1193046:28:16"
 #define TIMESTR_BUF_LEN 14
+#define CHAT_BUFFER_SIZE 1000000
+#define CHAT_MAX_MESSAGE_COUNT 10000
 
 struct mpvhandler;
 struct mpv_opengl_cb_context;
@@ -27,22 +29,24 @@ struct mpvinfo {
 	bool exploring;
 	playstate explore_state;
 };
-struct Message {
-	time_t time;
-	char *from;
-	char *text;
-};
-struct chatlog {
-	Message *msg = NULL;
-	size_t msg_max = 0;
-	size_t msg_cnt = 0;
-};
 struct timestr {
 	char str[TIMESTR_BUF_LEN];
 };
+struct message {
+	time_t time;
+	size_t start, end;
+	char *name, *text;
+};
+struct chatlog {
+	char *buf;
+	size_t next;
+	message *msgs;
+	size_t msgfirst, msgnext;
+};
 
 void sendmsg(const char *fmt, ...);
-void logmsg(chatlog *cl, char *username, char *text);
+chatlog init_chatlog();
+char *logmsg(chatlog *cl, char *msg, size_t len);
 int splitinput(char *buf, char **username, char **text);
 void handlecmd(char *text, mpvhandler *mpvh);
 mpvhandler *mpvh_create(int filec, char **filev, int track, double time);
