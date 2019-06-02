@@ -5,7 +5,7 @@ LIBS = -lGL -ldl -lSDL2 -lmpv -lGLEW -lGLU
 
 all: moov
 
-moov: $(OBJS) moov.h ui.h data.s meme.vert meme.frag
+moov: $(OBJS) moov.h ui.h data.s ui.vert ui.frag
 	$(CXX) $(CFLAGS) -o moov data.s $(OBJS) $(LIBS)
 
 clean:
