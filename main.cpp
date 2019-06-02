@@ -338,7 +338,7 @@ int main(int argc, char **argv)
 
 		int w, h;
 		SDL_GetWindowSize(window, &w, &h);
-		glClear(GL_COLOR_BUFFER_BIT);
+		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 		mpv_opengl_cb_draw(mpv_gl, 0, w, -h);
 		ImGui_ImplSdlGL3_NewFrame(window);
 		chatbox(&chatlog, scroll_to_bottom);
@@ -347,39 +347,8 @@ int main(int argc, char **argv)
 		glViewport(0, 0, (int)ImGui::GetIO().DisplaySize.x,
 			(int)ImGui::GetIO().DisplaySize.y);
 		ImGui::Render();
-
-		glUseProgram(ui_data.shader);
-		glBindVertexArray(ui_data.vao);
-
-		double time = t_now / (double)SDL_GetPerformanceFrequency();
-		// clang-format off
-		float transform0[16] = {
-			-1+(float)sin(time), 0, 0, 0,
-			-1+0, (float)sin(time), 0, 0,
-			-1+0, 0, (float)sin(time), 0,
-			0, 0, 0, 1
-		};
-		// clang-format on
-		glUniformMatrix4fv(ui_data.vertex_transform_location, 1,
-			GL_FALSE, transform0);
-		glDrawArrays(GL_TRIANGLES, 0, 3);
-
-		// clang-format off
-		float transform1[16] = {
-			(float)cos(time), 0, 0, 0,
-			0, (float)cos(time), 0, 0,
-			0, 0, (float)cos(time), 0,
-			0, 0, 0, 1
-		};
-		// clang-format on
-		glUniformMatrix4fv(ui_data.vertex_transform_location, 1,
-			GL_FALSE, transform1);
-		glDrawArrays(GL_TRIANGLES, 0, 3);
-
-		int x, y;
-		SDL_GetMouseState(&x, &y);
-		glUniform2f(ui_data.mouse_location, ((float)x - 640) / 640,
-			-((float)y - 360) / 360);
+		
+		render_ui(&ui_data, t_now);
 
 		SDL_GL_SwapWindow(window);
 	}

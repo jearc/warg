@@ -1,9 +1,10 @@
 struct ui_data {
-	GLuint buf[2];
-	GLuint vao;
 	GLuint shader;
-	GLuint vertex_transform_location;
-	GLuint mouse_location;
+	GLuint vao_quad;
+	GLuint vao_tri;
+	GLuint uniform_transform;
+	GLuint uniform_color;
 };
 
 ui_data ui_init();
+void render_ui(ui_data *d, int64_t t);
