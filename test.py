@@ -2,7 +2,7 @@
 
 from subprocess import Popen, PIPE
 
-moov = Popen(['./moov', '-s', '1 39 22', '-i', '1',
+moov = Popen(['./moov', '-s', '1 46 49', '-i', '1',
               'https://www.twitch.tv/videos/413768737',
               'https://www.twitch.tv/videos/410862108',
               'https://www.twitch.tv/videos/406852587',

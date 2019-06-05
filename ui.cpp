@@ -82,7 +82,8 @@ ui_data ui_init()
 	GLuint buf;
 	
 	float quad[] = { -1.0, -1.0, 1.0, -1.0, 1.0, 1.0,
-	                 -1.0, -1.0, 1.0, 1.0, -1.0, 1.0 };
+	                 -1.0, -1.0, 1.0, 1.0, -1.0, 1.0
+	};
 	glGenVertexArrays(1, &d.vao_quad);
 	glBindVertexArray(d.vao_quad);
 	glGenBuffers(1, &buf);
@@ -100,6 +101,19 @@ ui_data ui_init()
 	glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 0, (void *)0);
 	glEnableVertexAttribArray(0);
 	
+	float pause[] = { -1.0, 1.0, -1.0, -1.0, -0.33, -1.0,
+	                  -0.33, -1.0, -0.33, 1.0, -1.0, 1.0,
+	                  0.33, 1.0, 0.33, -1.0, 1.0, -1.0,
+	                  1.0, -1.0, 1.0, 1.0, 0.33, 1.0
+	};
+	glGenVertexArrays(1, &d.vao_pause);
+	glBindVertexArray(d.vao_pause);
+	glGenBuffers(1, &buf);
+	glBindBuffer(GL_ARRAY_BUFFER, buf);
+	glBufferData(GL_ARRAY_BUFFER, sizeof pause, pause, GL_STATIC_DRAW);
+	glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 0, (void *)0);
+	glEnableVertexAttribArray(0);
+	
 	d.shader = load_shader(vert, frag);
 	
 	d.uniform_color = glGetUniformLocation(d.shader, "color");
@@ -108,14 +122,14 @@ ui_data ui_init()
 	return d;
 }
 
-mat4x4 mul(mat4x4 a, mat4x4 b)
+void mul(mat4x4 a, mat4x4 *b)
 {
 	mat4x4 c = {0};
 	for (int i = 0; i < 4; i++)
 		for (int j = 0; j < 4; j++)
 			for (int m = 0; m < 4; m++)
-				c.arr[j][i] += a.arr[m][i] * b.arr[j][m];
-	return c;
+				c.arr[j][i] += a.arr[m][i] * b->arr[j][m];
+	*b = c;
 }
 
 mat4x4 identity()
@@ -128,58 +142,75 @@ mat4x4 identity()
 	return a;
 }
 
-mat4x4 scale(float x, float y)
+void scale(mat4x4 *m, float x, float y)
 {
 	mat4x4 a = identity();
 	a.arr[0][0] = x;
 	a.arr[1][1] = y;
-	return a;
+	mul(a, m);
 }
 
-mat4x4 translate(float x, float y)
+void translate(mat4x4 *m, float x, float y)
 {
 	mat4x4 a = identity();
 	a.arr[3][0] = x;
 	a.arr[3][1] = y;
-	return a;
+	mul(a, m);
 }
 
-mat4x4 order(int n)
+void order(mat4x4 *m, int n)
 {
 	mat4x4 a = identity();
 	a.arr[3][2] = (float)n * -0.000001;
-	return a;
+	mul(a, m);
 }
 
-void render_ui(ui_data *d, int64_t t)
+void render_ui(ui_data *d, float aspect_ratio)
 {
 	glUseProgram(d->shader);
 	glEnable(GL_BLEND);
 	glEnable(GL_DEPTH_TEST);
-	glEnable(GL_POLYGON_SMOOTH);
+	glEnable(GL_MULTISAMPLE);
 	
-	mat4x4 transform;
+	mat4x4 tbar, tplay, tpause;
+	tbar = tplay = tpause = identity();
+	
+	float padding = 0.25;
 	
 	glBindVertexArray(d->vao_quad);
-	transform = translate(1.0, 1.0);
-	transform = mul(scale(2.0, 0.05), transform);
-	transform = mul(translate(-1.0, -1.0), transform);
-	transform = mul(order(1), transform);
+	translate(&tbar, 1.0, 1.0);
+	scale(&tbar, 1.0, 1.0 / 40 * aspect_ratio);
+	translate(&tbar, -1.0, -1.0);
+	order(&tbar, 1);
 	glUniformMatrix4fv(d->uniform_transform, 1, GL_FALSE,
-		(float *)transform.arr);
-	glUniform4f(d->uniform_color, 0.0, 0.0, 0.0, 0.75);
+		(float *)tbar.arr);
+	glUniform4f(d->uniform_color, 0.0, 0.0, 0.0, 0.7);
 	glDrawArrays(GL_TRIANGLES, 0, 6);
 	
 	glBindVertexArray(d->vao_tri);
-	transform = mul(scale(0.015, 0.0205), transform);
-	transform = mul(translate(-0.985, -0.985), transform);
-	transform = mul(order(2), transform);
+	scale(&tplay, 1.0 - 2.0 * padding, 1.0 - 2.0 * padding);
+	translate(&tplay, 1.0, 0.0);
+	scale(&tplay, 0.87 / 40, 1);
+	translate(&tplay, -1.0, 0.0);
+	mul(tbar, &tplay);
+	order(&tplay, 2);
 	glUniformMatrix4fv(d->uniform_transform, 1, GL_FALSE,
-		(float *)transform.arr);
+		(float *)tplay.arr);
 	glUniform4f(d->uniform_color, 1.0, 1.0, 1.0, 1.0);
 	glDrawArrays(GL_TRIANGLES, 0, 3);
 	
+	glBindVertexArray(d->vao_pause);
+	scale(&tpause, 1.0 - 2.0 * padding, 1.0 - 2.0 * padding);
+	translate(&tpause, 1.0, 0.0);
+	scale(&tpause, 1.0 * 0.5/ 40, 1);
+	translate(&tpause, -1.0 + 2.0 * 0.87 / 40, 0.0);
+	mul(tbar, &tpause);
+	order(&tpause, 2);
+	glUniformMatrix4fv(d->uniform_transform, 1, GL_FALSE,
+		(float *)tpause.arr);
+	glUniform4f(d->uniform_color, 1.0, 1.0, 1.0, 1.0);
+	glDrawArrays(GL_TRIANGLES, 0, 12);
+	
 	glDisable(GL_BLEND);
 	glDisable(GL_DEPTH_TEST);
-	glDisable(GL_POLYGON_SMOOTH);
 }

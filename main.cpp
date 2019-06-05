@@ -41,7 +41,7 @@ void chatbox(chatlog *chatlog, bool scroll_to_bottom)
 	ImVec2 size = ImVec2(400, 200);
 	ImVec2 display_size = ImGui::GetIO().DisplaySize;
 	ImVec2 pos = ImVec2((int)display_size.x - size.x - margin,
-		(int)display_size.y - size.y - margin);
+		(int)display_size.y - size.y - margin - 200);
 
 	bool display = true;
 	ImGui::SetNextWindowSize(size, ImGuiSetCond_FirstUseEver);
@@ -259,6 +259,8 @@ SDL_Window *init_window()
 	SDL_GL_SetAttribute(SDL_GL_STENCIL_SIZE, 8);
 	SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
 	SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 2);
+	SDL_GL_SetAttribute(SDL_GL_MULTISAMPLEBUFFERS, 1);
+	SDL_GL_SetAttribute(SDL_GL_MULTISAMPLESAMPLES, 16);
 	SDL_DisplayMode current;
 	SDL_GetCurrentDisplayMode(0, &current);
 	SDL_Window *window;
@@ -348,7 +350,7 @@ int main(int argc, char **argv)
 			(int)ImGui::GetIO().DisplaySize.y);
 		ImGui::Render();
 		
-		render_ui(&ui_data, t_now);
+		render_ui(&ui_data, (float)w/h);
 
 		SDL_GL_SwapWindow(window);
 	}
