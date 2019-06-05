@@ -1,7 +1,7 @@
 all: moov
 
 moov: 
-	g++ -fPIC -Ofast -ffast-math -lGL -ldl -lSDL2 -lmpv -lGLEW -lGLU main.cpp mpvh.cpp cmd.cpp chat.cpp util.cpp ui.cpp ./imgui/imgui_impl_sdl_gl3.cpp ./imgui/imgui.cpp ./imgui/imgui_draw.cpp data.s -o moov
+	g++ -fPIC -Ofast -ffast-math `pkg-config --cflags --libs pangocairo` -lGL -ldl -lSDL2 -lmpv -lGLEW -lGLU main.cpp mpvh.cpp cmd.cpp chat.cpp util.cpp ui.cpp ./imgui/imgui_impl_sdl_gl3.cpp ./imgui/imgui.cpp ./imgui/imgui_draw.cpp data.s -o moov
 
 clean:
 	rm moov $(OBJS)

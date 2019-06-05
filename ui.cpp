@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <SDL2/SDL.h>
+#include <pango/pangocairo.h>
 #include "moov.h"
 #include "ui.h"
 
