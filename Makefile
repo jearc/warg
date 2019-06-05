@@ -1,12 +1,7 @@
-OBJS = main.o mpvh.o cmd.o chat.o util.o ui.o
-OBJS += ./imgui/imgui_impl_sdl_gl3.o ./imgui/imgui.o ./imgui/imgui_draw.o
-CFLAGS = -fPIC -pedantic -Wall -Wextra -Ofast -ffast-math
-LIBS = -lGL -ldl -lSDL2 -lmpv -lGLEW -lGLU
-
 all: moov
 
-moov: $(OBJS) moov.h ui.h data.s ui.vert ui.frag
-	$(CXX) $(CFLAGS) -o moov data.s $(OBJS) $(LIBS)
+moov: 
+	g++ -fPIC -Ofast -ffast-math -lGL -ldl -lSDL2 -lmpv -lGLEW -lGLU main.cpp mpvh.cpp cmd.cpp chat.cpp util.cpp ui.cpp ./imgui/imgui_impl_sdl_gl3.cpp ./imgui/imgui.cpp ./imgui/imgui_draw.cpp data.s -o moov
 
 clean:
 	rm moov $(OBJS)
