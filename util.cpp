@@ -39,9 +39,6 @@ timestr sec_to_timestr(unsigned int sec)
 	s = sec % 60;
 
 	timestr ts;
-	if (h)
-		snprintf(ts.str, TIMESTR_BUF_LEN, "%u:%02u:%02u", h, m, s);
-	else
-		snprintf(ts.str, TIMESTR_BUF_LEN, "%u:%02u", m, s);
+	snprintf(ts.str, TIMESTR_BUF_LEN, "%u:%02u:%02u", h, m, s);
 	return ts;
 }
