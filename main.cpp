@@ -218,13 +218,15 @@ bool handle_sdl_events(SDL_Window *win, mpvhandler *h)
 {
 	bool redraw = false;
 	
-	static bool exploring = false;
 	static double l = -1.0, r = -1.0;
-	static double lastb = 5.0, lastf = 5.0;
+	static double last = 5.0;
 	static double arg = -1.0;
+	
+	fprintf(stderr, "%d\n", sizeof (mpvhandler));
 
 	SDL_Event e;
 	while (SDL_PollEvent(&e)) {
+		mpvinfo info = mpvh_getinfo(h);
 		switch (e.type) {
 		case SDL_QUIT:
 			exit(EXIT_SUCCESS);
@@ -235,51 +237,47 @@ bool handle_sdl_events(SDL_Window *win, mpvhandler *h)
 				break;
 			case SDLK_e:
 				if (SDL_GetModState() & KMOD_CTRL) {
-					exploring = true;
 					mpvh_explore(h);
 					arg = -1.0;
 					l = r = -1.0;
-					lastb = lastf = 5.0;
+					last = 5.0;
 				}
 				break;
 			case SDLK_ESCAPE:
-				exploring = false;
 				mpvh_explore_cancel(h);
 				break;
 			case SDLK_RETURN: case SDLK_KP_ENTER:
-				exploring = false;
 				mpvh_explore_accept(h);
 				break;
 			case SDLK_PLUS: case SDLK_EQUALS: case SDLK_KP_PLUS:
-				if (exploring) {
-					mpvinfo info = mpvh_getinfo(h);
+				if (info.exploring) {
 					l = info.explore_state.time;
 					if (arg > 0) {
 						info.explore_state.time += arg * 60;
-						lastf = arg;
+						last = arg;
 						arg = -1.0;
 						r = -1.0;
 					} else if (r >= 0) {
 						info.explore_state.time = (info.explore_state.time + r) / 2;
 					} else {
-						info.explore_state.time += lastf * 60;
+						info.explore_state.time += last * 60;
 					}
 					mpvh_explore_set_state(h, info.explore_state);
 				}
 				break;
 			case SDLK_MINUS: case SDLK_KP_MINUS:
-				if (exploring) {
+				if (info.exploring) {
 					mpvinfo info = mpvh_getinfo(h);
 					r = info.explore_state.time;
 					if (arg > 0) {
 						info.explore_state.time -= arg * 60;
-						lastb = arg;
+						last = arg;
 						arg = 0;
 						l = -1.0;
 					} else if (l >= 0) {
 						info.explore_state.time = (info.explore_state.time + l) / 2;
 					} else {
-						info.explore_state.time -= lastb * 60;
+						info.explore_state.time -= last * 60;
 					}
 					mpvh_explore_set_state(h, info.explore_state);
 				}
@@ -287,14 +285,13 @@ bool handle_sdl_events(SDL_Window *win, mpvhandler *h)
 			case SDLK_1: case SDLK_2: case SDLK_3: case SDLK_4: case SDLK_5:
 			case SDLK_6: case SDLK_7: case SDLK_8: case SDLK_9: case SDLK_0:
 				if (e.key.keysym.sym == SDLK_5 && SDL_GetModState() & KMOD_SHIFT) {
-					if (exploring && arg >= 0) {
+					if (info.exploring && arg >= 0) {
 						mpvinfo info = mpvh_getinfo(h);
 						info.explore_state.time = info.duration * 0.01 * arg;
-						fprintf(stderr, "%.03f\n", info.duration * 0.01 * arg);
 						mpvh_explore_set_state(h, info.explore_state);
 						arg = -1.0;
 						l = r = -1.0;
-						lastb = lastf = 5.0;
+						last = 5.0;
 					}
 				} else {	
 					if (arg < 0)
@@ -320,7 +317,7 @@ bool handle_sdl_events(SDL_Window *win, mpvhandler *h)
 				redraw = true;
 			break;
 		default:
-			if (!exploring || !(e.type == SDL_KEYUP || e.type == SDL_KEYDOWN)) 
+			if (!info.exploring || !(e.type == SDL_KEYUP || e.type == SDL_KEYDOWN)) 
 				ImGui_ImplSdlGL3_ProcessEvent(&e);
 		}
 	}
