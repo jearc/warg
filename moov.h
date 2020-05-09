@@ -1,3 +1,7 @@
+#include <chrono>
+#include <string>
+#include <vector>
+
 #define UNUSED(x) (void)(x)
 #define max(a, b) ((a) > (b) ? (a) : (b))
 // the timestr of 2^32 sec is "1193046:28:16"
@@ -32,23 +36,17 @@ struct mpvinfo {
 struct timestr {
 	char str[TIMESTR_BUF_LEN];
 };
-struct message {
-	time_t time;
-	size_t start, end;
-	char *name, *text;
-};
-struct chatlog {
-	char *buf;
-	size_t next;
-	message *msgs;
-	size_t msgfirst, msgnext;
+
+struct Message {
+	std::string name;
+	std::string text;
 };
 
+typedef std::vector<Message> ChatLog;
+
 void sendmsg(const char *fmt, ...);
-chatlog init_chatlog();
-char *logmsg(chatlog *cl, char *msg, size_t len);
 int splitinput(char *buf, char **username, char **text);
-void handlecmd(char *text, mpvhandler *mpvh);
+void handlecmd(const char *text, mpvhandler *mpvh);
 mpvhandler *mpvh_create(int filec, char **filev, int track, double time);
 mpv_opengl_cb_context *mpvh_get_opengl_cb_api(mpvhandler *h);
 mpvinfo mpvh_getinfo(mpvhandler *h);

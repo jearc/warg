@@ -11,8 +11,6 @@
 #include "imgui/imgui_impl_sdl_gl3.h"
 #include "moov.h"
 
-#define MAX_MSG_LEN 1000
-
 void *get_proc_address_mpv(void *fn_ctx, const char *name)
 {
 	UNUSED(fn_ctx);
@@ -33,7 +31,7 @@ void toggle_fullscreen(SDL_Window *win)
 	SDL_ShowCursor(SDL_ENABLE);
 }
 
-void chatbox(chatlog *chatlog, bool scroll_to_bottom)
+void chatbox(const ChatLog &chatlog, bool scroll_to_bottom)
 {
 	int margin = 8;
 	ImVec2 size = ImVec2(400, 200);
@@ -51,14 +49,8 @@ void chatbox(chatlog *chatlog, bool scroll_to_bottom)
 	ImGui::BeginChild("LogRegion",
 		ImVec2(0, -ImGui::GetItemsLineHeightWithSpacing()), false,
 		ImGuiWindowFlags_NoScrollbar);
-	for (size_t i = chatlog->msgfirst; i != chatlog->msgnext;
-	     i = (i + 1) % CHAT_MAX_MESSAGE_COUNT) {
-		message *msg = &chatlog->msgs[i];
-		tm *now = localtime(&msg->time);
-		char buf[20] = { 0 };
-		strftime(buf, sizeof(buf), "%X", now);
-		ImGui::TextWrapped("(%s) %s: %s", buf, msg->name, msg->text);
-	}
+	for (auto &msg : chatlog)
+		ImGui::TextWrapped("%s: %s", msg.name.c_str(), msg.text.c_str());
 	if (scroll_to_bottom)
 		ImGui::SetScrollHere();
 	ImGui::EndChild();
@@ -78,13 +70,11 @@ void chatbox(chatlog *chatlog, bool scroll_to_bottom)
 	ImGui::End();
 }
 
-bool readstdin(chatlog *chatlog, mpvhandler *mpvh)
+bool readstdin(ChatLog &chatlog, mpvhandler *mpvh)
 {
 	bool new_msg = false;
-
-	static char buf[MAX_MSG_LEN];
-	memset(buf, 0, sizeof buf);
-	static size_t bufidx = 0;
+	
+	static std::string input;
 
 	char c;
 	while (read(0, &c, 1) != -1) {
@@ -92,18 +82,17 @@ bool readstdin(chatlog *chatlog, mpvhandler *mpvh)
 		case EOF:
 			break;
 		case '\0': {
-			char *text = logmsg(chatlog, buf, bufidx + 1);
-			handlecmd(text, mpvh);
+			auto colon = input.find_first_of(":");
+			Message msg{input.substr(0, colon), input.substr(colon + 1)};
+			chatlog.push_back(msg);
+			handlecmd(msg.text.c_str(), mpvh);
 			new_msg = true;
-			memset(buf, 0, sizeof buf);
-			bufidx = 0;
+			input.clear();
 			break;
 		}
 		default:
-			bool significant = bufidx != 0 || !isspace(c);
-			bool space_available = bufidx < (sizeof buf) - 1;
-			if (significant && space_available)
-				buf[bufidx++] = c;
+			if (input.length() || !isspace(c))
+				input.push_back(c);
 			break;
 		}
 	}
@@ -303,7 +292,7 @@ int main(int argc, char **argv)
 	bool mpv_redraw = false;
 	mpv_opengl_cb_set_update_callback(mpv_gl, on_mpv_redraw, &mpv_redraw);
 
-	chatlog chatlog = init_chatlog();
+	ChatLog chatlog;
 
 	int64_t t_last = 0, t_now = 0;
 	while (1) {
@@ -315,7 +304,7 @@ int main(int argc, char **argv)
 			continue;
 		t_last = t_now;
 
-		bool scroll_to_bottom = readstdin(&chatlog, mpvh);
+		bool scroll_to_bottom = readstdin(chatlog, mpvh);
 
 		bool redraw = false;
 		if (mpv_redraw) {
@@ -337,7 +326,7 @@ int main(int argc, char **argv)
 		glClear(GL_COLOR_BUFFER_BIT);
 		mpv_opengl_cb_draw(mpv_gl, 0, w, -h);
 		ImGui_ImplSdlGL3_NewFrame(window);
-		chatbox(&chatlog, scroll_to_bottom);
+		chatbox(chatlog, scroll_to_bottom);
 		mpvinfo info = mpvh_getinfo(mpvh);
 		dbgwin(window, mpvh, info);
 		glViewport(0, 0, (int)ImGui::GetIO().DisplaySize.x,

@@ -37,8 +37,9 @@ static struct {
 };
 size_t cmdcnt = sizeof cmdtab / sizeof cmdtab[0];
 
-void handlecmd(char *text, mpvhandler *mpvh)
+void handlecmd(const char *t, mpvhandler *mpvh)
 {
+	char *text = (char *)t;
 	while (*text && isspace(*text))
 		text++;
 	char *cmd = text;
