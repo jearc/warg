@@ -1,6 +1,6 @@
 OBJS = main.o mpvh.o cmd.o chat.o util.o
 OBJS += ./imgui/imgui_impl_sdl_gl3.o ./imgui/imgui.o ./imgui/imgui_draw.o
-CFLAGS = -fPIC -pedantic -Wall -Wextra -Ofast -ffast-math
+CFLAGS = -fPIC -pedantic -Wall -Wextra -Ofast -ffast-math -std=c++17
 LIBS = -lGL -ldl -lSDL2 -lmpv -lGLEW -lGLU
 
 all: moov
