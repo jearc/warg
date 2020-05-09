@@ -3,15 +3,14 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdarg.h>
+#include <string>
+#include <iostream>
 
 #include "moov.h"
 
-void die(const char *fmt, ...)
+void die(std::string_view error_message)
 {
-	va_list args;
-	va_start(args, fmt);
-	vfprintf(stderr, fmt, args);
-	va_end(args);
+	std::cerr << error_message << std::endl;
 	exit(EXIT_FAILURE);
 }
 

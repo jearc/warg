@@ -61,6 +61,6 @@ void mpvh_explore_cancel(mpvhandler *h);
 void mpvh_toggle_mute(mpvhandler *h);
 double parsetime(char *str);
 timestr sec_to_timestr(unsigned int seconds);
-void die(const char *fmt, ...);
+void die(std::string_view error_message);
 void mpvh_set_audio(mpvhandler *h, int64_t track);
 void mpvh_set_sub(mpvhandler *h, int64_t track);
