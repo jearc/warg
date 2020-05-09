@@ -214,6 +214,23 @@ void dbgwin(SDL_Window *win, mpvhandler *mpvh, mpvinfo info)
 	ImGui::End();
 }
 
+struct seeker {
+	double left, right;
+	double last;
+	double arg;
+};
+
+seeker seeker_new()
+{
+	seeker s;
+	s.left = -1.0;
+	s.right = -1.0;
+	s.arg = -1.0;
+	s.last = 5.0;
+
+	return s;
+}
+
 bool handle_sdl_events(SDL_Window *win, mpvhandler *h)
 {
 	bool redraw = false;
@@ -221,8 +238,6 @@ bool handle_sdl_events(SDL_Window *win, mpvhandler *h)
 	static double l = -1.0, r = -1.0;
 	static double last = 5.0;
 	static double arg = -1.0;
-	
-	fprintf(stderr, "%d\n", sizeof (mpvhandler));
 
 	SDL_Event e;
 	while (SDL_PollEvent(&e)) {
