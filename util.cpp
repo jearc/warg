@@ -5,42 +5,49 @@
 #include <stdarg.h>
 #include <string>
 #include <iostream>
+#include <functional>
+#include <fmt/format.h>
 
 #include "moov.h"
 
-void die(std::string_view error_message)
+void die(const std::string_view error_message)
 {
-	std::cerr << error_message << std::endl;
+	fmt::print("{}\n", error_message);
 	exit(EXIT_FAILURE);
 }
 
-double parsetime(char *str)
+double parsetime(const std::string_view str)
 {
 	double sec = 0;
+	auto it = str.begin();
+	
 	for (int i = 0; i < 3; i++) {
-		while (*str && !isdigit(*str))
-			str++;
-		if (!*str)
+		it = std::find_if(it, str.end(), isdigit);
+		if (it == str.end())
 			break;
-
 		sec *= 60;
-		sec += strtol(str, &str, 10);
-		str++;
+		size_t len;
+		sec += std::stod(it, &len);
+		it += len + 1;
 	}
 	return sec;
 }
 
-timestr sec_to_timestr(unsigned int sec)
+std::string sectoa(unsigned int sec)
 {
 	unsigned int h, m, s;
 	h = sec / 3600;
 	m = (sec % 3600) / 60;
 	s = sec % 60;
-
-	timestr ts;
+	
 	if (h)
-		snprintf(ts.str, TIMESTR_BUF_LEN, "%u:%02u:%02u", h, m, s);
-	else
-		snprintf(ts.str, TIMESTR_BUF_LEN, "%u:%02u", m, s);
-	return ts;
+		return fmt::format("{}:{:02}:{:02}", h, m, s);
+	return fmt::format("{:02}:{:02}", m, s);
+}
+
+void sendmsg(const std::string_view msg)
+{
+	fmt::print("{}", msg);
+	fputc('\0', stdout);
+	fflush(stdout);
 }

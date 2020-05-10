@@ -2,192 +2,186 @@
 #include <ctype.h>
 #include <math.h>
 #include <pthread.h>
+#include <map>
+#include <functional>
+#include <string>
+#include <iostream>
+#include <regex>
+#include <sys/types.h>
+#include <regex.h>
 
 #include "moov.h"
 
-void cmd_pp(char *args, mpvhandler *mpvh);
-void cmd_play(char *args, mpvhandler *mpvh);
-void cmd_pause(char *args, mpvhandler *mpvh);
-void cmd_status(char *args, mpvhandler *mpvh);
-void cmd_seek(char *args, mpvhandler *mpvh);
-void cmd_seekplus(char *args, mpvhandler *mpvh);
-void cmd_seekminus(char *args, mpvhandler *mpvh);
-void cmd_prev(char *args, mpvhandler *mpvh);
-void cmd_next(char *args, mpvhandler *mpvh);
-void cmd_index(char *args, mpvhandler *mpvh);
-void cmd_set(char *args, mpvhandler *mpvh);
+void cmd_status(std::string_view args, mpvhandler &mpvh);
+void cmd_pp(std::string_view args, mpvhandler &mpvh);
+void cmd_play(std::string_view args, mpvhandler &mpvh);
+void cmd_pause(std::string_view args, mpvhandler &mpvh);
+void cmd_seek(std::string_view args, mpvhandler &mpvh);
+void cmd_seekplus(std::string_view args, mpvhandler &mpvh);
+void cmd_seekminus(std::string_view args, mpvhandler &mpvh);
+void cmd_prev(std::string_view args, mpvhandler &mpvh);
+void cmd_next(std::string_view args, mpvhandler &mpvh);
+void cmd_index(std::string_view args, mpvhandler &mpvh);
+void cmd_set(std::string_view args, mpvhandler &mpvh);
 
-#define CMD(str) str, sizeof str - 1
-static struct {
-	const char *name;
-	size_t len;
-	void (*func)(char *, mpvhandler *);
-} cmdtab[] = {
-	{ CMD("pp"), cmd_pp },
-	{ CMD("PLAY"), cmd_play },
-	{ CMD("PAUSE"), cmd_pause },
-	{ CMD("STATUS"), cmd_status },
-	{ CMD("SEEK"), cmd_seek },
-	{ CMD("SEEK+"), cmd_seekplus },
-	{ CMD("SEEK-"), cmd_seekminus },
-	{ CMD("PREV"), cmd_prev },
-	{ CMD("NEXT"), cmd_next },
-	{ CMD("INDEX"), cmd_index },
-	{ CMD("SET"), cmd_set }
+typedef std::function<void(std::string_view, mpvhandler &)> Command;
+std::map<std::string, Command, std::less<>> cmd_tab = {
+	{"STATUS", cmd_status},
+	{"pp", cmd_pp},
+	{"PLAY", cmd_play},
+	{"PAUSE", cmd_pause},
+	{"SEEK", cmd_seek},
+	{"SEEK+", cmd_seekplus},
+	{"SEEK-", cmd_seekminus},
+	{"PREV", cmd_prev},
+	{"NEXT", cmd_next},
+	{"INDEX", cmd_index},
+	{"SET", cmd_set},
 };
-size_t cmdcnt = sizeof cmdtab / sizeof cmdtab[0];
 
-void handlecmd(const char *t, mpvhandler *mpvh)
+void handlecmd(std::string_view s, mpvhandler &mpvh)
 {
-	char *text = (char *)t;
-	while (*text && isspace(*text))
-		text++;
-	char *cmd = text;
-	size_t cmdlen = 0;
-	while (*text && !isspace(*text))
-		text++, cmdlen++;
-	while (*text && isspace(*text))
-		text++;
-	char *args = text;
+	auto name_start = std::find_if(s.begin(), s.end(), std::not_fn(isspace));
+	auto args_start = std::find_if(name_start, s.end(), isspace);
+	auto name = std::string_view(name_start, args_start - name_start);
 
-	for (size_t i = 0; i < cmdcnt; i++) {
-		int cmplen = max(cmdlen, cmdtab[i].len);
-		if (strncmp(cmd, cmdtab[i].name, cmplen) == 0) {
-			cmdtab[i].func(args, mpvh);
-			break;
-		}
-	}
+	auto cmd = cmd_tab.find(name);
+	if (cmd != cmd_tab.end())
+		cmd->second(args_start, mpvh);
 }
 
-void cmd_pp(char *args, mpvhandler *mpvh)
+void cmd_pp(std::string_view args, mpvhandler &mpvh)
 {
 	UNUSED(args);
-
-	mpvinfo i = mpvh_getinfo(mpvh);
+	mpvinfo i = mpvh_getinfo(&mpvh);
 	i.state.paused = !i.state.paused;
-	mpvh_set_state(mpvh, i.state);
-	i = mpvh_getinfo(mpvh);
-	mpvh_sendstatus(mpvh);
+	mpvh_set_state(&mpvh, i.state);
+	i = mpvh_getinfo(&mpvh);
+	mpvh_sendstatus(&mpvh);
 }
 
-void cmd_play(char *args, mpvhandler *mpvh)
+void cmd_play(std::string_view args, mpvhandler &mpvh)
 {
 	UNUSED(args);
-
-	mpvinfo i = mpvh_getinfo(mpvh);
+	mpvinfo i = mpvh_getinfo(&mpvh);
 	i.state.paused = false;
-	mpvh_set_state(mpvh, i.state);
-	i = mpvh_getinfo(mpvh);
-	mpvh_sendstatus(mpvh);
+	mpvh_set_state(&mpvh, i.state);
+	i = mpvh_getinfo(&mpvh);
+	mpvh_sendstatus(&mpvh);
 }
 
-void cmd_pause(char *args, mpvhandler *mpvh)
+void cmd_pause(std::string_view args, mpvhandler &mpvh)
 {
 	UNUSED(args);
-
-	mpvinfo i = mpvh_getinfo(mpvh);
+	mpvinfo i = mpvh_getinfo(&mpvh);
 	i.state.paused = true;
-	mpvh_set_state(mpvh, i.state);
-	i = mpvh_getinfo(mpvh);
-	mpvh_sendstatus(mpvh);
+	mpvh_set_state(&mpvh, i.state);
+	i = mpvh_getinfo(&mpvh);
+	mpvh_sendstatus(&mpvh);
 }
 
-void cmd_status(char *args, mpvhandler *mpvh)
+void cmd_status(std::string_view args, mpvhandler &mpvh)
 {
 	UNUSED(args);
-
-	mpvh_sendstatus(mpvh);
+	mpvh_sendstatus(&mpvh);
 }
 
-void cmd_seek(char *args, mpvhandler *mpvh)
+void cmd_seek(std::string_view args, mpvhandler &mpvh)
 {
 	double time = parsetime(args);
-	mpvinfo i = mpvh_getinfo(mpvh);
+	mpvinfo i = mpvh_getinfo(&mpvh);
 	i.state.time = time;
-	mpvh_set_state(mpvh, i.state);
-	mpvh_sendstatus(mpvh);
+	mpvh_set_state(&mpvh, i.state);
+	mpvh_sendstatus(&mpvh);
 }
 
-void cmd_seekplus(char *args, mpvhandler *mpvh)
+void cmd_seekplus(std::string_view args, mpvhandler &mpvh)
 {
 	double time = parsetime(args);
-	mpvinfo i = mpvh_getinfo(mpvh);
+	mpvinfo i = mpvh_getinfo(&mpvh);
 	i.state.time += time;
-	mpvh_set_state(mpvh, i.state);
-	mpvh_sendstatus(mpvh);
+	mpvh_set_state(&mpvh, i.state);
+	mpvh_sendstatus(&mpvh);
 }
 
-void cmd_seekminus(char *args, mpvhandler *mpvh)
+void cmd_seekminus(std::string_view args, mpvhandler &mpvh)
 {
 	double time = parsetime(args);
-	mpvinfo i = mpvh_getinfo(mpvh);
+	mpvinfo i = mpvh_getinfo(&mpvh);
 	i.state.time -= time;
-	mpvh_set_state(mpvh, i.state);
-	mpvh_sendstatus(mpvh);
+	mpvh_set_state(&mpvh, i.state);
+	mpvh_sendstatus(&mpvh);
 }
 
-void cmd_prev(char *args, mpvhandler *mpvh)
+void cmd_prev(std::string_view args, mpvhandler &mpvh)
 {
 	UNUSED(args);
-
-	mpvinfo i = mpvh_getinfo(mpvh);
+	mpvinfo i = mpvh_getinfo(&mpvh);
 	if (i.state.track - 1 < 0)
 		return;
 	playstate s = {};
 	s.track = i.state.track - 1;
 	s.paused = true;
-	mpvh_set_state(mpvh, s);
-	mpvh_sendstatus(mpvh);
+	mpvh_set_state(&mpvh, s);
+	mpvh_sendstatus(&mpvh);
 }
 
-void cmd_next(char *args, mpvhandler *mpvh)
+void cmd_next(std::string_view args, mpvhandler &mpvh)
 {
 	UNUSED(args);
-
-	mpvinfo i = mpvh_getinfo(mpvh);
+	mpvinfo i = mpvh_getinfo(&mpvh);
 	if (i.state.track + 1 >= i.track_cnt)
 		return;
 	playstate s = {};
 	s.track = i.state.track + 1;
 	s.paused = true;
-	mpvh_set_state(mpvh, s);
-	mpvh_sendstatus(mpvh);
+	mpvh_set_state(&mpvh, s);
+	mpvh_sendstatus(&mpvh);
 }
 
-void cmd_index(char *args, mpvhandler *mpvh)
+void cmd_index(std::string_view args, mpvhandler &mpvh)
 {
-	mpvinfo i = mpvh_getinfo(mpvh);
-	int track = atoi(args) - 1;
+	mpvinfo i = mpvh_getinfo(&mpvh);
+	int track = std::stoi(args.begin()) - 1;
 	if (!(0 <= track && track < i.track_cnt))
 		return;
 	playstate s = {};
 	s.track = track;
 	s.paused = true;
-	mpvh_set_state(mpvh, s);
-	mpvh_sendstatus(mpvh);
+	mpvh_set_state(&mpvh, s);
+	mpvh_sendstatus(&mpvh);
 }
-
-void cmd_set(char *args, mpvhandler *mpvh)
+/*
+void cmd_set(std::string_view args, mpvhandler &mpvh)
 {
-	long tok[5];
-	for (size_t i = 0; i < 5; i++) {
-		while (*args && !isdigit(*args))
-			args++;
-		if (!*args) {
-			sendmsg("moov: bad cmd");
-			return;
-		}
-		tok[i] = strtol(args, &args, 10);
-		args++;
-	}
-
+	std::regex r("(\\d+)\\D+(\\d+\\D+\\d+\\D+\\d+)\\D+(\\d+)");
+	std::smatch match;
+	std::string arg_str(args);
+	if (!std::regex_search(arg_str, match, r))
+		return;
 	playstate s;
-	s.track = tok[0] - 1;
-	s.time += 3600 * tok[1];
-	s.time += 60 * tok[2];
-	s.time += tok[3];
-	s.paused = tok[4];
+	s.track = std::stod(match[1]) - 1;
+	s.time = parsetime(match[2].str());
+	s.paused = std::stod(match[3]);
+	mpvh_set_state(&mpvh, s);
+	mpvh_sendstatus(&mpvh);
+}
+*/
 
-	mpvh_set_state(mpvh, s);
-	mpvh_sendstatus(mpvh);
+void cmd_set(std::string_view args, mpvhandler &mpvh)
+{
+	regex_t r;
+	regmatch_t match[4];
+	regcomp(&r, "(\\d+)\\D+(\\d+\\D+\\d+\\D+\\d+)\\D+(\\d+)", REG_EXTENDED);
+	if (!regexec(&r, args.data(), 4, match, 0))
+		return;
+	fprintf(stderr, "%d\n", match[1].rm_so);
+	fprintf(stderr, "%d\n", match[2].rm_so);
+	fprintf(stderr, "%d\n", match[3].rm_so);
+	playstate s;
+	s.track = std::stod(args.data() + match[1].rm_so) - 1;
+	s.time = parsetime(args.data() + match[2].rm_so);
+	s.paused = std::stod(args.data() + match[3].rm_so);
+	mpvh_set_state(&mpvh, s);
+	mpvh_sendstatus(&mpvh);
 }

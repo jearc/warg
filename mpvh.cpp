@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <math.h>
+#include <fmt/format.h>
 
 #include "moov.h"
 
@@ -169,15 +170,15 @@ void mpvh_set_state(mpvhandler *h, playstate s)
 statusstr statestr(mpvinfo i, playstate st)
 {
 	statusstr s;
-	timestr ts = sec_to_timestr(round(st.time));
+	auto ts = sectoa(round(st.time));
 	snprintf(s.str, 50, "%ld/%ld %s %s", st.track + 1, i.track_cnt,
-		st.paused ? "paused" : "playing", ts.str);
+		st.paused ? "paused" : "playing", ts.c_str());
 	return s;
 }
 
 void mpvh_sendstatus(mpvhandler *h)
 {
-	sendmsg("moov: %s", statestr(h->info, h->info.state).str);
+	sendmsg(fmt::format("moov: {}", statestr(h->info, h->info.state).str));
 }
 
 void mpvh_explore(mpvhandler *h)
@@ -197,9 +198,9 @@ void mpvh_explore_accept(mpvhandler *h)
 	h->info.exploring = false;
 	h->info.state = h->info.explore_state;
 
-	timestr ts = sec_to_timestr(round(h->info.state.time));
-	sendmsg("SET %ld %s %d", h->info.explore_state.track + 1, ts.str,
-		h->info.explore_state.paused);
+	auto ts = sectoa(round(h->info.state.time));
+	sendmsg(fmt::format("SET {} {} {}", h->info.explore_state.track + 1, ts,
+		h->info.explore_state.paused));
 }
 
 void mpvh_explore_cancel(mpvhandler *h)

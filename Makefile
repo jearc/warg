@@ -1,17 +1,17 @@
 OBJS = main.o mpvh.o cmd.o chat.o util.o
 OBJS += ./imgui/imgui_impl_sdl_gl3.o ./imgui/imgui.o ./imgui/imgui_draw.o
-CFLAGS = -fPIC -pedantic -Wall -Wextra -Ofast -ffast-math -std=c++17
+CFLAGS = -std=c++17 -fPIC -pedantic -Wall -Wextra -Ofast -ffast-math
 LIBS = -lGL -ldl -lSDL2 -lmpv -lGLEW -lGLU
 
 all: moov
 
 moov: $(OBJS) moov.h
-	$(CXX) $(CFLAGS) -o moov $(OBJS) $(LIBS)
+	clang++-7 $(CFLAGS) -o moov $(OBJS) $(LIBS)
 
 clean:
 	rm moov $(OBJS)
 	
-test: all
+test:
 	@./test.py
 
 install: all

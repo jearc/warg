@@ -85,7 +85,7 @@ bool readstdin(ChatLog &chatlog, mpvhandler *mpvh)
 			auto colon = input.find_first_of(":");
 			Message msg{input.substr(0, colon), input.substr(colon + 1)};
 			chatlog.push_back(msg);
-			handlecmd(msg.text.c_str(), mpvh);
+			handlecmd(msg.text, *mpvh);
 			new_msg = true;
 			input.clear();
 			break;
