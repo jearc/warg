@@ -17,23 +17,23 @@ void cmd_next(char *args, mpvhandler *mpvh);
 void cmd_index(char *args, mpvhandler *mpvh);
 void cmd_set(char *args, mpvhandler *mpvh);
 
-#define CMD(str) str, sizeof str - 1
+#define CMD(name, func) { name, sizeof name - 1, func }
 static struct {
 	const char *name;
 	size_t len;
 	void (*func)(char *, mpvhandler *);
 } cmdtab[] = {
-	{ CMD("pp"), cmd_pp },
-	{ CMD("PLAY"), cmd_play },
-	{ CMD("PAUSE"), cmd_pause },
-	{ CMD("STATUS"), cmd_status },
-	{ CMD("SEEK"), cmd_seek },
-	{ CMD("SEEK+"), cmd_seekplus },
-	{ CMD("SEEK-"), cmd_seekminus },
-	{ CMD("PREV"), cmd_prev },
-	{ CMD("NEXT"), cmd_next },
-	{ CMD("INDEX"), cmd_index },
-	{ CMD("SET"), cmd_set }
+	CMD("pp", cmd_pp),
+	CMD("PLAY", cmd_play),
+	CMD("PAUSE", cmd_pause),
+	CMD("STATUS", cmd_status),
+	CMD("SEEK", cmd_seek),
+	CMD("SEEK+", cmd_seekplus),
+	CMD("SEEK-", cmd_seekminus),
+	CMD("PREV", cmd_prev),
+	CMD("NEXT", cmd_next),
+	CMD("INDEX", cmd_index),
+	CMD("SET", cmd_set)
 };
 size_t cmdcnt = sizeof cmdtab / sizeof cmdtab[0];
 
