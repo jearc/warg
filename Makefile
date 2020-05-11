@@ -20,7 +20,7 @@ install: all
 	@cp -f moov /usr/local/bin
 	@chmod 755 /usr/local/bin/moov
 	@echo 'Installing pidgin adapter script (moovpidgin) to /usr/local/bin.'
-	@cp -f pidgin_adapter.py /usr/local/bin/moovpidgin
+	@cp -f moovpidgin.py /usr/local/bin/moovpidgin
 	@chmod 755 /usr/local/bin/moovpidgin
 	@mkdir -p /usr/local/share/moov
 	@echo 'Installing systemd user unit for pidgin adapter script.'
