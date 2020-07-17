@@ -3,6 +3,8 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdarg.h>
+#include <stdint.h>
+#include <assert.h>
 
 #include "moov.h"
 
@@ -19,14 +21,10 @@ double parsetime(char *str)
 {
 	double sec = 0;
 	for (int i = 0; i < 3; i++) {
-		while (*str && !isdigit(*str))
-			str++;
-		if (!*str)
-			break;
-
-		sec *= 60;
-		sec += strtol(str, &str, 10);
-		str++;
+		uint64_t n;
+		str = getint(str, &n);
+		if (!str) break;
+		sec = 60 * sec + n;
 	}
 	return sec;
 }
@@ -44,4 +42,13 @@ timestr sec_to_timestr(unsigned int sec)
 	else
 		snprintf(ts.str, TIMESTR_BUF_LEN, "%u:%02u", m, s);
 	return ts;
+}
+
+char *getint(char *str, uint64_t *n)
+{
+	assert(str);
+	while (*str && !isdigit(*str)) str++;
+	if (!*str) return NULL;
+	*n = strtol(str, &str, 10);
+	return str + 1;
 }

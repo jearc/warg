@@ -111,35 +111,30 @@ bool readstdin(chatlog *chatlog, mpvhandler *mpvh)
 	return new_msg;
 }
 
-void explorewin(mpvhandler *mpvh, mpvinfo info)
+void explorewin(mpvhandler *mpvh)
 {
+	PlayerInfo i = player_get_info(mpvh);
+
 	static bool display = true;
 	ImGui::Begin("Explore", &display);
 
-	playstate s = info.explore_state;
+	if (ImGui::Button("Play/Pause"))
+		player_toggle_explore_paused(mpvh);
 
-	if (ImGui::Button("Play/Pause")) {
-		playstate s = info.explore_state;
-		s.paused = !s.paused;
-		mpvh_explore_set_state(mpvh, s);
-	}
-
-	float progress = s.time / info.duration;
+	float progress = i.e_time / i.duration;
 	ImGui::ProgressBar(progress, ImVec2(380, 20));
-	if (ImGui::IsItemClicked() && info.duration) {
+	if (ImGui::IsItemClicked() && i.duration) {
 		auto min = ImGui::GetItemRectMin();
 		auto max = ImGui::GetItemRectMax();
 		auto mouse = ImGui::GetMousePos();
 
 		float fraction = (mouse.x - min.x) / (max.x - min.x);
-		double time = fraction * info.duration;
+		double time = fraction * i.duration;
 
-		playstate s = info.explore_state;
-		s.time = time;
-		mpvh_explore_set_state(mpvh, s);
+		player_set_explore_time(mpvh, time);
 	}
 
-	statusstr str = statestr(info, s);
+	statusstr str = statestr(i.e_time, i.e_paused, i.pl_pos, i.pl_count);
 	ImGui::Text("%s", str.str);
 
 	if (ImGui::Button("Accept"))
@@ -151,20 +146,22 @@ void explorewin(mpvhandler *mpvh, mpvinfo info)
 	ImGui::End();
 }
 
-void dbgwin(SDL_Window *win, mpvhandler *mpvh, mpvinfo info)
+void dbgwin(SDL_Window *win, mpvhandler *mpvh)
 {
+	PlayerInfo i = player_get_info(mpvh);
+
 	static bool display = true;
 	ImGui::Begin("Debug", &display);
 
 	if (ImGui::Button("<"))
 		sendmsg("PREV");
 	ImGui::SameLine();
-	ImGui::Text("T: %ld/%ld", info.state.track + 1, info.track_cnt);
+	ImGui::Text("T: %ld/%ld", i.pl_pos + 1, i.pl_count);
 	ImGui::SameLine();
 	if (ImGui::Button(">"))
 		sendmsg("NEXT");
 
-	ImGui::Text("%s", info.title);
+	ImGui::Text("%s", i.title.str);
 
 	if (ImGui::Button("Play"))
 		sendmsg("PLAY");
@@ -172,41 +169,38 @@ void dbgwin(SDL_Window *win, mpvhandler *mpvh, mpvinfo info)
 	if (ImGui::Button("Pause"))
 		sendmsg("PAUSE");
 
-	ImGui::Text("%s", statestr(info, info.state).str);
+	ImGui::Text("%s", statestr(i.c_time, i.c_paused, i.pl_pos, i.pl_count).str);
 
-	ImGui::Text("Delay: %.f", info.delay);
+	if (!i.exploring)
+		ImGui::Text("Delay: %.f", i.delay);
 
-	if (info.sub_cnt > 1) {
-		if (ImGui::Button("<"))
-			mpvh_set_sub(mpvh, info.sub_curr - 1);
-		ImGui::SameLine();
-		ImGui::Text("S: %ld/%ld", info.sub_curr, info.sub_cnt);
-		ImGui::SameLine();
-		if (ImGui::Button(">"))
-			mpvh_set_sub(mpvh, info.sub_curr + 1);
-	}
+	if (ImGui::Button("<"))
+		mpvh_set_sub(mpvh, i.sub_pos - 1);
+	ImGui::SameLine();
+	ImGui::Text("S: %ld/%ld", i.sub_pos, i.sub_count);
+	ImGui::SameLine();
+	if (ImGui::Button(">"))
+		mpvh_set_sub(mpvh, i.sub_pos + 1);
 
-	if (info.audio_cnt > 1) {
-		if (ImGui::Button("<"))
-			mpvh_set_audio(mpvh, info.audio_curr - 1);
-		ImGui::SameLine();
-		ImGui::Text("A: %ld/%ld", info.audio_curr, info.audio_cnt);
-		ImGui::SameLine();
-		if (ImGui::Button(">"))
-			mpvh_set_audio(mpvh, info.audio_curr + 1);
-	}
+	if (ImGui::Button("<"))
+		mpvh_set_audio(mpvh, i.audio_pos - 1);
+	ImGui::SameLine();
+	ImGui::Text("A: %ld/%ld", i.audio_pos, i.audio_count);
+	ImGui::SameLine();
+	if (ImGui::Button(">"))
+		mpvh_set_audio(mpvh, i.audio_pos + 1);
 
 	if (ImGui::Button("Explore"))
 		mpvh_explore(mpvh);
 	ImGui::SameLine();
-	ImGui::Text("Exploring: %d", info.exploring);
-	if (info.exploring)
-		explorewin(mpvh, info);
+	ImGui::Text("Exploring: %d", i.exploring);
+	if (i.exploring)
+		explorewin(mpvh);
 
 	if (ImGui::Button("Mute"))
 		mpvh_toggle_mute(mpvh);
 	ImGui::SameLine();
-	ImGui::Text("Muted: %d", info.muted);
+	ImGui::Text("Muted: %d", i.muted);
 
 	if (ImGui::Button("Fullscreen"))
 		toggle_fullscreen(win);
@@ -338,8 +332,7 @@ int main(int argc, char **argv)
 		mpv_opengl_cb_draw(mpv_gl, 0, w, -h);
 		ImGui_ImplSdlGL3_NewFrame(window);
 		chatbox(&chatlog, scroll_to_bottom);
-		mpvinfo info = mpvh_getinfo(mpvh);
-		dbgwin(window, mpvh, info);
+		dbgwin(window, mpvh);
 		glViewport(0, 0, (int)ImGui::GetIO().DisplaySize.x,
 			(int)ImGui::GetIO().DisplaySize.y);
 		ImGui::Render();
