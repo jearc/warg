@@ -166,19 +166,19 @@ void Player::update()
 	}
 }
 
-statusstr statestr(double time, int paused, int64_t pl_pos, int64_t pl_count)
+std::string statestr(double time, int paused, int64_t pl_pos, int64_t pl_count)
 {
-	statusstr s;
+	char buf[50];
 	std::string ts = sec_to_timestr(round(time));
-	snprintf(s.str, 50, "%ld/%ld %s %s", pl_pos + 1, pl_count,
+	snprintf(buf, 50, "%ld/%ld %s %s", pl_pos + 1, pl_count,
 		paused ? "paused" : "playing", ts.c_str());
-	return s;
+	return std::string(buf);
 }
 
 void Player::sendstatus()
 {
 	PlayerInfo i = get_info();
-	sendmsg("%s", statestr(i.c_time, i.c_paused, i.pl_pos, i.pl_count).str);
+	sendmsg("%s", statestr(i.c_time, i.c_paused, i.pl_pos, i.pl_count).c_str());
 }
 
 void Player::explore()

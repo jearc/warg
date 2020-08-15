@@ -4,11 +4,6 @@
 
 #define UNUSED(x) (void)(x)
 #define max(a, b) ((a) > (b) ? (a) : (b))
-#define STATUS_STRING_LEN 50
-
-struct statusstr {
-	char str[STATUS_STRING_LEN];
-};
 
 struct Message {
 	std::string text;
@@ -73,4 +68,4 @@ std::string sec_to_timestr(unsigned int seconds);
 void die(const char *fmt, ...);
 char *getint(char *str, uint64_t *n);
 
-statusstr statestr(double time, int paused, int64_t pl_pos, int64_t pl_count);
+std::string statestr(double time, int paused, int64_t pl_pos, int64_t pl_count);

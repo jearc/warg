@@ -130,8 +130,8 @@ void explorewin(Player *mpvh)
 		mpvh->set_explore_time(time);
 	}
 
-	statusstr str = statestr(i.e_time, i.e_paused, i.pl_pos, i.pl_count);
-	ImGui::Text("%s", str.str);
+	ImGui::Text(
+		"%s", statestr(i.e_time, i.e_paused, i.pl_pos, i.pl_count).c_str());
 
 	if (ImGui::Button("Accept"))
 		mpvh->explore_accept();
@@ -165,7 +165,8 @@ void dbgwin(SDL_Window *win, Player *mpvh)
 	if (ImGui::Button("Pause"))
 		sendmsg("PAUSE");
 
-	ImGui::Text("%s", statestr(i.c_time, i.c_paused, i.pl_pos, i.pl_count).str);
+	ImGui::Text(
+		"%s", statestr(i.c_time, i.c_paused, i.pl_pos, i.pl_count).c_str());
 
 	if (!i.exploring)
 		ImGui::Text("Delay: %.f", i.delay);
