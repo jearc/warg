@@ -135,8 +135,7 @@ void Player::update()
 		case MPV_EVENT_FILE_LOADED: {
 			char *mpv_title;
 			mpv_get_property(mpv, "media-title", MPV_FORMAT_STRING, &mpv_title);
-			strncpy(title.str, mpv_title, TITLE_STRING_LEN - 1);
-			title.str[TITLE_STRING_LEN - 1] = '\0';
+			title = std::string(mpv_title);
 			mpv_free(mpv_title);
 
 			mpv_get_track_counts(mpv, &audio_count, &sub_count);

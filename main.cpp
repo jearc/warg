@@ -157,7 +157,7 @@ void dbgwin(SDL_Window *win, Player *mpvh)
 	if (ImGui::Button(">"))
 		sendmsg("NEXT");
 
-	ImGui::Text("%s", i.title.str);
+	ImGui::Text("%s", i.title.c_str());
 
 	if (ImGui::Button("Play"))
 		sendmsg("PLAY");

@@ -8,15 +8,8 @@
 #define TIMESTR_BUF_LEN 14
 #define CHAT_BUFFER_SIZE 1000000
 #define CHAT_MAX_MESSAGE_COUNT 10000
-#define TITLE_STRING_LEN 100
 #define STATUS_STRING_LEN 50
 
-struct mpvhandler;
-struct mpv_opengl_cb_context;
-
-struct title_str {
-	char str[TITLE_STRING_LEN];
-};
 struct statusstr {
 	char str[STATUS_STRING_LEN];
 };
@@ -33,7 +26,7 @@ struct PlayerInfo {
 	int64_t pl_pos, pl_count;
 	int muted;
 
-	title_str title;
+	std::string title;
 	double duration;
 	int64_t audio_pos, audio_count;
 	int64_t sub_pos, sub_count;
@@ -75,8 +68,8 @@ private:
 	int c_paused;
 	int exploring;
 
-	title_str title;
 	int64_t audio_count, sub_count;
+	std::string title;
 };
 
 void sendmsg(const char *fmt, ...);
