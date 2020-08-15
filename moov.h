@@ -4,8 +4,6 @@
 
 #define UNUSED(x) (void)(x)
 #define max(a, b) ((a) > (b) ? (a) : (b))
-#define CHAT_BUFFER_SIZE 1000000
-#define CHAT_MAX_MESSAGE_COUNT 10000
 #define STATUS_STRING_LEN 50
 
 struct statusstr {
