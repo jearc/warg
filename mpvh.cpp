@@ -169,9 +169,9 @@ void Player::update()
 statusstr statestr(double time, int paused, int64_t pl_pos, int64_t pl_count)
 {
 	statusstr s;
-	timestr ts = sec_to_timestr(round(time));
+	std::string ts = sec_to_timestr(round(time));
 	snprintf(s.str, 50, "%ld/%ld %s %s", pl_pos + 1, pl_count,
-		paused ? "paused" : "playing", ts.str);
+		paused ? "paused" : "playing", ts.c_str());
 	return s;
 }
 
@@ -191,8 +191,8 @@ void Player::explore_accept()
 	exploring = false;
 	mpv_get_property(mpv, "time-pos", MPV_FORMAT_DOUBLE, &c_time);
 	mpv_get_property(mpv, "pause", MPV_FORMAT_FLAG, &c_paused);
-	timestr ts = sec_to_timestr(c_time);
-	sendmsg("SET %ld %s %d", c_pos + 1, ts.str, c_paused);
+	std::string ts = sec_to_timestr(c_time);
+	sendmsg("SET %ld %s %d", c_pos + 1, ts.c_str(), c_paused);
 }
 
 void Player::explore_cancel()

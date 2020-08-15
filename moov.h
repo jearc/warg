@@ -4,17 +4,12 @@
 
 #define UNUSED(x) (void)(x)
 #define max(a, b) ((a) > (b) ? (a) : (b))
-// the timestr of 2^32 sec is "1193046:28:16"
-#define TIMESTR_BUF_LEN 14
 #define CHAT_BUFFER_SIZE 1000000
 #define CHAT_MAX_MESSAGE_COUNT 10000
 #define STATUS_STRING_LEN 50
 
 struct statusstr {
 	char str[STATUS_STRING_LEN];
-};
-struct timestr {
-	char str[TIMESTR_BUF_LEN];
 };
 
 struct Message {
@@ -76,7 +71,7 @@ void sendmsg(const char *fmt, ...);
 int splitinput(char *buf, char **username, char **text);
 void handlecmd(char *text, Player *mpvh);
 double parsetime(char *str);
-timestr sec_to_timestr(unsigned int seconds);
+std::string sec_to_timestr(unsigned int seconds);
 void die(const char *fmt, ...);
 char *getint(char *str, uint64_t *n);
 
