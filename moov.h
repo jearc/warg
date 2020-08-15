@@ -29,7 +29,7 @@ struct PlayerInfo {
 
 class Player {
 public:
-	void init(int filec, char **filev, int track, double time);
+	Player(int filec, char **filev, int track, double time);
 	void pause(int paused);
 	void toggle_explore_paused();
 	PlayerInfo get_info();

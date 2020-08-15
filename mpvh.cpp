@@ -24,7 +24,7 @@ void mpv_get_track_counts(mpv_handle *m, int64_t *audio, int64_t *sub)
 	}
 }
 
-void Player::init(int filec, char **filev, int track, double time)
+Player::Player(int filec, char **filev, int track, double time)
 {
 	mpv = mpv_create();
 	mpv_initialize(mpv);

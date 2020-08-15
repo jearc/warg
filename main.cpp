@@ -74,7 +74,7 @@ void chatbox(std::vector<Message> &cl, bool scroll_to_bottom)
 	ImGui::PopStyleVar(2);
 }
 
-bool readstdin(std::vector<Message> &cl, Player *mpvh)
+bool readstdin(std::vector<Message> &cl, Player &mpvh)
 {
 	bool new_msg = false;
 
@@ -107,15 +107,15 @@ bool readstdin(std::vector<Message> &cl, Player *mpvh)
 	return new_msg;
 }
 
-void explorewin(Player *mpvh)
+void explorewin(Player &mpvh)
 {
-	PlayerInfo i = mpvh->get_info();
+	PlayerInfo i = mpvh.get_info();
 
 	static bool display = true;
 	ImGui::Begin("Explore", &display, 0);
 
 	if (ImGui::Button("Play/Pause"))
-		mpvh->toggle_explore_paused();
+		mpvh.toggle_explore_paused();
 
 	float progress = i.e_time / i.duration;
 	ImGui::ProgressBar(progress, ImVec2(380, 20));
@@ -127,24 +127,24 @@ void explorewin(Player *mpvh)
 		float fraction = (mouse.x - min.x) / (max.x - min.x);
 		double time = fraction * i.duration;
 
-		mpvh->set_explore_time(time);
+		mpvh.set_explore_time(time);
 	}
 
 	ImGui::Text(
 		"%s", statestr(i.e_time, i.e_paused, i.pl_pos, i.pl_count).c_str());
 
 	if (ImGui::Button("Accept"))
-		mpvh->explore_accept();
+		mpvh.explore_accept();
 	ImGui::SameLine();
 	if (ImGui::Button("Cancel"))
-		mpvh->explore_cancel();
+		mpvh.explore_cancel();
 
 	ImGui::End();
 }
 
-void dbgwin(SDL_Window *win, Player *mpvh)
+void dbgwin(SDL_Window *win, Player &mpvh)
 {
-	PlayerInfo i = mpvh->get_info();
+	PlayerInfo i = mpvh.get_info();
 
 	static bool display = true;
 	ImGui::Begin("Debug", &display, 0);
@@ -172,30 +172,30 @@ void dbgwin(SDL_Window *win, Player *mpvh)
 		ImGui::Text("Delay: %.f", i.delay);
 
 	if (ImGui::Button("<"))
-		mpvh->set_sub(i.sub_pos - 1);
+		mpvh.set_sub(i.sub_pos - 1);
 	ImGui::SameLine();
 	ImGui::Text("S: %ld/%ld", i.sub_pos, i.sub_count);
 	ImGui::SameLine();
 	if (ImGui::Button(">"))
-		mpvh->set_sub(i.sub_pos + 1);
+		mpvh.set_sub(i.sub_pos + 1);
 
 	if (ImGui::Button("<"))
-		mpvh->set_audio(i.audio_pos - 1);
+		mpvh.set_audio(i.audio_pos - 1);
 	ImGui::SameLine();
 	ImGui::Text("A: %ld/%ld", i.audio_pos, i.audio_count);
 	ImGui::SameLine();
 	if (ImGui::Button(">"))
-		mpvh->set_audio(i.audio_pos + 1);
+		mpvh.set_audio(i.audio_pos + 1);
 
 	if (ImGui::Button("Explore"))
-		mpvh->explore();
+		mpvh.explore();
 	ImGui::SameLine();
 	ImGui::Text("Exploring: %d", i.exploring);
 	if (i.exploring)
 		explorewin(mpvh);
 
 	if (ImGui::Button("Mute"))
-		mpvh->toggle_mute();
+		mpvh.toggle_mute();
 	ImGui::SameLine();
 	ImGui::Text("Muted: %d", i.muted);
 
@@ -294,9 +294,8 @@ int main(int argc, char **argv)
 	fcntl(0, F_SETFL, O_NONBLOCK);
 
 	SDL_Window *window = init_window();
-	Player *mpvh = new Player();
-	mpvh->init(filec, filev, start_track, start_time);
-	mpv_opengl_cb_context *mpv_gl = mpvh->get_opengl_cb_api();
+	Player mpvh(filec, filev, start_track, start_time);
+	mpv_opengl_cb_context *mpv_gl = mpvh.get_opengl_cb_api();
 	mpv_opengl_cb_init_gl(mpv_gl, NULL, get_proc_address_mpv, NULL);
 
 	bool mpv_redraw = false;
@@ -325,7 +324,7 @@ int main(int argc, char **argv)
 
 		if (handle_sdl_events(window))
 			redraw = true;
-		mpvh->update();
+		mpvh.update();
 
 		//if (!redraw)
 		//	continue;
