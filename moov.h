@@ -1,4 +1,6 @@
 #include <string>
+#include <mpv/client.h>
+#include <mpv/opengl_cb.h>
 
 #define UNUSED(x) (void)(x)
 #define max(a, b) ((a) > (b) ? (a) : (b))
@@ -12,9 +14,15 @@
 struct mpvhandler;
 struct mpv_opengl_cb_context;
 
-struct title_str { char str[TITLE_STRING_LEN]; };
-struct statusstr { char str[STATUS_STRING_LEN]; };
-struct timestr { char str[TIMESTR_BUF_LEN]; };
+struct title_str {
+	char str[TITLE_STRING_LEN];
+};
+struct statusstr {
+	char str[STATUS_STRING_LEN];
+};
+struct timestr {
+	char str[TIMESTR_BUF_LEN];
+};
 
 struct Message {
 	std::string text;
@@ -38,6 +46,39 @@ struct PlayerInfo {
 	int e_paused;
 };
 
+class mpvhandler {
+public:
+	void init(int filec, char **filev, int track, double time);
+	void pause(int paused);
+	void toggle_explore_paused();
+	PlayerInfo get_info();
+	void set_time(double time);
+	void set_pl_pos(int64_t pl_pos);
+	void set_explore_time(double time);
+	void toggle_mute();
+	void explore_cancel();
+	void explore_accept();
+	void explore();
+	void sendstatus();
+	void update();
+	mpv_opengl_cb_context *get_opengl_cb_api();
+	void set_audio(int64_t track);
+	void set_sub(int64_t track);
+
+private:
+	void syncmpv();
+
+	mpv_handle *mpv;
+	int64_t last_time;
+	int64_t c_pos;
+	double c_time;
+	int c_paused;
+	int exploring;
+
+	title_str title;
+	int64_t audio_count, sub_count;
+};
+
 void sendmsg(const char *fmt, ...);
 int splitinput(char *buf, char **username, char **text);
 void handlecmd(char *text, mpvhandler *mpvh);
@@ -46,21 +87,4 @@ timestr sec_to_timestr(unsigned int seconds);
 void die(const char *fmt, ...);
 char *getint(char *str, uint64_t *n);
 
-void mpvh_set_audio(mpvhandler *h, int64_t track);
-void mpvh_set_sub(mpvhandler *h, int64_t track);
-mpvhandler *mpvh_create(int filec, char **filev, int track, double time);
-mpv_opengl_cb_context *mpvh_get_opengl_cb_api(mpvhandler *h);
-void mpvh_update(mpvhandler *h);
 statusstr statestr(double time, int paused, int64_t pl_pos, int64_t pl_count);
-void mpvh_sendstatus(mpvhandler *h);
-void mpvh_explore(mpvhandler *h);
-void mpvh_explore_accept(mpvhandler *h);
-void mpvh_explore_cancel(mpvhandler *h);
-void mpvh_toggle_mute(mpvhandler *h);
-
-PlayerInfo player_get_info(mpvhandler *p);
-void player_set_paused(mpvhandler *h, int paused);
-void player_set_time(mpvhandler *h, double time);
-void player_set_pl_pos(mpvhandler *p, int64_t pl_pos);
-void player_toggle_explore_paused(mpvhandler *h);
-void player_set_explore_time(mpvhandler *h, double time);

@@ -1,5 +1,3 @@
-#include <mpv/client.h>
-#include <mpv/opengl_cb.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -7,22 +5,6 @@
 #include <assert.h>
 
 #include "moov.h"
-
-struct mpvhandler {
-	mpv_handle *mpv;
-	int64_t last_time;
-	int64_t c_pos;
-	double c_time;
-	int c_paused;
-	int exploring;
-	struct {
-		title_str title;
-		int64_t audio_count, sub_count;
-	} cache;
-};
-
-void mpvh_update_track_counts(mpvhandler *h);
-void mpvh_syncmpv(mpvhandler *h);
 
 void mpv_get_track_counts(mpv_handle *m, int64_t *audio, int64_t *sub)
 {
@@ -42,105 +24,99 @@ void mpv_get_track_counts(mpv_handle *m, int64_t *audio, int64_t *sub)
 	}
 }
 
-mpvhandler *mpvh_create(int filec, char **filev, int track, double time)
+void mpvhandler::init(int filec, char **filev, int track, double time)
 {
-	mpvhandler *h = (mpvhandler *)malloc(sizeof *h);
-	*h = (mpvhandler){ 0 };
-
-	h->mpv = mpv_create();
-	mpv_initialize(h->mpv);
-	mpv_set_option_string(h->mpv, "vo", "opengl-cb");
-	mpv_set_option_string(h->mpv, "ytdl", "yes");
+	mpv = mpv_create();
+	mpv_initialize(mpv);
+	mpv_set_option_string(mpv, "vo", "opengl-cb");
+	mpv_set_option_string(mpv, "ytdl", "yes");
 
 	for (int i = 0; i < filec; i++) {
 		const char *cmd[] = { "loadfile", filev[i], "append", NULL };
-		mpv_command(h->mpv, cmd);
+		mpv_command(mpv, cmd);
 	}
 
-	h->last_time = mpv_get_time_us(h->mpv);
-	h->c_pos = track;
-	h->c_time = time;
-	h->c_paused = true;
-	h->exploring = false;
+	last_time = mpv_get_time_us(mpv);
+	c_pos = track;
+	c_time = time;
+	c_paused = true;
+	exploring = false;
 
-	mpvh_syncmpv(h);
-	mpvh_sendstatus(h);
-
-	return h;
+	syncmpv();
+	sendstatus();
 }
 
-mpv_opengl_cb_context *mpvh_get_opengl_cb_api(mpvhandler *h)
+mpv_opengl_cb_context *mpvhandler::get_opengl_cb_api()
 {
-	return (mpv_opengl_cb_context *)mpv_get_sub_api(
-		h->mpv, MPV_SUB_API_OPENGL_CB);
+	return (mpv_opengl_cb_context *)mpv_get_sub_api(mpv, MPV_SUB_API_OPENGL_CB);
 }
 
-void mpvh_syncmpv(mpvhandler *p)
+void mpvhandler::syncmpv()
 {
 	int64_t mpv_pos;
-	mpv_get_property(p->mpv, "playlist-pos", MPV_FORMAT_INT64, &mpv_pos);
-	if (mpv_pos != p->c_pos) {
-		mpv_set_property(p->mpv, "playlist-pos", MPV_FORMAT_INT64, &p->c_pos);
-		p->exploring = false;
+	mpv_get_property(mpv, "playlist-pos", MPV_FORMAT_INT64, &mpv_pos);
+	if (mpv_pos != c_pos) {
+		mpv_set_property(mpv, "playlist-pos", MPV_FORMAT_INT64, &c_pos);
+		exploring = false;
 	}
 
-	if (p->exploring)
+	if (exploring)
 		return;
 
 	bool paused;
-	mpv_get_property(p->mpv, "pause", MPV_FORMAT_FLAG, &paused);
-	if (paused != p->c_paused)
-		mpv_set_property(p->mpv, "pause", MPV_FORMAT_FLAG, &p->c_paused);
+	mpv_get_property(mpv, "pause", MPV_FORMAT_FLAG, &paused);
+	if (paused != c_paused)
+		mpv_set_property(mpv, "pause", MPV_FORMAT_FLAG, &c_paused);
 
 	double mpv_time;
-	mpv_get_property(p->mpv, "time-pos", MPV_FORMAT_DOUBLE, &mpv_time);
-	if (abs(mpv_time - p->c_time) > 5)
-		mpv_set_property(p->mpv, "time-pos", MPV_FORMAT_DOUBLE, &p->c_time);
+	mpv_get_property(mpv, "time-pos", MPV_FORMAT_DOUBLE, &mpv_time);
+	if (abs(mpv_time - c_time) > 5)
+		mpv_set_property(mpv, "time-pos", MPV_FORMAT_DOUBLE, &c_time);
 }
 
-PlayerInfo player_get_info(mpvhandler *p)
+PlayerInfo mpvhandler::get_info()
 {
 	PlayerInfo i = { 0 };
 
-	mpv_get_property(p->mpv, "playlist-pos", MPV_FORMAT_INT64, &i.pl_pos);
-	mpv_get_property(p->mpv, "playlist-count", MPV_FORMAT_INT64, &i.pl_count);
-	mpv_get_property(p->mpv, "muted", MPV_FORMAT_INT64, &i.muted);
+	mpv_get_property(mpv, "playlist-pos", MPV_FORMAT_INT64, &i.pl_pos);
+	mpv_get_property(mpv, "playlist-count", MPV_FORMAT_INT64, &i.pl_count);
+	mpv_get_property(mpv, "muted", MPV_FORMAT_INT64, &i.muted);
 
-	i.title = p->cache.title;
+	i.title = title;
 
-	mpv_get_property(p->mpv, "duration", MPV_FORMAT_DOUBLE, &i.duration);
+	mpv_get_property(mpv, "duration", MPV_FORMAT_DOUBLE, &i.duration);
 
-	i.audio_count = p->cache.audio_count;
-	i.sub_count = p->cache.sub_count;
+	i.audio_count = audio_count;
+	i.sub_count = sub_count;
 
-	mpv_get_property(p->mpv, "audio", MPV_FORMAT_INT64, &i.audio_pos);
-	mpv_get_property(p->mpv, "sub", MPV_FORMAT_INT64, &i.sub_pos);
+	mpv_get_property(mpv, "audio", MPV_FORMAT_INT64, &i.audio_pos);
+	mpv_get_property(mpv, "sub", MPV_FORMAT_INT64, &i.sub_pos);
 
-	i.exploring = p->exploring;
-	i.c_time = p->c_time;
-	i.c_paused = p->c_paused;
+	i.exploring = exploring;
+	i.c_time = c_time;
+	i.c_paused = c_paused;
 	double mpv_time;
-	mpv_get_property(p->mpv, "time-pos", MPV_FORMAT_DOUBLE, &mpv_time);
-	if (!p->exploring) {
+	mpv_get_property(mpv, "time-pos", MPV_FORMAT_DOUBLE, &mpv_time);
+	if (!exploring) {
 		i.delay = i.c_time - mpv_time;
 	} else {
 		i.e_time = mpv_time;
-		mpv_get_property(p->mpv, "pause", MPV_FORMAT_FLAG, &i.e_paused);
+		mpv_get_property(mpv, "pause", MPV_FORMAT_FLAG, &i.e_paused);
 	}
 
 	return i;
 }
 
-void mpvh_update(mpvhandler *h)
+void mpvhandler::update()
 {
-	int64_t current_time = mpv_get_time_us(h->mpv);
-	double dt = (double)(current_time - h->last_time) / 1000000;
-	h->last_time = current_time;
-	if (!h->c_paused)
-		h->c_time += dt;
+	int64_t current_time = mpv_get_time_us(mpv);
+	double dt = (double)(current_time - last_time) / 1000000;
+	last_time = current_time;
+	if (!c_paused)
+		c_time += dt;
 
 	mpv_event *e;
-	while (e = mpv_wait_event(h->mpv, 0), e->event_id != MPV_EVENT_NONE) {
+	while (e = mpv_wait_event(mpv, 0), e->event_id != MPV_EVENT_NONE) {
 		switch (e->event_id) {
 		case MPV_EVENT_SHUTDOWN:
 			break;
@@ -157,16 +133,15 @@ void mpvh_update(mpvhandler *h)
 		case MPV_EVENT_END_FILE:
 			break;
 		case MPV_EVENT_FILE_LOADED: {
-			char *title;
-			mpv_get_property(h->mpv, "media-title", MPV_FORMAT_STRING, &title);
-			strncpy(h->cache.title.str, title, TITLE_STRING_LEN - 1);
-			h->cache.title.str[TITLE_STRING_LEN - 1] = '\0';
-			mpv_free(title);
+			char *mpv_title;
+			mpv_get_property(mpv, "media-title", MPV_FORMAT_STRING, &mpv_title);
+			strncpy(title.str, mpv_title, TITLE_STRING_LEN - 1);
+			title.str[TITLE_STRING_LEN - 1] = '\0';
+			mpv_free(mpv_title);
 
-			mpv_get_track_counts(
-				h->mpv, &h->cache.audio_count, &h->cache.sub_count);
+			mpv_get_track_counts(mpv, &audio_count, &sub_count);
 
-			mpvh_syncmpv(h);
+			syncmpv();
 			break;
 		}
 		case MPV_EVENT_IDLE:
@@ -180,7 +155,7 @@ void mpvh_update(mpvhandler *h)
 		case MPV_EVENT_SEEK:
 			break;
 		case MPV_EVENT_PLAYBACK_RESTART:
-			mpvh_syncmpv(h);
+			syncmpv();
 			break;
 		case MPV_EVENT_PROPERTY_CHANGE:
 			break;
@@ -201,80 +176,80 @@ statusstr statestr(double time, int paused, int64_t pl_pos, int64_t pl_count)
 	return s;
 }
 
-void mpvh_sendstatus(mpvhandler *h)
+void mpvhandler::sendstatus()
 {
-	PlayerInfo i = player_get_info(h);
+	PlayerInfo i = get_info();
 	sendmsg("%s", statestr(i.c_time, i.c_paused, i.pl_pos, i.pl_count).str);
 }
 
-void mpvh_explore(mpvhandler *h)
+void mpvhandler::explore()
 {
-	h->exploring = true;
+	exploring = true;
 }
 
-void mpvh_explore_accept(mpvhandler *p)
+void mpvhandler::explore_accept()
 {
-	p->exploring = false;
-	mpv_get_property(p->mpv, "time-pos", MPV_FORMAT_DOUBLE, &p->c_time);
-	mpv_get_property(p->mpv, "pause", MPV_FORMAT_FLAG, &p->c_paused);
-	timestr ts = sec_to_timestr(p->c_time);
-	sendmsg("SET %ld %s %d", p->c_pos + 1, ts.str, p->c_paused);
+	exploring = false;
+	mpv_get_property(mpv, "time-pos", MPV_FORMAT_DOUBLE, &c_time);
+	mpv_get_property(mpv, "pause", MPV_FORMAT_FLAG, &c_paused);
+	timestr ts = sec_to_timestr(c_time);
+	sendmsg("SET %ld %s %d", c_pos + 1, ts.str, c_paused);
 }
 
-void mpvh_explore_cancel(mpvhandler *h)
+void mpvhandler::explore_cancel()
 {
-	h->exploring = false;
-	mpvh_syncmpv(h);
+	exploring = false;
+	syncmpv();
 }
 
-void mpvh_toggle_mute(mpvhandler *p)
+void mpvhandler::toggle_mute()
 {
 	int muted;
-	mpv_get_property(p->mpv, "ao-mute", MPV_FORMAT_FLAG, &muted);
+	mpv_get_property(mpv, "ao-mute", MPV_FORMAT_FLAG, &muted);
 	muted = !muted;
-	mpv_set_property(p->mpv, "ao-mute", MPV_FORMAT_FLAG, &muted);
+	mpv_set_property(mpv, "ao-mute", MPV_FORMAT_FLAG, &muted);
 }
 
-void mpvh_set_audio(mpvhandler *h, int64_t track)
+void mpvhandler::set_audio(int64_t track)
 {
-	mpv_set_property(h->mpv, "audio", MPV_FORMAT_INT64, &track);
+	mpv_set_property(mpv, "audio", MPV_FORMAT_INT64, &track);
 }
 
-void mpvh_set_sub(mpvhandler *h, int64_t track)
+void mpvhandler::set_sub(int64_t track)
 {
-	mpv_set_property(h->mpv, "sub", MPV_FORMAT_INT64, &track);
+	mpv_set_property(mpv, "sub", MPV_FORMAT_INT64, &track);
 }
 
-void player_set_paused(mpvhandler *h, int paused)
+void mpvhandler::pause(int paused)
 {
-	h->c_paused = paused;
-	mpvh_syncmpv(h);
+	c_paused = paused;
+	syncmpv();
 }
 
-void player_set_time(mpvhandler *h, double time)
+void mpvhandler::set_time(double time)
 {
-	h->c_time = time;
-	mpvh_syncmpv(h);
+	c_time = time;
+	syncmpv();
 }
 
-void player_set_pl_pos(mpvhandler *p, int64_t pl_pos)
+void mpvhandler::set_pl_pos(int64_t pl_pos)
 {
-	p->c_pos = pl_pos;
-	p->c_paused = true, p->c_time = 0;
-	mpvh_syncmpv(p);
+	c_pos = pl_pos;
+	c_paused = true, c_time = 0;
+	syncmpv();
 }
 
-void player_toggle_explore_paused(mpvhandler *h)
+void mpvhandler::toggle_explore_paused()
 {
-	assert(h->exploring);
+	assert(exploring);
 	int paused;
-	mpv_get_property(h->mpv, "pause", MPV_FORMAT_FLAG, &paused);
+	mpv_get_property(mpv, "pause", MPV_FORMAT_FLAG, &paused);
 	paused = !paused;
-	mpv_set_property(h->mpv, "pause", MPV_FORMAT_FLAG, &paused);
+	mpv_set_property(mpv, "pause", MPV_FORMAT_FLAG, &paused);
 }
 
-void player_set_explore_time(mpvhandler *h, double time)
+void mpvhandler::set_explore_time(double time)
 {
-	assert(h->exploring);
-	mpv_set_property(h->mpv, "time-pos", MPV_FORMAT_DOUBLE, &time);
+	assert(exploring);
+	mpv_set_property(mpv, "time-pos", MPV_FORMAT_DOUBLE, &time);
 }

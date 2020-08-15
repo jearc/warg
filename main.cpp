@@ -109,13 +109,13 @@ bool readstdin(std::vector<Message> &cl, mpvhandler *mpvh)
 
 void explorewin(mpvhandler *mpvh)
 {
-	PlayerInfo i = player_get_info(mpvh);
+	PlayerInfo i = mpvh->get_info();
 
 	static bool display = true;
 	ImGui::Begin("Explore", &display, 0);
 
 	if (ImGui::Button("Play/Pause"))
-		player_toggle_explore_paused(mpvh);
+		mpvh->toggle_explore_paused();
 
 	float progress = i.e_time / i.duration;
 	ImGui::ProgressBar(progress, ImVec2(380, 20));
@@ -127,24 +127,24 @@ void explorewin(mpvhandler *mpvh)
 		float fraction = (mouse.x - min.x) / (max.x - min.x);
 		double time = fraction * i.duration;
 
-		player_set_explore_time(mpvh, time);
+		mpvh->set_explore_time(time);
 	}
 
 	statusstr str = statestr(i.e_time, i.e_paused, i.pl_pos, i.pl_count);
 	ImGui::Text("%s", str.str);
 
 	if (ImGui::Button("Accept"))
-		mpvh_explore_accept(mpvh);
+		mpvh->explore_accept();
 	ImGui::SameLine();
 	if (ImGui::Button("Cancel"))
-		mpvh_explore_cancel(mpvh);
+		mpvh->explore_cancel();
 
 	ImGui::End();
 }
 
 void dbgwin(SDL_Window *win, mpvhandler *mpvh)
 {
-	PlayerInfo i = player_get_info(mpvh);
+	PlayerInfo i = mpvh->get_info();
 
 	static bool display = true;
 	ImGui::Begin("Debug", &display, 0);
@@ -171,30 +171,30 @@ void dbgwin(SDL_Window *win, mpvhandler *mpvh)
 		ImGui::Text("Delay: %.f", i.delay);
 
 	if (ImGui::Button("<"))
-		mpvh_set_sub(mpvh, i.sub_pos - 1);
+		mpvh->set_sub(i.sub_pos - 1);
 	ImGui::SameLine();
 	ImGui::Text("S: %ld/%ld", i.sub_pos, i.sub_count);
 	ImGui::SameLine();
 	if (ImGui::Button(">"))
-		mpvh_set_sub(mpvh, i.sub_pos + 1);
+		mpvh->set_sub(i.sub_pos + 1);
 
 	if (ImGui::Button("<"))
-		mpvh_set_audio(mpvh, i.audio_pos - 1);
+		mpvh->set_audio(i.audio_pos - 1);
 	ImGui::SameLine();
 	ImGui::Text("A: %ld/%ld", i.audio_pos, i.audio_count);
 	ImGui::SameLine();
 	if (ImGui::Button(">"))
-		mpvh_set_audio(mpvh, i.audio_pos + 1);
+		mpvh->set_audio(i.audio_pos + 1);
 
 	if (ImGui::Button("Explore"))
-		mpvh_explore(mpvh);
+		mpvh->explore();
 	ImGui::SameLine();
 	ImGui::Text("Exploring: %d", i.exploring);
 	if (i.exploring)
 		explorewin(mpvh);
 
 	if (ImGui::Button("Mute"))
-		mpvh_toggle_mute(mpvh);
+		mpvh->toggle_mute();
 	ImGui::SameLine();
 	ImGui::Text("Muted: %d", i.muted);
 
@@ -293,8 +293,9 @@ int main(int argc, char **argv)
 	fcntl(0, F_SETFL, O_NONBLOCK);
 
 	SDL_Window *window = init_window();
-	mpvhandler *mpvh = mpvh_create(filec, filev, start_track, start_time);
-	mpv_opengl_cb_context *mpv_gl = mpvh_get_opengl_cb_api(mpvh);
+	mpvhandler *mpvh = new mpvhandler();
+	mpvh->init(filec, filev, start_track, start_time);
+	mpv_opengl_cb_context *mpv_gl = mpvh->get_opengl_cb_api();
 	mpv_opengl_cb_init_gl(mpv_gl, NULL, get_proc_address_mpv, NULL);
 
 	bool mpv_redraw = false;
@@ -323,7 +324,7 @@ int main(int argc, char **argv)
 
 		if (handle_sdl_events(window))
 			redraw = true;
-		mpvh_update(mpvh);
+		mpvh->update();
 
 		//if (!redraw)
 		//	continue;
