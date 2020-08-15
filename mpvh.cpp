@@ -45,7 +45,7 @@ void mpv_get_track_counts(mpv_handle *m, int64_t *audio, int64_t *sub)
 mpvhandler *mpvh_create(int filec, char **filev, int track, double time)
 {
 	mpvhandler *h = (mpvhandler *)malloc(sizeof *h);
-	*h = (mpvhandler){0};
+	*h = (mpvhandler){ 0 };
 
 	h->mpv = mpv_create();
 	mpv_initialize(h->mpv);
@@ -62,7 +62,7 @@ mpvhandler *mpvh_create(int filec, char **filev, int track, double time)
 	h->c_time = time;
 	h->c_paused = true;
 	h->exploring = false;
-	
+
 	mpvh_syncmpv(h);
 	mpvh_sendstatus(h);
 
@@ -100,22 +100,22 @@ void mpvh_syncmpv(mpvhandler *p)
 
 PlayerInfo player_get_info(mpvhandler *p)
 {
-	PlayerInfo i = {0};
-	
+	PlayerInfo i = { 0 };
+
 	mpv_get_property(p->mpv, "playlist-pos", MPV_FORMAT_INT64, &i.pl_pos);
 	mpv_get_property(p->mpv, "playlist-count", MPV_FORMAT_INT64, &i.pl_count);
 	mpv_get_property(p->mpv, "muted", MPV_FORMAT_INT64, &i.muted);
-	
+
 	i.title = p->cache.title;
 
 	mpv_get_property(p->mpv, "duration", MPV_FORMAT_DOUBLE, &i.duration);
-	
+
 	i.audio_count = p->cache.audio_count;
 	i.sub_count = p->cache.sub_count;
-	
+
 	mpv_get_property(p->mpv, "audio", MPV_FORMAT_INT64, &i.audio_pos);
 	mpv_get_property(p->mpv, "sub", MPV_FORMAT_INT64, &i.sub_pos);
-	
+
 	i.exploring = p->exploring;
 	i.c_time = p->c_time;
 	i.c_paused = p->c_paused;
@@ -127,7 +127,7 @@ PlayerInfo player_get_info(mpvhandler *p)
 		i.e_time = mpv_time;
 		mpv_get_property(p->mpv, "pause", MPV_FORMAT_FLAG, &i.e_paused);
 	}
-	
+
 	return i;
 }
 
@@ -142,37 +142,52 @@ void mpvh_update(mpvhandler *h)
 	mpv_event *e;
 	while (e = mpv_wait_event(h->mpv, 0), e->event_id != MPV_EVENT_NONE) {
 		switch (e->event_id) {
-		case MPV_EVENT_SHUTDOWN: break;
-		case MPV_EVENT_LOG_MESSAGE: break;
-		case MPV_EVENT_GET_PROPERTY_REPLY: break;
-		case MPV_EVENT_SET_PROPERTY_REPLY: break;
-		case MPV_EVENT_COMMAND_REPLY: break;
-		case MPV_EVENT_START_FILE: break;
-		case MPV_EVENT_END_FILE: break;
+		case MPV_EVENT_SHUTDOWN:
+			break;
+		case MPV_EVENT_LOG_MESSAGE:
+			break;
+		case MPV_EVENT_GET_PROPERTY_REPLY:
+			break;
+		case MPV_EVENT_SET_PROPERTY_REPLY:
+			break;
+		case MPV_EVENT_COMMAND_REPLY:
+			break;
+		case MPV_EVENT_START_FILE:
+			break;
+		case MPV_EVENT_END_FILE:
+			break;
 		case MPV_EVENT_FILE_LOADED: {
 			char *title;
 			mpv_get_property(h->mpv, "media-title", MPV_FORMAT_STRING, &title);
-			strncpy(h->cache.title.str, title, TITLE_STRING_LEN-1);
-			h->cache.title.str[TITLE_STRING_LEN-1] = '\0';
+			strncpy(h->cache.title.str, title, TITLE_STRING_LEN - 1);
+			h->cache.title.str[TITLE_STRING_LEN - 1] = '\0';
 			mpv_free(title);
-			
-			mpv_get_track_counts(h->mpv, &h->cache.audio_count,
-				&h->cache.sub_count);
-			
+
+			mpv_get_track_counts(
+				h->mpv, &h->cache.audio_count, &h->cache.sub_count);
+
 			mpvh_syncmpv(h);
 			break;
 		}
-		case MPV_EVENT_IDLE: break;
-		case MPV_EVENT_TICK: break;
-		case MPV_EVENT_CLIENT_MESSAGE: break;
-		case MPV_EVENT_VIDEO_RECONFIG: break;
-		case MPV_EVENT_SEEK: break;
+		case MPV_EVENT_IDLE:
+			break;
+		case MPV_EVENT_TICK:
+			break;
+		case MPV_EVENT_CLIENT_MESSAGE:
+			break;
+		case MPV_EVENT_VIDEO_RECONFIG:
+			break;
+		case MPV_EVENT_SEEK:
+			break;
 		case MPV_EVENT_PLAYBACK_RESTART:
 			mpvh_syncmpv(h);
 			break;
-		case MPV_EVENT_PROPERTY_CHANGE: break;
-		case MPV_EVENT_QUEUE_OVERFLOW: break;
-		default: break;
+		case MPV_EVENT_PROPERTY_CHANGE:
+			break;
+		case MPV_EVENT_QUEUE_OVERFLOW:
+			break;
+		default:
+			break;
 		}
 	}
 }
@@ -189,8 +204,7 @@ statusstr statestr(double time, int paused, int64_t pl_pos, int64_t pl_count)
 void mpvh_sendstatus(mpvhandler *h)
 {
 	PlayerInfo i = player_get_info(h);
-	sendmsg("moov: %s",
-		statestr(i.c_time, i.c_paused, i.pl_pos, i.pl_count).str);
+	sendmsg("%s", statestr(i.c_time, i.c_paused, i.pl_pos, i.pl_count).str);
 }
 
 void mpvh_explore(mpvhandler *h)

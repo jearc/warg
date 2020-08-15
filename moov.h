@@ -1,3 +1,5 @@
+#include <string>
+
 #define UNUSED(x) (void)(x)
 #define max(a, b) ((a) > (b) ? (a) : (b))
 // the timestr of 2^32 sec is "1193046:28:16"
@@ -14,38 +16,29 @@ struct title_str { char str[TITLE_STRING_LEN]; };
 struct statusstr { char str[STATUS_STRING_LEN]; };
 struct timestr { char str[TIMESTR_BUF_LEN]; };
 
-struct message {
-	time_t time;
-	size_t start, end;
-	char *name, *text;
-};
-struct chatlog {
-	char *buf;
-	size_t next;
-	message *msgs;
-	size_t msgfirst, msgnext;
+struct Message {
+	std::string text;
+	unsigned fg, bg;
 };
 
 struct PlayerInfo {
 	int64_t pl_pos, pl_count;
 	int muted;
-	
+
 	title_str title;
 	double duration;
 	int64_t audio_pos, audio_count;
 	int64_t sub_pos, sub_count;
-	
+
 	double c_time, delay;
 	int c_paused;
-	
+
 	int exploring;
 	double e_time;
 	int e_paused;
 };
 
 void sendmsg(const char *fmt, ...);
-chatlog init_chatlog();
-char *logmsg(chatlog *cl, char *msg, size_t len);
 int splitinput(char *buf, char **username, char **text);
 void handlecmd(char *text, mpvhandler *mpvh);
 double parsetime(char *str);

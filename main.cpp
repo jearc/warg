@@ -6,12 +6,17 @@
 #include <mpv/opengl_cb.h>
 #include <unistd.h>
 #include <fcntl.h>
+#include <vector>
+#include <string>
 
 #include "imgui/imgui.h"
-#include "imgui/imgui_impl_sdl_gl3.h"
+#include "imgui/imgui_impl_sdl.h"
+#include "imgui/imgui_impl_opengl3.h"
 #include "moov.h"
 
 #define MAX_MSG_LEN 1000
+
+ImFont *pFont;
 
 void *get_proc_address_mpv(void *fn_ctx, const char *name)
 {
@@ -33,52 +38,43 @@ void toggle_fullscreen(SDL_Window *win)
 	SDL_ShowCursor(SDL_ENABLE);
 }
 
-void chatbox(chatlog *chatlog, bool scroll_to_bottom)
+void chatbox(std::vector<Message> &cl, bool scroll_to_bottom)
 {
-	int margin = 8;
-	ImVec2 size = ImVec2(400, 200);
-	ImVec2 display_size = ImGui::GetIO().DisplaySize;
-	ImVec2 pos = ImVec2((int)display_size.x - size.x - margin,
-		(int)display_size.y - size.y - margin);
+	auto chat_window_name = "chat_window";
+	auto chat_window_flags =
+		ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoMove |
+		ImGuiWindowFlags_NoBackground | ImGuiWindowFlags_NoSavedSettings |
+		ImGuiWindowFlags_NoNav;
+	auto chat_window_size = ImVec2(300, 300);
+	auto chat_window_pos = ImVec2(300, 300);
+
+	ImGui::SetNextWindowSize(chat_window_size);
+	ImGui::SetNextWindowPos(chat_window_pos);
+	ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 0));
+	ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0);
 
 	bool display = true;
-	ImGui::SetNextWindowSize(size, ImGuiSetCond_FirstUseEver);
-	ImGui::SetNextWindowPos(pos);
-	ImGui::Begin("ChatBox", &display, size, 0.7f,
-		ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize |
-			ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoScrollbar |
-			ImGuiWindowFlags_NoSavedSettings);
-	ImGui::BeginChild("LogRegion",
-		ImVec2(0, -ImGui::GetItemsLineHeightWithSpacing()), false,
-		ImGuiWindowFlags_NoScrollbar);
-	for (size_t i = chatlog->msgfirst; i != chatlog->msgnext;
-	     i = (i + 1) % CHAT_MAX_MESSAGE_COUNT) {
-		message *msg = &chatlog->msgs[i];
-		tm *now = localtime(&msg->time);
-		char buf[20] = { 0 };
-		strftime(buf, sizeof(buf), "%X", now);
-		ImGui::TextWrapped("(%s) %s: %s", buf, msg->name, msg->text);
+	ImGui::Begin(chat_window_name, &display, chat_window_flags);
+
+	auto draw_list = ImGui::GetWindowDrawList();
+
+	ImGui::PushFont(pFont);
+
+	ImVec2 message_pos = chat_window_pos;
+	for (auto &msg : cl) {
+		auto text_size = ImGui::CalcTextSize(msg.text.c_str());
+		ImVec2 rect_p_max(
+			message_pos.x + text_size.x, message_pos.y + text_size.y);
+		draw_list->AddRectFilled(message_pos, rect_p_max, msg.bg);
+		draw_list->AddText(message_pos, msg.fg, msg.text.c_str());
+		message_pos.y += text_size.y;
 	}
-	if (scroll_to_bottom)
-		ImGui::SetScrollHere();
-	ImGui::EndChild();
-	ImGui::PushItemWidth(size.x - 8 * 2);
-	static char CHAT_INPUT_BUF[256] = { 0 };
-	if (ImGui::InputText("", CHAT_INPUT_BUF, 256,
-		    ImGuiInputTextFlags_EnterReturnsTrue, NULL, NULL) &&
-		strlen(CHAT_INPUT_BUF)) {
-		sendmsg(CHAT_INPUT_BUF);
-		strcpy(CHAT_INPUT_BUF, "");
-	}
-	ImGui::PopItemWidth();
-	if (ImGui::IsItemHovered() ||
-		(ImGui::IsRootWindowOrAnyChildFocused() &&
-			!ImGui::IsAnyItemActive() && !ImGui::IsMouseClicked(0)))
-		ImGui::SetKeyboardFocusHere(-1);
+	ImGui::PopFont();
 	ImGui::End();
+	ImGui::PopStyleVar(2);
 }
 
-bool readstdin(chatlog *chatlog, mpvhandler *mpvh)
+bool readstdin(std::vector<Message> &cl, mpvhandler *mpvh)
 {
 	bool new_msg = false;
 
@@ -92,8 +88,8 @@ bool readstdin(chatlog *chatlog, mpvhandler *mpvh)
 		case EOF:
 			break;
 		case '\0': {
-			char *text = logmsg(chatlog, buf, bufidx + 1);
-			handlecmd(text, mpvh);
+			cl.push_back({ buf, 0xff00ffff, 0x99000000 });
+			//handlecmd(text, mpvh);
 			new_msg = true;
 			memset(buf, 0, sizeof buf);
 			bufidx = 0;
@@ -116,7 +112,7 @@ void explorewin(mpvhandler *mpvh)
 	PlayerInfo i = player_get_info(mpvh);
 
 	static bool display = true;
-	ImGui::Begin("Explore", &display);
+	ImGui::Begin("Explore", &display, 0);
 
 	if (ImGui::Button("Play/Pause"))
 		player_toggle_explore_paused(mpvh);
@@ -151,7 +147,7 @@ void dbgwin(SDL_Window *win, mpvhandler *mpvh)
 	PlayerInfo i = player_get_info(mpvh);
 
 	static bool display = true;
-	ImGui::Begin("Debug", &display);
+	ImGui::Begin("Debug", &display, 0);
 
 	if (ImGui::Button("<"))
 		sendmsg("PREV");
@@ -223,7 +219,7 @@ bool handle_sdl_events(SDL_Window *win)
 				toggle_fullscreen(win);
 				break;
 			default:
-				ImGui_ImplSdlGL3_ProcessEvent(&e);
+				ImGui_ImplSDL2_ProcessEvent(&e);
 			}
 			break;
 		case SDL_WINDOWEVENT:
@@ -231,7 +227,7 @@ bool handle_sdl_events(SDL_Window *win)
 				redraw = true;
 			break;
 		default:
-			ImGui_ImplSdlGL3_ProcessEvent(&e);
+			ImGui_ImplSDL2_ProcessEvent(&e);
 		}
 	}
 
@@ -251,16 +247,23 @@ SDL_Window *init_window()
 	SDL_GL_SetAttribute(SDL_GL_STENCIL_SIZE, 8);
 	SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
 	SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 2);
-	SDL_DisplayMode current;
-	SDL_GetCurrentDisplayMode(0, &current);
-	SDL_Window *window;
-
-	window = SDL_CreateWindow("Moov", SDL_WINDOWPOS_CENTERED,
+	SDL_Window *window = SDL_CreateWindow("Moov", SDL_WINDOWPOS_CENTERED,
 		SDL_WINDOWPOS_CENTERED, 1280, 720,
 		SDL_WINDOW_OPENGL | SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE);
 	SDL_GL_CreateContext(window);
+	SDL_GLContext gl_context = SDL_GL_CreateContext(window);
 	glewInit();
-	ImGui_ImplSdlGL3_Init(window);
+
+	IMGUI_CHECKVERSION();
+	ImGui::CreateContext();
+	ImGui::StyleColorsClassic();
+	ImGui_ImplSDL2_InitForOpenGL(window, gl_context);
+	ImGui_ImplOpenGL3_Init("#version 150");
+
+	ImGuiIO &io = ImGui::GetIO();
+	pFont = io.Fonts->AddFontFromFileTTF(
+		"/usr/share/fonts/truetype/roboto/unhinted/RobotoTTF/Roboto-Medium.ttf",
+		40);
 
 	return window;
 }
@@ -297,19 +300,18 @@ int main(int argc, char **argv)
 	bool mpv_redraw = false;
 	mpv_opengl_cb_set_update_callback(mpv_gl, on_mpv_redraw, &mpv_redraw);
 
-	chatlog chatlog = init_chatlog();
+	std::vector<Message> cl;
 
 	int64_t t_last = 0, t_now = 0;
 	while (1) {
 		SDL_Delay(10);
 		t_now = SDL_GetPerformanceCounter();
-		double delta = (t_now - t_last) /
-			       (double)SDL_GetPerformanceFrequency();
+		double delta = (t_now - t_last) / (double)SDL_GetPerformanceFrequency();
 		if (delta <= 1 / 60.0)
 			continue;
 		t_last = t_now;
 
-		bool scroll_to_bottom = readstdin(&chatlog, mpvh);
+		bool scroll_to_bottom = readstdin(cl, mpvh);
 
 		bool redraw = false;
 		if (mpv_redraw) {
@@ -330,12 +332,15 @@ int main(int argc, char **argv)
 		SDL_GetWindowSize(window, &w, &h);
 		glClear(GL_COLOR_BUFFER_BIT);
 		mpv_opengl_cb_draw(mpv_gl, 0, w, -h);
-		ImGui_ImplSdlGL3_NewFrame(window);
-		chatbox(&chatlog, scroll_to_bottom);
+		ImGui_ImplOpenGL3_NewFrame();
+		ImGui_ImplSDL2_NewFrame(window);
+		ImGui::NewFrame();
+		chatbox(cl, scroll_to_bottom);
 		dbgwin(window, mpvh);
 		glViewport(0, 0, (int)ImGui::GetIO().DisplaySize.x,
 			(int)ImGui::GetIO().DisplaySize.y);
 		ImGui::Render();
+		ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 		SDL_GL_SwapWindow(window);
 	}
 

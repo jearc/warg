@@ -52,3 +52,13 @@ char *getint(char *str, uint64_t *n)
 	*n = strtol(str, &str, 10);
 	return str + 1;
 }
+
+void sendmsg(const char *fmt, ...)
+{
+	va_list args;
+	va_start(args, fmt);
+	vprintf(fmt, args);
+	va_end(args);
+	fputc('\0', stdout);
+	fflush(stdout);
+}

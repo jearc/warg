@@ -1,5 +1,6 @@
-OBJS = main.o mpvh.o cmd.o chat.o util.o
-OBJS += ./imgui/imgui_impl_sdl_gl3.o ./imgui/imgui.o ./imgui/imgui_draw.o
+OBJS = main.o mpvh.o cmd.o util.o
+OBJS += ./imgui/imgui_impl_sdl.o ./imgui/imgui.o ./imgui/imgui_draw.o
+OBJS += ./imgui/imgui_impl_opengl3.o ./imgui/imgui_widgets.o
 CFLAGS = -fPIC -pedantic -Wall -Wextra -Ofast -ffast-math
 LIBS = -lGL -ldl -lSDL2 -lmpv -lGLEW -lGLU
 
