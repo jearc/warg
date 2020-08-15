@@ -46,7 +46,7 @@ struct PlayerInfo {
 	int e_paused;
 };
 
-class mpvhandler {
+class Player {
 public:
 	void init(int filec, char **filev, int track, double time);
 	void pause(int paused);
@@ -81,7 +81,7 @@ private:
 
 void sendmsg(const char *fmt, ...);
 int splitinput(char *buf, char **username, char **text);
-void handlecmd(char *text, mpvhandler *mpvh);
+void handlecmd(char *text, Player *mpvh);
 double parsetime(char *str);
 timestr sec_to_timestr(unsigned int seconds);
 void die(const char *fmt, ...);

@@ -8,17 +8,17 @@
 
 #include "moov.h"
 
-void cmd_pp(char *args, mpvhandler *mpvh);
-void cmd_play(char *args, mpvhandler *mpvh);
-void cmd_pause(char *args, mpvhandler *mpvh);
-void cmd_status(char *args, mpvhandler *mpvh);
-void cmd_seek(char *args, mpvhandler *mpvh);
-void cmd_seekplus(char *args, mpvhandler *mpvh);
-void cmd_seekminus(char *args, mpvhandler *mpvh);
-void cmd_prev(char *args, mpvhandler *mpvh);
-void cmd_next(char *args, mpvhandler *mpvh);
-void cmd_index(char *args, mpvhandler *mpvh);
-void cmd_set(char *args, mpvhandler *mpvh);
+void cmd_pp(char *args, Player *mpvh);
+void cmd_play(char *args, Player *mpvh);
+void cmd_pause(char *args, Player *mpvh);
+void cmd_status(char *args, Player *mpvh);
+void cmd_seek(char *args, Player *mpvh);
+void cmd_seekplus(char *args, Player *mpvh);
+void cmd_seekminus(char *args, Player *mpvh);
+void cmd_prev(char *args, Player *mpvh);
+void cmd_next(char *args, Player *mpvh);
+void cmd_index(char *args, Player *mpvh);
+void cmd_set(char *args, Player *mpvh);
 
 #define CMD(name, func)                                                        \
 	{                                                                          \
@@ -27,7 +27,7 @@ void cmd_set(char *args, mpvhandler *mpvh);
 static struct {
 	const char *name;
 	size_t len;
-	void (*func)(char *, mpvhandler *);
+	void (*func)(char *, Player *);
 } cmdtab[] = { CMD("pp", cmd_pp), CMD("PLAY", cmd_play),
 	CMD("PAUSE", cmd_pause), CMD("STATUS", cmd_status), CMD("SEEK", cmd_seek),
 	CMD("SEEK+", cmd_seekplus), CMD("SEEK-", cmd_seekminus),
@@ -35,7 +35,7 @@ static struct {
 	CMD("SET", cmd_set) };
 size_t cmdcnt = sizeof cmdtab / sizeof cmdtab[0];
 
-void handlecmd(char *text, mpvhandler *mpvh)
+void handlecmd(char *text, Player *mpvh)
 {
 	while (*text && isspace(*text))
 		text++;
@@ -56,74 +56,74 @@ void handlecmd(char *text, mpvhandler *mpvh)
 	}
 }
 
-void cmd_pp(char *args, mpvhandler *mpvh)
+void cmd_pp(char *args, Player *mpvh)
 {
 	UNUSED(args);
 	mpvh->pause(!mpvh->get_info().c_paused);
 	mpvh->sendstatus();
 }
 
-void cmd_play(char *args, mpvhandler *mpvh)
+void cmd_play(char *args, Player *mpvh)
 {
 	UNUSED(args);
 	mpvh->pause(false);
 	mpvh->sendstatus();
 }
 
-void cmd_pause(char *args, mpvhandler *mpvh)
+void cmd_pause(char *args, Player *mpvh)
 {
 	UNUSED(args);
 	mpvh->pause(true);
 	mpvh->sendstatus();
 }
 
-void cmd_status(char *args, mpvhandler *mpvh)
+void cmd_status(char *args, Player *mpvh)
 {
 	UNUSED(args);
 	mpvh->sendstatus();
 }
 
-void cmd_seek(char *args, mpvhandler *mpvh)
+void cmd_seek(char *args, Player *mpvh)
 {
 	mpvh->set_time(parsetime(args));
 	mpvh->sendstatus();
 }
 
-void cmd_seekplus(char *args, mpvhandler *mpvh)
+void cmd_seekplus(char *args, Player *mpvh)
 {
 	double time = parsetime(args);
 	mpvh->set_time(mpvh->get_info().c_time + parsetime(args));
 	mpvh->sendstatus();
 }
 
-void cmd_seekminus(char *args, mpvhandler *mpvh)
+void cmd_seekminus(char *args, Player *mpvh)
 {
 	double time = parsetime(args);
 	mpvh->set_time(mpvh->get_info().c_time - parsetime(args));
 	mpvh->sendstatus();
 }
 
-void cmd_prev(char *args, mpvhandler *mpvh)
+void cmd_prev(char *args, Player *mpvh)
 {
 	UNUSED(args);
 	mpvh->set_pl_pos(mpvh->get_info().pl_pos - 1);
 	mpvh->sendstatus();
 }
 
-void cmd_next(char *args, mpvhandler *mpvh)
+void cmd_next(char *args, Player *mpvh)
 {
 	UNUSED(args);
 	mpvh->set_pl_pos(mpvh->get_info().pl_pos + 1);
 	mpvh->sendstatus();
 }
 
-void cmd_index(char *args, mpvhandler *mpvh)
+void cmd_index(char *args, Player *mpvh)
 {
 	mpvh->set_pl_pos(atoi(args) - 1);
 	mpvh->sendstatus();
 }
 
-void cmd_set(char *args, mpvhandler *mpvh)
+void cmd_set(char *args, Player *mpvh)
 {
 	uint64_t tok[5];
 	for (size_t i = 0; i < 5; i++) {

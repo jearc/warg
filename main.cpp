@@ -74,7 +74,7 @@ void chatbox(std::vector<Message> &cl, bool scroll_to_bottom)
 	ImGui::PopStyleVar(2);
 }
 
-bool readstdin(std::vector<Message> &cl, mpvhandler *mpvh)
+bool readstdin(std::vector<Message> &cl, Player *mpvh)
 {
 	bool new_msg = false;
 
@@ -107,7 +107,7 @@ bool readstdin(std::vector<Message> &cl, mpvhandler *mpvh)
 	return new_msg;
 }
 
-void explorewin(mpvhandler *mpvh)
+void explorewin(Player *mpvh)
 {
 	PlayerInfo i = mpvh->get_info();
 
@@ -142,7 +142,7 @@ void explorewin(mpvhandler *mpvh)
 	ImGui::End();
 }
 
-void dbgwin(SDL_Window *win, mpvhandler *mpvh)
+void dbgwin(SDL_Window *win, Player *mpvh)
 {
 	PlayerInfo i = mpvh->get_info();
 
@@ -293,7 +293,7 @@ int main(int argc, char **argv)
 	fcntl(0, F_SETFL, O_NONBLOCK);
 
 	SDL_Window *window = init_window();
-	mpvhandler *mpvh = new mpvhandler();
+	Player *mpvh = new Player();
 	mpvh->init(filec, filev, start_track, start_time);
 	mpv_opengl_cb_context *mpv_gl = mpvh->get_opengl_cb_api();
 	mpv_opengl_cb_init_gl(mpv_gl, NULL, get_proc_address_mpv, NULL);

@@ -24,7 +24,7 @@ void mpv_get_track_counts(mpv_handle *m, int64_t *audio, int64_t *sub)
 	}
 }
 
-void mpvhandler::init(int filec, char **filev, int track, double time)
+void Player::init(int filec, char **filev, int track, double time)
 {
 	mpv = mpv_create();
 	mpv_initialize(mpv);
@@ -46,12 +46,12 @@ void mpvhandler::init(int filec, char **filev, int track, double time)
 	sendstatus();
 }
 
-mpv_opengl_cb_context *mpvhandler::get_opengl_cb_api()
+mpv_opengl_cb_context *Player::get_opengl_cb_api()
 {
 	return (mpv_opengl_cb_context *)mpv_get_sub_api(mpv, MPV_SUB_API_OPENGL_CB);
 }
 
-void mpvhandler::syncmpv()
+void Player::syncmpv()
 {
 	int64_t mpv_pos;
 	mpv_get_property(mpv, "playlist-pos", MPV_FORMAT_INT64, &mpv_pos);
@@ -74,7 +74,7 @@ void mpvhandler::syncmpv()
 		mpv_set_property(mpv, "time-pos", MPV_FORMAT_DOUBLE, &c_time);
 }
 
-PlayerInfo mpvhandler::get_info()
+PlayerInfo Player::get_info()
 {
 	PlayerInfo i = { 0 };
 
@@ -107,7 +107,7 @@ PlayerInfo mpvhandler::get_info()
 	return i;
 }
 
-void mpvhandler::update()
+void Player::update()
 {
 	int64_t current_time = mpv_get_time_us(mpv);
 	double dt = (double)(current_time - last_time) / 1000000;
@@ -176,18 +176,18 @@ statusstr statestr(double time, int paused, int64_t pl_pos, int64_t pl_count)
 	return s;
 }
 
-void mpvhandler::sendstatus()
+void Player::sendstatus()
 {
 	PlayerInfo i = get_info();
 	sendmsg("%s", statestr(i.c_time, i.c_paused, i.pl_pos, i.pl_count).str);
 }
 
-void mpvhandler::explore()
+void Player::explore()
 {
 	exploring = true;
 }
 
-void mpvhandler::explore_accept()
+void Player::explore_accept()
 {
 	exploring = false;
 	mpv_get_property(mpv, "time-pos", MPV_FORMAT_DOUBLE, &c_time);
@@ -196,13 +196,13 @@ void mpvhandler::explore_accept()
 	sendmsg("SET %ld %s %d", c_pos + 1, ts.str, c_paused);
 }
 
-void mpvhandler::explore_cancel()
+void Player::explore_cancel()
 {
 	exploring = false;
 	syncmpv();
 }
 
-void mpvhandler::toggle_mute()
+void Player::toggle_mute()
 {
 	int muted;
 	mpv_get_property(mpv, "ao-mute", MPV_FORMAT_FLAG, &muted);
@@ -210,36 +210,36 @@ void mpvhandler::toggle_mute()
 	mpv_set_property(mpv, "ao-mute", MPV_FORMAT_FLAG, &muted);
 }
 
-void mpvhandler::set_audio(int64_t track)
+void Player::set_audio(int64_t track)
 {
 	mpv_set_property(mpv, "audio", MPV_FORMAT_INT64, &track);
 }
 
-void mpvhandler::set_sub(int64_t track)
+void Player::set_sub(int64_t track)
 {
 	mpv_set_property(mpv, "sub", MPV_FORMAT_INT64, &track);
 }
 
-void mpvhandler::pause(int paused)
+void Player::pause(int paused)
 {
 	c_paused = paused;
 	syncmpv();
 }
 
-void mpvhandler::set_time(double time)
+void Player::set_time(double time)
 {
 	c_time = time;
 	syncmpv();
 }
 
-void mpvhandler::set_pl_pos(int64_t pl_pos)
+void Player::set_pl_pos(int64_t pl_pos)
 {
 	c_pos = pl_pos;
 	c_paused = true, c_time = 0;
 	syncmpv();
 }
 
-void mpvhandler::toggle_explore_paused()
+void Player::toggle_explore_paused()
 {
 	assert(exploring);
 	int paused;
@@ -248,7 +248,7 @@ void mpvhandler::toggle_explore_paused()
 	mpv_set_property(mpv, "pause", MPV_FORMAT_FLAG, &paused);
 }
 
-void mpvhandler::set_explore_time(double time)
+void Player::set_explore_time(double time)
 {
 	assert(exploring);
 	mpv_set_property(mpv, "time-pos", MPV_FORMAT_DOUBLE, &time);
