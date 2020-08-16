@@ -2,6 +2,7 @@
 
 from subprocess import Popen, PIPE
 import struct
+import re
 
 def read_int(n_bytes):
         return int.from_bytes(moov.stdout.read(n_bytes), 'little')
@@ -47,6 +48,14 @@ def add_file(path):
         moov.stdin.write(struct.pack('<I', len(path)))
         moov.stdin.write(bytes(path, encoding='utf-8'))
         moov.stdin.flush()
+
+def parse_time(time_str):
+        prog = re.compile(r'(-?\d+)')
+        nums = prog.findall(time_str)
+        time = 0
+        for n in nums[:3]:
+                time = time*60 + int(n)
+        return time
 
 files = [ 'https://www.twitch.tv/videos/709133837',
           'https://www.twitch.tv/videos/709163445' ]
