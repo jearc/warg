@@ -10,7 +10,9 @@ enum Command {
 	IN_SEEK = 2,
 	IN_MESSAGE = 3,
 	OUT_STATUS = 4,
-	OUT_USER_INPUT = 5
+	OUT_USER_INPUT = 5,
+	IN_ADD_FILE = 6,
+	IN_SET_PLAYLIST_POSITION = 7
 };
 
 struct Message {
@@ -37,7 +39,8 @@ struct PlayerInfo {
 
 class Player {
 public:
-	Player(int filec, char **filev, int track, double time);
+	Player();
+	void add_file(const char *file);
 	void pause(int paused);
 	void toggle_explore_paused();
 	PlayerInfo get_info();

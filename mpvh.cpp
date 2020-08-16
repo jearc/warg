@@ -24,26 +24,28 @@ void mpv_get_track_counts(mpv_handle *m, int64_t *audio, int64_t *sub)
 	}
 }
 
-Player::Player(int filec, char **filev, int track, double time)
+Player::Player()
 {
 	mpv = mpv_create();
 	mpv_initialize(mpv);
 	mpv_set_option_string(mpv, "vo", "opengl-cb");
 	mpv_set_option_string(mpv, "ytdl", "yes");
 
-	for (int i = 0; i < filec; i++) {
-		const char *cmd[] = { "loadfile", filev[i], "append", NULL };
-		mpv_command(mpv, cmd);
-	}
-
 	last_time = mpv_get_time_us(mpv);
-	c_pos = track;
-	c_time = time;
+	c_pos = 0;
+	c_time = 0;
 	c_paused = true;
 	exploring = false;
 
 	syncmpv();
 	sendstatus();
+}
+
+void Player::add_file(const char *file)
+{
+	const char *cmd[] = { "loadfile", file, "append", NULL };
+	mpv_command(mpv, cmd);
+	syncmpv();
 }
 
 mpv_opengl_cb_context *Player::get_opengl_cb_api()

@@ -104,6 +104,20 @@ bool handle_instruction(Player &p, std::vector<Message> &l)
 		l.push_back({ message, fg, bg });
 		break;
 	}
+	case IN_ADD_FILE: {
+		uint32_t len;
+		read(0, &len, 4);
+		auto path = std::string(len + 1, '\0');
+		read(0, &path[0], len);
+		p.add_file(path.c_str());
+		break;
+	}
+	case IN_SET_PLAYLIST_POSITION: {
+		int64_t pos;
+		read(0, &pos, 8);
+		p.set_pl_pos(pos);
+		break;
+	}
 	default:
 		die("invalid input stream state");
 		break;
@@ -294,30 +308,10 @@ SDL_Window *init_window()
 
 int main(int argc, char **argv)
 {
-	int start_track = 0;
-	double start_time = 0;
-	int opt;
-	while ((opt = getopt(argc, argv, "s:i:")) != -1) {
-		switch (opt) {
-		case 'i':
-			start_track = atoi(optarg);
-			break;
-		case 's':
-			start_time = parsetime(optarg);
-			break;
-		default:
-			exit(EXIT_FAILURE);
-		}
-	}
-	int filec = argc - optind;
-	char **filev = argv + optind;
-	if (!filec)
-		die("no files\n");
-
 	fcntl(0, F_SETFL, O_NONBLOCK);
 
 	SDL_Window *window = init_window();
-	Player mpvh(filec, filev, start_track, start_time);
+	auto mpvh = Player();
 	mpv_opengl_cb_context *mpv_gl = mpvh.get_opengl_cb_api();
 	mpv_opengl_cb_init_gl(mpv_gl, NULL, get_proc_address_mpv, NULL);
 
