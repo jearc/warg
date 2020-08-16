@@ -91,6 +91,34 @@ bool read_bytes(std::vector<uint8_t> &bytes)
 	}
 	return false;
 }
+
+void execute_instruction(
+	Player &player, std::vector<Message> &chat_log, std::vector<uint8_t> &bytes)
+{
+	if (bytes.size() == 0)
+		return;
+	switch (bytes[0]) {
+	case IN_PAUSE:
+		if (bytes.size() == 2)
+			player.pause(bytes[1]);
+		break;
+	case IN_SEEK:
+		if (bytes.size() == 9) {
+			double time = *(double *)&bytes[1];
+			player.set_time(time);
+		}
+		break;
+	case IN_MESSAGE:
+		if (bytes.size() > 1) {
+			auto message = std::string((const char *)&bytes[1]);
+			chat_log.push_back({ message, 0xff00ffff, 0x99000000 });
+		}
+		break;
+	default:
+		return;
+	}
+}
+
 bool readstdin(std::vector<Message> &cl, Player &mpvh)
 {
 	bool new_msg = false;
