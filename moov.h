@@ -5,7 +5,13 @@
 #define UNUSED(x) (void)(x)
 #define max(a, b) ((a) > (b) ? (a) : (b))
 
-enum Command { IN_PAUSE, IN_SEEK, IN_MESSAGE, OUT_STATUS, OUT_MESSAGE };
+enum Command {
+	IN_PAUSE = 1,
+	IN_SEEK = 2,
+	IN_MESSAGE = 3,
+	OUT_STATUS = 4,
+	OUT_USER_INPUT = 5
+};
 
 struct Message {
 	std::string text;

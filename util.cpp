@@ -58,10 +58,10 @@ char *getint(char *str, uint64_t *n)
 
 void sendmsg(const char *fmt, ...)
 {
-	va_list args;
-	va_start(args, fmt);
-	vprintf(fmt, args);
-	va_end(args);
-	fputc('\0', stdout);
-	fflush(stdout);
+	// va_list args;
+	// va_start(args, fmt);
+	// vprintf(fmt, args);
+	// va_end(args);
+	// fputc('\0', stdout);
+	// fflush(stdout);
 }

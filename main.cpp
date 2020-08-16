@@ -74,82 +74,60 @@ void chatbox(std::vector<Message> &cl, bool scroll_to_bottom)
 	ImGui::PopStyleVar(2);
 }
 
-bool read_bytes(std::vector<uint8_t> &bytes)
+bool handle_instruction(Player &p, std::vector<Message> &l)
 {
-	static std::vector<uint8_t> buf;
-	uint8_t c;
-	while (read(0, &c, 1) > 0) {
-		switch (c) {
-		case '\0':
-			bytes = buf;
-			buf.clear();
-			return true;
-		default:
-			buf.push_back(c);
-			break;
-		}
-	}
-	return false;
-}
+	uint8_t cmd;
+	if (read(0, &cmd, 1) != 1)
+		return false;
 
-void execute_instruction(
-	Player &player, std::vector<Message> &chat_log, std::vector<uint8_t> &bytes)
-{
-	if (bytes.size() == 0)
-		return;
-	switch (bytes[0]) {
-	case IN_PAUSE:
-		if (bytes.size() == 2)
-			player.pause(bytes[1]);
+	switch (cmd) {
+	case IN_PAUSE: {
+		bool paused;
+		read(0, &paused, 1);
+		p.pause(paused);
 		break;
-	case IN_SEEK:
-		if (bytes.size() == 9) {
-			double time = *(double *)&bytes[1];
-			player.set_time(time);
-		}
+	}
+	case IN_SEEK: {
+		double time;
+		read(0, &time, 8);
+		p.set_time(time);
 		break;
-	case IN_MESSAGE:
-		if (bytes.size() > 1) {
-			auto message = std::string((const char *)&bytes[1]);
-			chat_log.push_back({ message, 0xff00ffff, 0x99000000 });
-		}
+	}
+	case IN_MESSAGE: {
+		uint32_t fg, bg;
+		read(0, &fg, 4);
+		read(0, &bg, 4);
+		uint32_t len;
+		read(0, &len, 4);
+		auto message = std::string(len + 1, '\0');
+		read(0, &message[0], len);
+		l.push_back({ message, fg, bg });
 		break;
+	}
 	default:
-		return;
+		die("invalid input stream state");
+		break;
 	}
+
+	return true;
 }
 
-bool readstdin(std::vector<Message> &cl, Player &mpvh)
+void inputwin()
 {
-	bool new_msg = false;
+	bool display = true;
+	ImGui::Begin("Input", &display, 0);
 
-	static char buf[MAX_MSG_LEN];
-	memset(buf, 0, sizeof buf);
-	static size_t bufidx = 0;
-
-	char c;
-	while (read(0, &c, 1) != -1) {
-		switch (c) {
-		case EOF:
-			break;
-		case '\0': {
-			cl.push_back({ buf, 0xff00ffff, 0x99000000 });
-			//handlecmd(text, mpvh);
-			new_msg = true;
-			memset(buf, 0, sizeof buf);
-			bufidx = 0;
-			break;
-		}
-		default:
-			bool significant = bufidx != 0 || !isspace(c);
-			bool space_available = bufidx < (sizeof buf) - 1;
-			if (significant && space_available)
-				buf[bufidx++] = c;
-			break;
-		}
+	static char buf[1000] = { 0 };
+	if (ImGui::InputText(
+			"Input: ", buf, 1000, ImGuiInputTextFlags_EnterReturnsTrue)) {
+		uint8_t cmd = OUT_USER_INPUT;
+		write(1, &cmd, 1);
+		uint32_t len = strlen(buf);
+		write(1, &len, 4);
+		write(1, buf, len);
+		memset(buf, 0, 1000);
 	}
-
-	return new_msg;
+	ImGui::End();
 }
 
 void explorewin(Player &mpvh)
@@ -309,7 +287,7 @@ SDL_Window *init_window()
 	ImGuiIO &io = ImGui::GetIO();
 	pFont = io.Fonts->AddFontFromFileTTF(
 		"/usr/share/fonts/truetype/roboto/unhinted/RobotoTTF/Roboto-Medium.ttf",
-		40);
+		20);
 
 	return window;
 }
@@ -357,7 +335,9 @@ int main(int argc, char **argv)
 			continue;
 		t_last = t_now;
 
-		bool scroll_to_bottom = readstdin(cl, mpvh);
+		// bool scroll_to_bottom = readstdin(cl, mpvh);
+		while (handle_instruction(mpvh, cl))
+			;
 
 		bool redraw = false;
 		if (mpv_redraw) {
@@ -381,7 +361,8 @@ int main(int argc, char **argv)
 		ImGui_ImplOpenGL3_NewFrame();
 		ImGui_ImplSDL2_NewFrame(window);
 		ImGui::NewFrame();
-		chatbox(cl, scroll_to_bottom);
+		inputwin();
+		chatbox(cl, false);
 		dbgwin(window, mpvh);
 		glViewport(0, 0, (int)ImGui::GetIO().DisplaySize.x,
 			(int)ImGui::GetIO().DisplaySize.y);
