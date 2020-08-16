@@ -12,7 +12,8 @@ enum Command {
 	OUT_STATUS = 4,
 	OUT_USER_INPUT = 5,
 	IN_ADD_FILE = 6,
-	IN_SET_PLAYLIST_POSITION = 7
+	IN_SET_PLAYLIST_POSITION = 7,
+	IN_STATUS_REQUEST = 8
 };
 
 struct Message {

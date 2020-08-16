@@ -9,6 +9,9 @@ def read_int(n_bytes):
 def read_str(n_bytes):
         return moov.stdout.read(n_bytes).decode('utf-8')
 
+def read_double():
+        return struct.unpack('d', moov.stdout.read(8))[0]
+
 files = [ 'https://www.twitch.tv/videos/709133837',
           'https://www.twitch.tv/videos/709163445' ]
 start_time = 5940
@@ -45,6 +48,9 @@ while moov and moov.poll() is None:
                         print('sookt')
                         moov.stdin.write(bytes([2]))
                         moov.stdin.write(struct.pack('<d', float(msg[5:])))
+                if msg == 'status':
+                        print('getting status')
+                        moov.stdin.write(bytes([8]))
                 moov.stdin.write(bytes([3]))
                 fg, bg = 0xff00ffff, 0x99000000
                 moov.stdin.write(struct.pack('<I', fg))
@@ -52,3 +58,9 @@ while moov and moov.poll() is None:
                 moov.stdin.write(struct.pack('<I', len(msg)))
                 moov.stdin.write(bytes(msg, encoding='utf-8'))
                 moov.stdin.flush()
+        if cmd==4:
+                pl_pos = read_int(8)
+                pl_count = read_int(8)
+                time = read_double()
+                paused = read_int(1)
+                print(f'{pl_pos}/{pl_count} {time} {"paused" if paused!=0 else "playing"}')

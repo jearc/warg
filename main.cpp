@@ -118,6 +118,16 @@ bool handle_instruction(Player &p, std::vector<Message> &l)
 		p.set_pl_pos(pos);
 		break;
 	}
+	case IN_STATUS_REQUEST: {
+		uint8_t out_cmd = OUT_STATUS;
+		write(1, &out_cmd, 1);
+		auto info = p.get_info();
+		write(1, &info.pl_pos, 8);
+		write(1, &info.pl_count, 8);
+		write(1, &info.c_time, 8);
+		write(1, &info.c_paused, 1);
+		break;
+	}
 	default:
 		die("invalid input stream state");
 		break;
