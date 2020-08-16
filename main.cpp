@@ -74,6 +74,23 @@ void chatbox(std::vector<Message> &cl, bool scroll_to_bottom)
 	ImGui::PopStyleVar(2);
 }
 
+bool read_bytes(std::vector<uint8_t> &bytes)
+{
+	static std::vector<uint8_t> buf;
+	uint8_t c;
+	while (read(0, &c, 1) > 0) {
+		switch (c) {
+		case '\0':
+			bytes = buf;
+			buf.clear();
+			return true;
+		default:
+			buf.push_back(c);
+			break;
+		}
+	}
+	return false;
+}
 bool readstdin(std::vector<Message> &cl, Player &mpvh)
 {
 	bool new_msg = false;
