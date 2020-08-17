@@ -170,3 +170,7 @@ while moov and moov.poll() is None:
             seek(parse_time(msg[5:]))
             put_chat_message(format_status(get_status()), 0xff00ffff,
                              0x99000000)
+        if msg[0:5] == "index":
+            prog = re.compile(r'(-?\d+)')
+            nums = prog.findall(msg[6:])
+            set_playlist_position(int(nums[0]) - 1)
