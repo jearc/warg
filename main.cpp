@@ -119,8 +119,11 @@ bool handle_instruction(Player &p, std::vector<Message> &l)
 		break;
 	}
 	case IN_STATUS_REQUEST: {
+		uint32_t request_id;
+		read(0, &request_id, 4);
 		uint8_t out_cmd = OUT_STATUS;
 		write(1, &out_cmd, 1);
+		write(1, &request_id, 4);
 		auto info = p.get_info();
 		write(1, &info.pl_pos, 8);
 		write(1, &info.pl_count, 8);
