@@ -77,6 +77,41 @@ def parse_time(time_str):
     return time
 
 
+def format_time(time):
+    time = int(round(time))
+    hours, time = time // 3600, time % 3600
+    minutes, time = time // 60, time % 60
+    seconds = time
+
+    time_str = ''
+    if hours > 0: time_str += f'{hours}:'
+    time_str += f'{minutes:02}:{seconds:02}'
+
+    return time_str
+
+
+def mhf():
+    while moov and moov.poll() is None:
+        cmd = read_int(1)
+        if cmd == 4:
+            request_id = read_int(4)
+            pl_pos = read_int(8)
+            pl_count = read_int(8)
+            time = read_double()
+            paused = read_int(1)
+            sq.put({
+                "id": request_id,
+                "pl_pos": pl_pos,
+                "pl_count": pl_count,
+                "time": time,
+                "paused": paused
+            })
+        if cmd == 5:
+            strlen = read_int(4)
+            msg = read_str(strlen)
+            mq.put(msg)
+
+
 files = [
     'https://www.twitch.tv/videos/709133837',
     'https://www.twitch.tv/videos/709163445'
@@ -90,27 +125,48 @@ for f in files:
 set_playlist_position(start_pos)
 seek(start_time)
 
+sq = queue.Queue()
+mq = queue.Queue()
+mt = threading.Thread(target=mhf, args=())
+mt.start()
+
+
+def pp():
+    request_status()
+    status = sq.get()
+    paused = status["paused"]
+    if paused: play()
+    else: pause()
+
+
+def get_status():
+    request_status()
+    return sq.get()
+
+
+def format_status(status):
+    return f'{status["pl_pos"]}/{status["pl_count"]} {"paused" if status["paused"] else "playing"} {format_time(status["time"])}'
+
+
 while moov and moov.poll() is None:
-    cmd = read_int(1)
-    if cmd == 5:
-        strlen = read_int(4)
-        msg = read_str(strlen)
-        if msg == 'play':
+    if not mq.empty():
+        msg = mq.get()
+        if msg == "status":
+            put_chat_message(format_status(get_status()), 0xff00ffff,
+                             0x99000000)
+        if msg == "pp":
+            pp()
+            put_chat_message(format_status(get_status()), 0xff00ffff,
+                             0x99000000)
+        if msg == "play":
             play()
-        if msg == 'pause':
+            put_chat_message(format_status(get_status()), 0xff00ffff,
+                             0x99000000)
+        if msg == "pause":
             pause()
+            put_chat_message(format_status(get_status()), 0xff00ffff,
+                             0x99000000)
         if msg[0:4] == "seek":
-            seek(float(msg[5:]))
-        if msg == 'status':
-            request_status()
-        put_chat_message(msg, 0xff00ffff, 0x99000000)
-    if cmd == 4:
-        request_id = read_int(4)
-        pl_pos = read_int(8)
-        pl_count = read_int(8)
-        time = read_double()
-        paused = read_int(1)
-        print(
-            f'status {request_id}: {pl_pos}/{pl_count} {time} {"paused" if paused else "playing"}'
-        )
-        sys.stdout.flush()
+            seek(parse_time(msg[5:]))
+            put_chat_message(format_status(get_status()), 0xff00ffff,
+                             0x99000000)
