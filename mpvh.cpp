@@ -38,7 +38,6 @@ Player::Player()
 	exploring = false;
 
 	syncmpv();
-	sendstatus();
 }
 
 void Player::add_file(const char *file)
@@ -177,12 +176,6 @@ std::string statestr(double time, int paused, int64_t pl_pos, int64_t pl_count)
 	return std::string(buf);
 }
 
-void Player::sendstatus()
-{
-	PlayerInfo i = get_info();
-	sendmsg("%s", statestr(i.c_time, i.c_paused, i.pl_pos, i.pl_count).c_str());
-}
-
 void Player::explore()
 {
 	exploring = true;
@@ -194,7 +187,7 @@ void Player::explore_accept()
 	mpv_get_property(mpv, "time-pos", MPV_FORMAT_DOUBLE, &c_time);
 	mpv_get_property(mpv, "pause", MPV_FORMAT_FLAG, &c_paused);
 	std::string ts = sec_to_timestr(c_time);
-	sendmsg("SET %ld %s %d", c_pos + 1, ts.c_str(), c_paused);
+	//sendmsg("SET %ld %s %d", c_pos + 1, ts.c_str(), c_paused);
 }
 
 void Player::explore_cancel()

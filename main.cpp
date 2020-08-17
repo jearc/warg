@@ -200,20 +200,20 @@ void dbgwin(SDL_Window *win, Player &mpvh)
 	ImGui::Begin("Debug", &display, 0);
 
 	if (ImGui::Button("<"))
-		sendmsg("PREV");
+		////sendmsg("PREV");
 	ImGui::SameLine();
 	ImGui::Text("T: %ld/%ld", i.pl_pos + 1, i.pl_count);
 	ImGui::SameLine();
 	if (ImGui::Button(">"))
-		sendmsg("NEXT");
+		////sendmsg("NEXT");
 
 	ImGui::Text("%s", i.title.c_str());
 
 	if (ImGui::Button("Play"))
-		sendmsg("PLAY");
+		////sendmsg("PLAY");
 	ImGui::SameLine();
 	if (ImGui::Button("Pause"))
-		sendmsg("PAUSE");
+		//sendmsg("PAUSE");
 
 	ImGui::Text(
 		"%s", statestr(i.c_time, i.c_paused, i.pl_pos, i.pl_count).c_str());
@@ -342,7 +342,6 @@ int main(int argc, char **argv)
 			continue;
 		t_last = t_now;
 
-		// bool scroll_to_bottom = readstdin(cl, mpvh);
 		while (handle_instruction(mpvh, cl))
 			;
 

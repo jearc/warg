@@ -72,12 +72,7 @@ private:
 	std::string title;
 };
 
-void sendmsg(const char *fmt, ...);
-int splitinput(char *buf, char **username, char **text);
-void handlecmd(char *text, Player *mpvh);
-double parsetime(char *str);
 std::string sec_to_timestr(unsigned int seconds);
 void die(const char *fmt, ...);
-char *getint(char *str, uint64_t *n);
 
 std::string statestr(double time, int paused, int64_t pl_pos, int64_t pl_count);
