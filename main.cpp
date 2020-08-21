@@ -20,8 +20,6 @@ ImFont *pFont;
 
 void *get_proc_address_mpv(void *fn_ctx, const char *name)
 {
-	UNUSED(fn_ctx);
-
 	return SDL_GL_GetProcAddress(name);
 }
 
