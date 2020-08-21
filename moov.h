@@ -2,7 +2,6 @@
 #include <mpv/client.h>
 #include <mpv/opengl_cb.h>
 
-#define UNUSED(x) (void)(x)
 #define max(a, b) ((a) > (b) ? (a) : (b))
 
 enum Command {
