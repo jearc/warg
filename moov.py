@@ -109,17 +109,34 @@ class Moov:
 	def index(self, position):
 		self._write('BQ', 7, position)
 
+	def previous(self):
+		pl_pos = self.get_status()['pl_pos']
+		if pl_pos - 1 >= 0:
+			self.index(pl_pos - 1)
+
+	def next(self):
+		status = self.get_status()
+		pl_pos = status['pl_pos']
+		pl_count = status['pl_count']
+		if pl_pos + 1 < pl_count:
+			self.index(pl_pos + 1)
+
 	def append(self, path):
 		self._write('Bs', 6, path)
 
-	def play(self):
-		self._write('BB', 1, 0)
+	def set_paused(self, paused):
+		self._write('BB', 1, int(paused))
 
-	def pause(self):
-		self._write('BB', 1, 1)
+	def toggle_paused(self):
+		paused = self.get_status()['paused']
+		self.set_paused(not paused)
 
 	def seek(self, time):
 		self._write('Bd', 2, time)
+
+	def relative_seek(self, time_delta):
+		time = self.get_status()['time']
+		self.seek(time + time_delta)
 
 	def get_status(self):
 		request_id = self._request_status()

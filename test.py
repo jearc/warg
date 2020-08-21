@@ -60,33 +60,49 @@ while moov.alive():
 			moov.put_message(format_status(status), 0xff00ffff, 0xbb000000)
 
 		if msg == "pp":
-			status = moov.get_status()
-			if status["paused"]:
-				moov.play()
-			else:
-				moov.pause()
+			moov.toggle_paused()
 			status = moov.get_status()
 			moov.put_message(format_status(status), 0xff00ffff, 0xbb000000)
 
 		if msg == "play":
-			moov.play()
+			moov.set_paused(False)
 			status = moov.get_status()
 			moov.put_message(format_status(status), 0xff00ffff, 0xbb000000)
 
 		if msg == "pause":
-			moov.pause()
+			moov.set_paused(True)
 			status = moov.get_status()
 			moov.put_message(format_status(status), 0xff00ffff, 0xbb000000)
 
-		if msg[0:4] == "seek":
+		if msg[0:5] == "seek ":
 			moov.seek(parse_time(msg[5:]))
+			status = moov.get_status()
+			moov.put_message(format_status(status), 0xff00ffff, 0xbb000000)
+
+		if msg[0:6] == "seek+ ":
+			moov.relative_seek(parse_time(msg[5:]))
+			status = moov.get_status()
+			moov.put_message(format_status(status), 0xff00ffff, 0xbb000000)
+
+		if msg[0:6] == "seek- ":
+			moov.relative_seek(-parse_time(msg[5:]))
 			status = moov.get_status()
 			moov.put_message(format_status(status), 0xff00ffff, 0xbb000000)
 
 		if msg[0:5] == "index":
 			prog = re.compile(r'(-?\d+)')
-			nums = prog.findall(msg[6:])
-			moov.index(int(nums[0]) - 1)
+			position = int(prog.findall(msg[6:])[0]) - 1
+			moov.index(position)
+			status = moov.get_status()
+			moov.put_message(format_status(status), 0xff00ffff, 0xbb000000)
+
+		if msg == "next":
+			moov.next()
+			status = moov.get_status()
+			moov.put_message(format_status(status), 0xff00ffff, 0xbb000000)
+
+		if msg == "prev":
+			moov.previous()
 			status = moov.get_status()
 			moov.put_message(format_status(status), 0xff00ffff, 0xbb000000)
 
