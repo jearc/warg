@@ -11,3 +11,4 @@ guide
 *~
 .vscode
 imgui.ini
+__pycache__
