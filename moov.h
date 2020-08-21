@@ -5,6 +5,7 @@
 #define max(a, b) ((a) > (b) ? (a) : (b))
 
 enum Command {
+	OUT_CONTROL = 10,
 	IN_PAUSE = 1,
 	IN_SEEK = 2,
 	IN_MESSAGE = 3,
@@ -74,5 +75,5 @@ private:
 
 std::string sec_to_timestr(unsigned int seconds);
 void die(const char *fmt, ...);
-
+void send_control(int64_t pos, double time, bool paused);
 std::string statestr(double time, int paused, int64_t pl_pos, int64_t pl_count);

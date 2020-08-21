@@ -72,6 +72,15 @@ void chatbox(std::vector<Message> &cl, bool scroll_to_bottom)
 	ImGui::PopStyleVar(2);
 }
 
+void send_control(int64_t pos, double time, bool paused)
+{
+	uint8_t cmd = OUT_CONTROL;
+	write(1, &cmd, 1);
+	write(1, &pos, 8);
+	write(1, &time, 8);
+	write(1, &paused, 1);
+}
+
 bool handle_instruction(Player &p, std::vector<Message> &l)
 {
 	uint8_t cmd;
@@ -200,21 +209,35 @@ void dbgwin(SDL_Window *win, Player &mpvh)
 	static bool display = true;
 	ImGui::Begin("Debug", &display, 0);
 
-	if (ImGui::Button("<"))
-		////sendmsg("PREV");
+	if (ImGui::Button("<")) {
+		auto info = mpvh.get_info();
+		mpvh.set_pl_pos(info.pl_pos - 1);
+		info = mpvh.get_info();
+		send_control(info.pl_pos, info.c_time, info.c_paused);
+	}
 	ImGui::SameLine();
 	ImGui::Text("T: %ld/%ld", i.pl_pos + 1, i.pl_count);
 	ImGui::SameLine();
-	if (ImGui::Button(">"))
-		////sendmsg("NEXT");
+	if (ImGui::Button(">")) {
+		auto info = mpvh.get_info();
+		mpvh.set_pl_pos(info.pl_pos + 1);
+		info = mpvh.get_info();
+		send_control(info.pl_pos, info.c_time, info.c_paused);
+	}
 
 	ImGui::Text("%s", i.title.c_str());
 
-	if (ImGui::Button("Play"))
-		////sendmsg("PLAY");
+	if (ImGui::Button("Play")) {
+		mpvh.pause(false);
+		auto info = mpvh.get_info();
+		send_control(info.pl_pos, info.c_time, info.c_paused);
+	}
 	ImGui::SameLine();
-	if (ImGui::Button("Pause"))
-		//sendmsg("PAUSE");
+	if (ImGui::Button("Pause")) {
+		mpvh.pause(true);
+		auto info = mpvh.get_info();
+		send_control(info.pl_pos, info.c_time, info.c_paused);
+	}
 
 	ImGui::Text(
 		"%s", statestr(i.c_time, i.c_paused, i.pl_pos, i.pl_count).c_str());

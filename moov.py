@@ -46,6 +46,7 @@ class Moov:
 		self._proc = subprocess.Popen(
 		    ['./moov'], stdin=subprocess.PIPE, stdout=subprocess.PIPE)
 		self._message_queue = queue.Queue()
+		self._control_queue = queue.Queue()
 		self._replies = dict()
 		self._replies_lock = threading.Lock()
 		self._reader_thread = threading.Thread(target=self._reader)
@@ -61,6 +62,13 @@ class Moov:
 	def _reader(self):
 		while self._proc and self._proc.poll() is None:
 			cmd = self._read("B")[0]
+			if cmd == 10:
+				data = self._read("QdB")
+				self._control_queue.put({
+					"pl_pos": data[0],
+					"time": data[1],
+					"paused": data[2]
+				})
 			if cmd == 4:
 				data = self._read("IQQdB")
 				with self._replies_lock:
@@ -121,6 +129,11 @@ class Moov:
 		inputs = list(self._message_queue.queue)
 		self._message_queue.queue.clear()
 		return inputs
+
+	def get_user_control_commands(self):
+		controls = list(self._control_queue.queue)
+		self._control_queue.queue.clear()
+		return controls
 
 	def close(self):
 		self._write('B', 9)

@@ -186,8 +186,7 @@ void Player::explore_accept()
 	exploring = false;
 	mpv_get_property(mpv, "time-pos", MPV_FORMAT_DOUBLE, &c_time);
 	mpv_get_property(mpv, "pause", MPV_FORMAT_FLAG, &c_paused);
-	std::string ts = sec_to_timestr(c_time);
-	//sendmsg("SET %ld %s %d", c_pos + 1, ts.c_str(), c_paused);
+	send_control(c_pos, c_time, c_paused);
 }
 
 void Player::explore_cancel()
