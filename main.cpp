@@ -131,6 +131,9 @@ bool handle_instruction(Player &p, std::vector<Message> &l)
 		write(1, &info.c_paused, 1);
 		break;
 	}
+	case IN_CLOSE:
+		die("closed by ipc");
+		break;
 	default:
 		die("invalid input stream state");
 		break;

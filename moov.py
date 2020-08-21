@@ -121,3 +121,7 @@ class Moov:
 		inputs = list(self._message_queue.queue)
 		self._message_queue.queue.clear()
 		return inputs
+
+	def close(self):
+		self._write('B', 9)
+		self._reader_thread.join()
