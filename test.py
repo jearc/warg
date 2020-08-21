@@ -2,6 +2,7 @@
 
 import re
 from moov import Moov
+import time
 
 
 def parse_time(time_str):
@@ -88,3 +89,5 @@ while moov.alive():
 			moov.index(int(nums[0]) - 1)
 			status = moov.get_status()
 			moov.put_message(format_status(status), 0xff00ffff, 0xbb000000)
+
+	time.sleep(0.01)
