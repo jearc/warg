@@ -106,4 +106,7 @@ while moov.alive():
 			status = moov.get_status()
 			moov.put_message(format_status(status), 0xff00ffff, 0xbb000000)
 
+		if msg == "close":
+			moov.close()
+
 	time.sleep(0.01)
