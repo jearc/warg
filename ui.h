@@ -1,0 +1,12 @@
+const char *PLAY_ICON = u8"\ue037";
+const char *PAUSE_ICON = u8"\ue034";
+const char *PLAYLIST_PREVIOUS_ICON = u8"\ue045";
+const char *PLAYLIST_NEXT_ICON = u8"\ue044";
+const char *LEFT_ICON = u8"\ue408";
+const char *RIGHT_ICON = u8"\ue409";
+const char *AUDIO_ICON = u8"\ue0ca";
+const char *SUBTITLE_ICON = u8"\ue048";
+const char *MUTED_ICON = u8"\ue04e";
+const char *UNMUTED_ICON = u8"\ue050";
+const char *FULLSCREEN_ICON = u8"\ue5d0";
+const char *UNFULLSCREEN_ICON = u8"\ue5d1";

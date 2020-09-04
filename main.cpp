@@ -13,6 +13,7 @@
 #include "imgui/imgui_impl_sdl.h"
 #include "imgui/imgui_impl_opengl3.h"
 #include "moov.h"
+#include "ui.h"
 
 #define MAX_MSG_LEN 1000
 
@@ -167,10 +168,10 @@ void ui(SDL_Window *sdl_win, Player &p)
 	auto info = p.get_info();
 	auto bg_colour = 0xbb000000;
 	ImGui::PushFont(icon_font);
-	auto pause_size = ImGui::CalcTextSize(u8"\ue037");
+	auto pause_size = ImGui::CalcTextSize(PAUSE_ICON);
 	ImGui::PopFont();
 	auto text_height = pause_size.y;
-	auto pp_but_str = info.c_paused ? u8"\ue037" : u8"\ue034";
+	auto pp_but_str = info.c_paused ? PLAY_ICON : PAUSE_ICON;
 	auto win_flags = ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoMove |
 					 ImGuiWindowFlags_NoScrollWithMouse |
 					 ImGuiWindowFlags_NoBackground |
@@ -201,7 +202,7 @@ void ui(SDL_Window *sdl_win, Player &p)
 	auto prev_but_pos = ImVec2(
 		time_pos.x + time_size.x + separator,
 		infobar_pos.y);
-	auto prev_but_str = u8"\ue045";
+	auto prev_but_str = PLAYLIST_PREVIOUS_ICON;
 	auto prev_but_size = ImGui::CalcTextSize(prev_but_str) + 2 * padding;
 	ImGui::PopFont();
 
@@ -216,24 +217,24 @@ void ui(SDL_Window *sdl_win, Player &p)
 	auto next_but_pos = ImVec2(
 		pl_status_pos.x + pl_status_size.x,
 		infobar_pos.y);
-	auto next_but_str = u8"\ue044";
+	auto next_but_str = PLAYLIST_NEXT_ICON;
 	auto next_but_size = ImGui::CalcTextSize(next_but_str) + 2 * padding;
 
-	auto fullscr_str = is_fullscreen(sdl_win) ? u8"\ue5d1" : u8"\ue5d0";
+	auto fullscr_str = is_fullscreen(sdl_win) ? UNFULLSCREEN_ICON : FULLSCREEN_ICON;
 	auto fullscr_text_size = ImGui::CalcTextSize(fullscr_str);
 	auto fullscr_but_size = fullscr_text_size + 2 * padding;
 	auto fullscr_but_pos = ImVec2(
 		bar_size.x - fullscr_but_size.x,
 		infobar_pos.y);
 
-	auto mute_str = info.muted ? u8"\ue04e" : u8"\ue050";
+	auto mute_str = info.muted ? MUTED_ICON : UNMUTED_ICON;
 	auto mute_text_size = ImGui::CalcTextSize(mute_str);
 	auto mute_but_size = mute_text_size + 2 * padding;
 	auto mute_but_pos = ImVec2(
 		fullscr_but_pos.x - mute_but_size.x - separator,
 		infobar_pos.y);
 
-	auto sub_next_but_text_size = ImGui::CalcTextSize(u8"\ue409");
+	auto sub_next_but_text_size = ImGui::CalcTextSize(RIGHT_ICON);
 	auto sub_next_but_size = sub_next_but_text_size + 2 * thin_padding;
 	auto sub_next_but_pos = ImVec2(
 		mute_but_pos.x - sub_next_but_size.x - separator,
@@ -248,19 +249,18 @@ void ui(SDL_Window *sdl_win, Player &p)
 		infobar_pos.y + padding.y);
 
 	ImGui::PushFont(icon_font);
-	auto sub_icon = u8"\ue048";
-	auto sub_icon_size = ImGui::CalcTextSize(sub_icon);
+	auto sub_icon_size = ImGui::CalcTextSize(SUBTITLE_ICON);
 	auto sub_icon_pos = ImVec2(
 		sub_pos.x - sub_icon_size.x,
 		infobar_pos.y + padding.y);
 
-	auto sub_prev_but_text_size = ImGui::CalcTextSize(u8"\ue408");
+	auto sub_prev_but_text_size = ImGui::CalcTextSize(LEFT_ICON);
 	auto sub_prev_but_size = sub_prev_but_text_size + 2 * thin_padding;
 	auto sub_prev_but_pos = ImVec2(
 		sub_icon_pos.x - padding.x - sub_prev_but_size.x,
 		infobar_pos.y);
 
-	auto audio_next_but_text_size = ImGui::CalcTextSize(u8"\ue409");
+	auto audio_next_but_text_size = ImGui::CalcTextSize(RIGHT_ICON);
 	auto audio_next_but_size = audio_next_but_text_size + 2 * thin_padding;
 	auto audio_next_but_pos = ImVec2(
 		sub_prev_but_pos.x - audio_next_but_size.x - separator,
@@ -275,13 +275,12 @@ void ui(SDL_Window *sdl_win, Player &p)
 		infobar_pos.y + padding.y);
 
 	ImGui::PushFont(icon_font);
-	auto audio_icon = u8"\ue0ca";
-	auto audio_icon_size = ImGui::CalcTextSize(audio_icon);
+	auto audio_icon_size = ImGui::CalcTextSize(AUDIO_ICON);
 	auto audio_icon_pos = ImVec2(
 		audio_pos.x - audio_icon_size.x,
 		infobar_pos.y + padding.y);
 
-	auto audio_prev_but_text_size = ImGui::CalcTextSize(u8"\ue408");
+	auto audio_prev_but_text_size = ImGui::CalcTextSize(LEFT_ICON);
 	auto audio_prev_but_size = audio_prev_but_text_size + 2 * thin_padding;
 	auto audio_prev_but_pos = ImVec2(
 		audio_icon_pos.x - padding.x - audio_prev_but_size.x,
@@ -354,17 +353,17 @@ void ui(SDL_Window *sdl_win, Player &p)
 	ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, thin_padding);
 	ImGui::PushFont(icon_font);
 	ImGui::SetCursorPos(sub_prev_but_pos);
-	if (ImGui::Button(u8"\ue408", sub_prev_but_size)) {
+	if (ImGui::Button(LEFT_ICON, sub_prev_but_size)) {
 		p.set_sub(info.sub_pos - 1);
 	}
 	ImGui::SetCursorPos(sub_next_but_pos);
-	if (ImGui::Button(u8"\ue409", sub_next_but_size)) {
+	if (ImGui::Button(RIGHT_ICON, sub_next_but_size)) {
 		p.set_sub(info.sub_pos + 1);
 	}
 	ImGui::PopStyleVar(1);
 
 	ImGui::SetCursorPos(sub_icon_pos);
-	ImGui::Text("%s", sub_icon);
+	ImGui::Text("%s", SUBTITLE_ICON);
 	ImGui::PopFont();
 
 	ImGui::SetCursorPos(sub_pos);
@@ -374,17 +373,17 @@ void ui(SDL_Window *sdl_win, Player &p)
 	ImGui::PushFont(icon_font);
 	ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, thin_padding);
 	ImGui::SetCursorPos(audio_prev_but_pos);
-	if (ImGui::Button(u8"\ue408", audio_prev_but_size)) {
+	if (ImGui::Button(LEFT_ICON, audio_prev_but_size)) {
 		p.set_audio(info.audio_pos - 1);
 	}
 	ImGui::SetCursorPos(audio_next_but_pos);
-	if (ImGui::Button(u8"\ue409", audio_next_but_size)) {
+	if (ImGui::Button(RIGHT_ICON, audio_next_but_size)) {
 		p.set_audio(info.audio_pos + 1);
 	}
 	ImGui::PopStyleVar(1);
 
 	ImGui::SetCursorPos(audio_icon_pos);
-	ImGui::Text("%s", audio_icon);
+	ImGui::Text("%s", AUDIO_ICON);
 	ImGui::PopFont();
 
 	ImGui::SetCursorPos(audio_pos);
