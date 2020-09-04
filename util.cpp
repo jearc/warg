@@ -24,9 +24,6 @@ std::string sec_to_timestr(unsigned int sec)
 	s = sec % 60;
 
 	char buf[15] = { 0 };
-	if (h)
-		snprintf(buf, 15, "%u:%02u:%02u", h, m, s);
-	else
-		snprintf(buf, 15, "%u:%02u", m, s);
+	snprintf(buf, 15, "%02u:%02u:%02u", h, m, s);
 	return std::string(buf);
 }

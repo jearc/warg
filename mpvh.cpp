@@ -81,7 +81,7 @@ PlayerInfo Player::get_info()
 
 	mpv_get_property(mpv, "playlist-pos", MPV_FORMAT_INT64, &i.pl_pos);
 	mpv_get_property(mpv, "playlist-count", MPV_FORMAT_INT64, &i.pl_count);
-	mpv_get_property(mpv, "muted", MPV_FORMAT_INT64, &i.muted);
+	mpv_get_property(mpv, "ao-mute", MPV_FORMAT_FLAG, &i.muted);
 
 	i.title = title;
 
