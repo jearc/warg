@@ -181,9 +181,7 @@ void ui(SDL_Window *sdl_win, Player &p)
 	auto win_padding = ImVec2(0, 0);
 	auto win_rounding = 0;
 	auto padding = ImVec2(text_height / 4, text_height / 15);
-	auto thin_padding = ImVec2(
-		0,
-		padding.y);
+	auto thin_padding = ImVec2(0, padding.y);
 	auto bar_size = ImVec2(win_size.x, pause_size.y + 2 * padding.y);
 	auto infobar_pos = ImVec2(win_pos.x, win_size.y - bar_size.y);
 	auto separator = text_height / 2;
@@ -191,109 +189,95 @@ void ui(SDL_Window *sdl_win, Player &p)
 	auto pp_but_pos = infobar_pos;
 	auto pp_but_size = pause_size + 2 * padding;
 
-	auto time_pos = ImVec2(
-		pp_but_pos.x + pp_but_size.x + separator + padding.x,
+	auto time_pos = ImVec2(pp_but_pos.x + pp_but_size.x + separator + padding.x,
 		infobar_pos.y + padding.y);
 	auto time_stdstr = sec_to_timestr(info.c_time);
 	auto time_str = time_stdstr.c_str();
 	auto time_size = ImGui::CalcTextSize(time_str) + 1 * padding;
 
 	ImGui::PushFont(icon_font);
-	auto prev_but_pos = ImVec2(
-		time_pos.x + time_size.x + separator,
-		infobar_pos.y);
+	auto prev_but_pos =
+		ImVec2(time_pos.x + time_size.x + separator, infobar_pos.y);
 	auto prev_but_str = PLAYLIST_PREVIOUS_ICON;
 	auto prev_but_size = ImGui::CalcTextSize(prev_but_str) + 2 * padding;
 	ImGui::PopFont();
 
-	auto pl_status_pos = ImVec2(
-		prev_but_pos.x + prev_but_size.x + padding.x,
+	auto pl_status_pos = ImVec2(prev_but_pos.x + prev_but_size.x + padding.x,
 		infobar_pos.y + padding.y);
 	char pl_status_str_buf[10];
 	snprintf(pl_status_str_buf, 10, "%d/%d", info.pl_pos + 1, info.pl_count);
 	auto pl_status_size = ImGui::CalcTextSize(pl_status_str_buf) + 1 * padding;
 
 	ImGui::PushFont(icon_font);
-	auto next_but_pos = ImVec2(
-		pl_status_pos.x + pl_status_size.x,
-		infobar_pos.y);
+	auto next_but_pos =
+		ImVec2(pl_status_pos.x + pl_status_size.x, infobar_pos.y);
 	auto next_but_str = PLAYLIST_NEXT_ICON;
 	auto next_but_size = ImGui::CalcTextSize(next_but_str) + 2 * padding;
 
-	auto fullscr_str = is_fullscreen(sdl_win) ? UNFULLSCREEN_ICON : FULLSCREEN_ICON;
+	auto fullscr_str =
+		is_fullscreen(sdl_win) ? UNFULLSCREEN_ICON : FULLSCREEN_ICON;
 	auto fullscr_text_size = ImGui::CalcTextSize(fullscr_str);
 	auto fullscr_but_size = fullscr_text_size + 2 * padding;
-	auto fullscr_but_pos = ImVec2(
-		bar_size.x - fullscr_but_size.x,
-		infobar_pos.y);
+	auto fullscr_but_pos =
+		ImVec2(bar_size.x - fullscr_but_size.x, infobar_pos.y);
 
 	auto mute_str = info.muted ? MUTED_ICON : UNMUTED_ICON;
 	auto mute_text_size = ImGui::CalcTextSize(mute_str);
 	auto mute_but_size = mute_text_size + 2 * padding;
-	auto mute_but_pos = ImVec2(
-		fullscr_but_pos.x - mute_but_size.x - separator,
-		infobar_pos.y);
+	auto mute_but_pos =
+		ImVec2(fullscr_but_pos.x - mute_but_size.x - separator, infobar_pos.y);
 
 	auto sub_next_but_text_size = ImGui::CalcTextSize(RIGHT_ICON);
 	auto sub_next_but_size = sub_next_but_text_size + 2 * thin_padding;
-	auto sub_next_but_pos = ImVec2(
-		mute_but_pos.x - sub_next_but_size.x - separator,
-		infobar_pos.y);
+	auto sub_next_but_pos =
+		ImVec2(mute_but_pos.x - sub_next_but_size.x - separator, infobar_pos.y);
 	ImGui::PopFont();
 
 	char sub_pos_str_buf[10];
 	snprintf(sub_pos_str_buf, 10, " %d/%d", info.sub_pos, info.sub_count);
 	auto sub_size = ImGui::CalcTextSize(sub_pos_str_buf) + 1 * padding;
-	auto sub_pos = ImVec2(
-		sub_next_but_pos.x - sub_size.x,
-		infobar_pos.y + padding.y);
+	auto sub_pos =
+		ImVec2(sub_next_but_pos.x - sub_size.x, infobar_pos.y + padding.y);
 
 	ImGui::PushFont(icon_font);
 	auto sub_icon_size = ImGui::CalcTextSize(SUBTITLE_ICON);
-	auto sub_icon_pos = ImVec2(
-		sub_pos.x - sub_icon_size.x,
-		infobar_pos.y + padding.y);
+	auto sub_icon_pos =
+		ImVec2(sub_pos.x - sub_icon_size.x, infobar_pos.y + padding.y);
 
 	auto sub_prev_but_text_size = ImGui::CalcTextSize(LEFT_ICON);
 	auto sub_prev_but_size = sub_prev_but_text_size + 2 * thin_padding;
-	auto sub_prev_but_pos = ImVec2(
-		sub_icon_pos.x - padding.x - sub_prev_but_size.x,
-		infobar_pos.y);
+	auto sub_prev_but_pos =
+		ImVec2(sub_icon_pos.x - padding.x - sub_prev_but_size.x, infobar_pos.y);
 
 	auto audio_next_but_text_size = ImGui::CalcTextSize(RIGHT_ICON);
 	auto audio_next_but_size = audio_next_but_text_size + 2 * thin_padding;
 	auto audio_next_but_pos = ImVec2(
-		sub_prev_but_pos.x - audio_next_but_size.x - separator,
-		infobar_pos.y);
+		sub_prev_but_pos.x - audio_next_but_size.x - separator, infobar_pos.y);
 	ImGui::PopFont();
 
 	char audio_pos_str_buf[10];
 	snprintf(audio_pos_str_buf, 10, " %d/%d", info.audio_pos, info.audio_count);
 	auto audio_size = ImGui::CalcTextSize(audio_pos_str_buf) + 1 * padding;
-	auto audio_pos = ImVec2(
-		audio_next_but_pos.x - audio_size.x,
-		infobar_pos.y + padding.y);
+	auto audio_pos =
+		ImVec2(audio_next_but_pos.x - audio_size.x, infobar_pos.y + padding.y);
 
 	ImGui::PushFont(icon_font);
 	auto audio_icon_size = ImGui::CalcTextSize(AUDIO_ICON);
-	auto audio_icon_pos = ImVec2(
-		audio_pos.x - audio_icon_size.x,
-		infobar_pos.y + padding.y);
+	auto audio_icon_pos =
+		ImVec2(audio_pos.x - audio_icon_size.x, infobar_pos.y + padding.y);
 
 	auto audio_prev_but_text_size = ImGui::CalcTextSize(LEFT_ICON);
 	auto audio_prev_but_size = audio_prev_but_text_size + 2 * thin_padding;
 	auto audio_prev_but_pos = ImVec2(
-		audio_icon_pos.x - padding.x - audio_prev_but_size.x,
-		infobar_pos.y);
+		audio_icon_pos.x - padding.x - audio_prev_but_size.x, infobar_pos.y);
 	ImGui::PopFont();
 
 	auto title_str = info.title.c_str();
-	auto title_pos = ImVec2(
-		next_but_pos.x + next_but_size.x + separator + padding.x,
-		infobar_pos.y + padding.y);
+	auto title_pos =
+		ImVec2(next_but_pos.x + next_but_size.x + separator + padding.x,
+			infobar_pos.y + padding.y);
 	auto title_size = ImVec2(
-		audio_prev_but_pos.x - title_pos.x - padding.x - separator,
-		bar_size.y);
+		audio_prev_but_pos.x - title_pos.x - padding.x - separator, bar_size.y);
 
 	ImGui::SetNextWindowPos(win_pos);
 	ImGui::SetNextWindowSize(win_size);
@@ -368,7 +352,6 @@ void ui(SDL_Window *sdl_win, Player &p)
 
 	ImGui::SetCursorPos(sub_pos);
 	ImGui::Text("%s", sub_pos_str_buf);
-
 
 	ImGui::PushFont(icon_font);
 	ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, thin_padding);
@@ -570,15 +553,16 @@ SDL_Window *init_window()
 		die("SDL init failed");
 	SDL_GL_SetAttribute(
 		SDL_GL_CONTEXT_FLAGS, SDL_GL_CONTEXT_FORWARD_COMPATIBLE_FLAG);
-	SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
+	SDL_GL_SetAttribute(
+		SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
 	SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
 	SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 24);
 	SDL_GL_SetAttribute(SDL_GL_STENCIL_SIZE, 8);
 	SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
 	SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 2);
-	SDL_Window *window =
-		SDL_CreateWindow("Moov", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
-			1280, 720, SDL_WINDOW_OPENGL | SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE);
+	SDL_Window *window = SDL_CreateWindow("Moov", SDL_WINDOWPOS_CENTERED,
+		SDL_WINDOWPOS_CENTERED, 1280, 720,
+		SDL_WINDOW_OPENGL | SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE);
 	SDL_GL_CreateContext(window);
 	SDL_GLContext gl_context = SDL_GL_CreateContext(window);
 	glewInit();
@@ -592,7 +576,9 @@ SDL_Window *init_window()
 	float font_size = 30;
 
 	ImGuiIO &io = ImGui::GetIO();
-	text_font = io.Fonts->AddFontFromFileTTF("/usr/share/fonts/truetype/roboto/unhinted/RobotoTTF/Roboto-Medium.ttf", font_size);
+	text_font = io.Fonts->AddFontFromFileTTF(
+		"/usr/share/fonts/truetype/roboto/unhinted/RobotoTTF/Roboto-Medium.ttf",
+		font_size);
 
 	static const ImWchar icons_ranges[] = { 0xe000, 0xeb4c, 0 };
 	ImFontConfig icons_config;
