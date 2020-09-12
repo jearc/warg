@@ -1,17 +1,18 @@
-OBJS = main.o mpvh.o util.o
+OBJS = main.o mpvh.o util.o ui.o
 OBJS += ./imgui/imgui_impl_sdl.o ./imgui/imgui.o ./imgui/imgui_draw.o
 OBJS += ./imgui/imgui_impl_opengl3.o ./imgui/imgui_widgets.o
 CFLAGS = -fPIC -pedantic -Wall -Wextra -Ofast -ffast-math
 LIBS = -lGL -ldl -lSDL2 -lmpv -lGLEW -lGLU
+CXXFLAGS = -g
 
 all: moov
 
-moov: $(OBJS) moov.h
+moov: $(OBJS) moov.h ui.h
 	$(CXX) $(CFLAGS) -o moov $(OBJS) $(LIBS)
 
 clean:
 	rm moov $(OBJS)
-	
+
 test: all
 	@./test.py
 

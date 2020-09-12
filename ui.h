@@ -1,12 +1,51 @@
-const char *PLAY_ICON = u8"\ue037";
-const char *PAUSE_ICON = u8"\ue034";
-const char *PLAYLIST_PREVIOUS_ICON = u8"\ue045";
-const char *PLAYLIST_NEXT_ICON = u8"\ue044";
-const char *LEFT_ICON = u8"\ue408";
-const char *RIGHT_ICON = u8"\ue409";
-const char *AUDIO_ICON = u8"\ue0ca";
-const char *SUBTITLE_ICON = u8"\ue048";
-const char *MUTED_ICON = u8"\ue04e";
-const char *UNMUTED_ICON = u8"\ue050";
-const char *FULLSCREEN_ICON = u8"\ue5d0";
-const char *UNFULLSCREEN_ICON = u8"\ue5d1";
+#pragma once
+
+#define PLAY_ICON u8"\ue037"
+#define PAUSE_ICON u8"\ue034"
+#define PLAYLIST_PREVIOUS_ICON u8"\ue045"
+#define PLAYLIST_NEXT_ICON u8"\ue044"
+#define LEFT_ICON u8"\ue408"
+#define RIGHT_ICON u8"\ue409"
+#define AUDIO_ICON u8"\ue0ca"
+#define SUBTITLE_ICON u8"\ue048"
+#define MUTED_ICON u8"\ue04e"
+#define UNMUTED_ICON u8"\ue050"
+#define FULLSCREEN_ICON u8"\ue5d0"
+#define UNFULLSCREEN_ICON u8"\ue5d1"
+
+struct ImRect {
+	ImVec2 pos, size;
+};
+
+struct Layout {
+	ImVec2 major_padding;
+	ImVec2 minor_padding;
+
+	ImRect master_win;
+	ImRect infobar;
+	float separator;
+
+	ImRect pp_but;
+	ImRect time;
+	ImRect prev_but;
+	ImRect pl_status;
+	ImRect next_but;
+	ImRect title;
+	ImRect sub_prev_but;
+	ImRect sub_icon;
+	ImRect sub_status;
+	ImRect sub_next_but;
+	ImRect audio_prev_but;
+	ImRect audio_icon;
+	ImRect audio_status;
+	ImRect audio_next_but;
+	ImRect mute_but;
+	ImRect fullscr_but;
+};
+
+Layout calculate_layout(int text_height, int win_w, int win_h,
+	ImFont *text_font, ImFont *icon_font);
+ImVec2 operator+(ImVec2 a, ImVec2 b);
+ImVec2 operator-(ImVec2 a, ImVec2 b);
+ImVec2 operator*(int a, ImVec2 b);
+ImVec2 calc_text_size(ImFont *font, ImVec2 padding, const char *string);
